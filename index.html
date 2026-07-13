@@ -198,7 +198,7 @@ const DEFAULT_CONFIG = {
   ticker: { enabled: false, text: "Documentation • Endpoints • SDKs • Guides" },
   searchMode: "hero",
   flattenHeader: true,
-  headerImage: { enabled: false, url: "", height: 380, tint: 0 },
+  headerImage: { enabled: false, url: "", height: 380, tint: 0, offset: 64 },
   layout: { maxW: 1120 },
   banner: {
     enabled: false,
@@ -512,7 +512,7 @@ function generateHTML(cfg) {
   /* ===== Background image behind the hero (peeks behind a flattened, transparent header) ===== */
   .bnk-herobg {
     position: absolute;
-    top: -64px;
+    top: -${cfg.headerImage.offset}px;
     left: 50%;
     width: 100vw;
     transform: translateX(-50%);
@@ -2338,6 +2338,7 @@ function App() {
                       <input className="glp-input" value={config.headerImage.url} onChange={(e) => setHeaderImage({ url: e.target.value })} placeholder="https://…/banner.jpg" />
                     </Field>
                     <Slider label="Image height" value={config.headerImage.height} min={160} max={720} step={4} onChange={(v) => setHeaderImage({ height: v })} />
+                    <Slider label="Header overlap (how far it tucks up behind the header)" value={config.headerImage.offset} min={0} max={160} step={4} onChange={(v) => setHeaderImage({ offset: v })} />
                     <Slider label="Darken (tint)" value={config.headerImage.tint} min={0} max={80} unit="%" onChange={(v) => setHeaderImage({ tint: v })} />
                   </>
                 )}
