@@ -27,9 +27,14 @@ preview — then copy the generated snippet into
 - **Hero background image** — an optional full-bleed image (with darkening
   tint) behind the hero; pair it with the transparent header so it sits
   behind that too.
-- **Shareable links** — the Share button encodes your whole design into the
-  URL (`#c=…`); anyone opening the link sees your exact configuration. Links
-  saved with older versions are migrated automatically.
+- **Saved pages + autosave** — your work is kept in the browser
+  automatically as you edit. The **Pages** menu (top bar) holds as many named
+  designs as you like — switch, create, rename, duplicate, or delete them, and
+  the current one auto-saves. Nothing is lost on refresh.
+- **Shareable links** — the Share button encodes your whole design into a
+  URL (`#c=…`); anyone opening the link sees your exact configuration as an
+  unsaved page they can add to their own list with one click. Links saved with
+  older versions are migrated automatically.
 - Native ReadMe **dark/light/system theming** via `data-color-mode` — no JS
   theme hacks
 - 4 font pairings **plus a "Match ReadMe" option** that inherits the hub's

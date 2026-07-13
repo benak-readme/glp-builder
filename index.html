@@ -330,6 +330,59 @@ function migrateConfig(loaded) {
 }
 
 /* ============================================================
+   NAMED DESIGNS — localStorage-backed "my pages" + autosave
+   Each design: { id, name, config, override, updatedAt }
+   ============================================================ */
+const DESIGNS_KEY = "glp-builder:designs";
+const CURRENT_KEY = "glp-builder:currentId";
+const nowMs = () => Date.now();
+
+const relTime = (t) => {
+  const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
+  if (s < 45) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + "m ago";
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + "h ago";
+  return Math.floor(h / 24) + "d ago";
+};
+
+const makeDesign = (name, config, override) => ({ id: uid(), name, config, override: override || "", updatedAt: nowMs() });
+
+function persistDesigns(ds, curId) {
+  try {
+    localStorage.setItem(DESIGNS_KEY, JSON.stringify(ds));
+    if (curId) localStorage.setItem(CURRENT_KEY, curId);
+  } catch (e) {
+    /* storage unavailable (private mode / sandbox) — autosave silently disabled */
+  }
+}
+
+/* choose the initial working state: shared link → last-open page → a fresh page */
+function loadInitialState() {
+  let designs = [];
+  try {
+    const raw = localStorage.getItem(DESIGNS_KEY);
+    if (raw) designs = JSON.parse(raw);
+  } catch (e) {}
+  if (!Array.isArray(designs)) designs = [];
+
+  /* a shared #c= link opens unsaved, regardless of saved pages */
+  try {
+    const m = window.location.hash.match(/#c=([A-Za-z0-9+/=]+)/);
+    if (m) return { config: migrateConfig(decodeConfig(m[1])), override: null, designs, currentId: null, sharedView: true };
+  } catch (e) {}
+
+  let curId = null;
+  try { curId = localStorage.getItem(CURRENT_KEY); } catch (e) {}
+  const cur = designs.find((d) => d.id === curId) || designs[0];
+  if (cur) return { config: migrateConfig(cur.config), override: cur.override || null, designs, currentId: cur.id, sharedView: false };
+
+  const d = makeDesign("Untitled page", DEFAULT_CONFIG, "");
+  return { config: DEFAULT_CONFIG, override: null, designs: [d], currentId: d.id, sharedView: false };
+}
+
+/* ============================================================
    HTML GENERATOR
    ============================================================ */
 const INLINE_CARD_STYLE =
@@ -1455,6 +1508,33 @@ const APP_CSS = `
   }
   .glp-banner button { margin-left: auto; }
 
+  /* saved-pages dropdown */
+  .glp-pages { position: relative; }
+  .glp-pages__btn { display: inline-flex; align-items: center; gap: 6px; }
+  .glp-pages__label { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glp-pages__backdrop { position: fixed; inset: 0; z-index: 40; }
+  .glp-pages__menu {
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 41; width: 288px;
+    background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 10px;
+    box-shadow: 0 16px 44px rgba(0,0,0,.55); padding: 6px;
+  }
+  .glp-pages__list { max-height: 260px; overflow-y: auto; }
+  .glp-pages__item {
+    display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+    border: 0; background: transparent; color: var(--ink-2); font-family: inherit;
+    font-size: 12.5px; padding: 8px; border-radius: 7px; cursor: pointer;
+  }
+  .glp-pages__item:hover { background: var(--line); color: var(--ink); }
+  .glp-pages__item.on { color: var(--ink); }
+  .glp-pages__check { width: 12px; flex: none; color: var(--ok); }
+  .glp-pages__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glp-pages__time { flex: none; font-size: 10.5px; color: var(--ink-3); font-family: 'Space Mono', monospace; }
+  .glp-pages__empty { padding: 12px 8px; color: var(--ink-3); font-size: 12px; text-align: center; }
+  .glp-pages__actions { display: flex; gap: 6px; padding: 8px 2px 2px; margin-top: 4px; border-top: 1px solid var(--line); }
+  .glp-pages__actions .glp-smallbtn { flex: 1; text-align: center; padding: 6px 4px; }
+  .glp-pages__rename { display: flex; gap: 6px; padding: 8px 2px 2px; margin-top: 4px; border-top: 1px solid var(--line); }
+  .glp-pages__rename .glp-input { flex: 1; }
+
   @media (max-width: 900px) {
     .glp-main { flex-direction: column; overflow-y: auto; }
     .glp-side, .glp-code { width: 100%; border-right: 0; border-bottom: 1px solid var(--line); max-height: 50vh; }
@@ -1988,20 +2068,18 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote }) {
    APP
    ============================================================ */
 function App() {
+  const boot = useRef(null);
+  if (!boot.current) boot.current = loadInitialState();
   const [tab, setTab] = useState("build");
-  const [config, setConfig] = useState(() => {
-    /* hydrate from a shared link (#c=…) when present */
-    try {
-      const m = window.location.hash.match(/#c=([A-Za-z0-9+/=]+)/);
-      if (m) return migrateConfig(decodeConfig(m[1]));
-    } catch (e) {
-      /* bad or absent hash — fall through to defaults */
-    }
-    return DEFAULT_CONFIG;
-  });
-  const [override, setOverride] = useState(null);
+  const [config, setConfig] = useState(boot.current.config);
+  const [override, setOverride] = useState(boot.current.override);
+  const [designs, setDesigns] = useState(boot.current.designs);
+  const [currentId, setCurrentId] = useState(boot.current.currentId);
+  const [sharedView, setSharedView] = useState(boot.current.sharedView);
+  const [pagesOpen, setPagesOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const [openCard, setOpenCard] = useState(null);
-  const [openSection, setOpenSection] = useState(() => DEFAULT_CONFIG.sections[0].id);
+  const [openSection, setOpenSection] = useState(boot.current.config.sections[0].id);
   const [mode, setMode] = useState("light");
   const [device, setDevice] = useState("desktop");
   const [copied, setCopied] = useState(false);
@@ -2086,6 +2164,118 @@ function App() {
       })),
   });
 
+  /* ---- named designs / autosave ---- */
+  const currentName = sharedView
+    ? "Shared design"
+    : ((designs.find((d) => d.id === currentId) || {}).name || "Untitled page");
+
+  const stripHash = () => {
+    try { window.history.replaceState(null, "", window.location.pathname + window.location.search); } catch (e) {}
+  };
+  const uniqueName = (base) => {
+    const names = new Set(designs.map((d) => d.name));
+    if (!names.has(base)) return base;
+    let n = 2;
+    while (names.has(`${base} ${n}`)) n++;
+    return `${base} ${n}`;
+  };
+
+  /* autosave the working design into its slot (debounced); skipped while viewing a shared link */
+  useEffect(() => {
+    if (sharedView || !currentId) return;
+    const t = setTimeout(() => {
+      setDesigns((ds) => {
+        const next = ds.map((d) => (d.id === currentId ? { ...d, config, override: override ?? "", updatedAt: nowMs() } : d));
+        persistDesigns(next, currentId);
+        return next;
+      });
+    }, 500);
+    return () => clearTimeout(t);
+  }, [config, override, currentId, sharedView]);
+
+  const switchTo = (id) => {
+    const d = designs.find((x) => x.id === id);
+    if (!d) return;
+    const cfg = migrateConfig(d.config);
+    setConfig(cfg);
+    setOverride(d.override || null);
+    setCurrentId(id);
+    setSharedView(false);
+    setOpenSection(cfg.sections[0].id);
+    setOpenCard(null);
+    setPagesOpen(false);
+    setRenaming(false);
+    stripHash();
+    try { localStorage.setItem(CURRENT_KEY, id); } catch (e) {}
+  };
+
+  const newPage = () => {
+    const d = makeDesign(uniqueName("Untitled page"), DEFAULT_CONFIG, "");
+    const ds = [...designs, d];
+    setDesigns(ds);
+    persistDesigns(ds, d.id);
+    setConfig(DEFAULT_CONFIG);
+    setOverride(null);
+    setCurrentId(d.id);
+    setSharedView(false);
+    setOpenSection(DEFAULT_CONFIG.sections[0].id);
+    setOpenCard(null);
+    setPagesOpen(false);
+    setRenaming(false);
+    stripHash();
+  };
+
+  const duplicateCurrent = () => {
+    const src = designs.find((d) => d.id === currentId);
+    const d = makeDesign(uniqueName((src ? src.name : "Page") + " copy"), config, override ?? "");
+    const ds = [...designs, d];
+    setDesigns(ds);
+    persistDesigns(ds, d.id);
+    setCurrentId(d.id);
+    setSharedView(false);
+    setPagesOpen(false);
+    setRenaming(false);
+    stripHash();
+  };
+
+  const saveSharedAsPage = () => {
+    const d = makeDesign(uniqueName("Shared page"), config, override ?? "");
+    const ds = [...designs, d];
+    setDesigns(ds);
+    persistDesigns(ds, d.id);
+    setCurrentId(d.id);
+    setSharedView(false);
+    stripHash();
+  };
+
+  const renameCurrent = (name) => {
+    const nm = (name || "").trim() || "Untitled page";
+    const ds = designs.map((d) => (d.id === currentId ? { ...d, name: nm } : d));
+    setDesigns(ds);
+    persistDesigns(ds, currentId);
+    setRenaming(false);
+  };
+
+  const deleteCurrent = () => {
+    try {
+      if (!window.confirm(`Delete "${currentName}"? This can't be undone.`)) return;
+    } catch (e) {}
+    let ds = designs.filter((d) => d.id !== currentId);
+    if (!ds.length) ds = [makeDesign("Untitled page", DEFAULT_CONFIG, "")];
+    const target = ds[0];
+    const cfg = migrateConfig(target.config);
+    setDesigns(ds);
+    persistDesigns(ds, target.id);
+    setConfig(cfg);
+    setOverride(target.override || null);
+    setCurrentId(target.id);
+    setSharedView(false);
+    setOpenSection(cfg.sections[0].id);
+    setOpenCard(null);
+    setPagesOpen(false);
+    setRenaming(false);
+  };
+
   const copyText = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -2131,9 +2321,9 @@ function App() {
     let payload = encoded;
     try {
       if (/^https?:/.test(window.location.protocol)) {
-        const url = window.location.origin + window.location.pathname + "#c=" + encoded;
-        window.history.replaceState(null, "", "#c=" + encoded);
-        payload = url;
+        /* copy a shareable URL without hijacking this tab's address bar,
+           so the author's page keeps autosaving under its own slot */
+        payload = window.location.origin + window.location.pathname + "#c=" + encoded;
       }
     } catch (e) {
       /* sandboxed — fall back to copying the raw config string */
@@ -2167,6 +2357,49 @@ function App() {
           </button>
         </div>
         <div className="glp-bar__right">
+          <div className="glp-pages">
+            <button className="glp-smallbtn glp-pages__btn" type="button" onClick={() => { setPagesOpen((o) => !o); setRenaming(false); }} title="Saved pages" style={{ padding: "8px 13px" }}>
+              <span className="glp-pages__label">{sharedView ? "Shared design (unsaved)" : currentName}</span>
+              <span aria-hidden="true">▾</span>
+            </button>
+            {pagesOpen && (
+              <>
+                <div className="glp-pages__backdrop" onClick={() => { setPagesOpen(false); setRenaming(false); }} />
+                <div className="glp-pages__menu">
+                  <div className="glp-pages__list">
+                    {designs.slice().sort((a, b) => b.updatedAt - a.updatedAt).map((d) => (
+                      <button key={d.id} type="button" className={"glp-pages__item" + (d.id === currentId && !sharedView ? " on" : "")} onClick={() => switchTo(d.id)}>
+                        <span className="glp-pages__check">{d.id === currentId && !sharedView ? "✓" : ""}</span>
+                        <span className="glp-pages__name">{d.name}</span>
+                        <span className="glp-pages__time">{relTime(d.updatedAt)}</span>
+                      </button>
+                    ))}
+                    {!designs.length && <div className="glp-pages__empty">No saved pages yet</div>}
+                  </div>
+                  {renaming ? (
+                    <div className="glp-pages__rename">
+                      <input
+                        className="glp-input"
+                        autoFocus
+                        defaultValue={currentName}
+                        onKeyDown={(e) => { if (e.key === "Enter") renameCurrent(e.target.value); if (e.key === "Escape") setRenaming(false); }}
+                      />
+                      <button className="glp-smallbtn" type="button" onClick={(e) => renameCurrent(e.currentTarget.previousElementSibling.value)}>
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="glp-pages__actions">
+                      <button className="glp-smallbtn" type="button" onClick={newPage}>+ New</button>
+                      <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={() => setRenaming(true)}>Rename</button>
+                      <button className="glp-smallbtn" type="button" onClick={duplicateCurrent}>Duplicate</button>
+                      <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>Delete</button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
           <button className={"glp-smallbtn" + (shared ? " done" : "")} onClick={share} type="button" style={{ padding: "8px 13px" }}>
             {shared ? "✓ Link copied" : "Share link"}
           </button>
@@ -2178,6 +2411,13 @@ function App() {
           </button>
         </div>
       </div>
+
+      {sharedView && (
+        <div className="glp-banner">
+          <span>You're viewing a shared design — it won't be kept until you add it to your pages.</span>
+          <button className="glp-smallbtn" type="button" onClick={saveSharedAsPage}>Save as a page</button>
+        </div>
+      )}
 
       <div className="glp-main">
         {tab === "build" ? (
