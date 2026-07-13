@@ -113,14 +113,14 @@ const FONTS = {
    density : roomy | comfortable | compact (padding + title size)
 ------------------------------------------------------ */
 const DEFAULT_STYLE = {
-  anchor: true,
+  anchor: false,
   icon: false,
-  badge: true,
+  badge: false,
   num: false,
   file: false,
-  bar: true,
-  peek: true,
-  cta: true,
+  bar: false,
+  peek: false,
+  cta: false,
   ctaPlain: false,
   mono: false,
   radius: 16,
@@ -179,11 +179,11 @@ const DEFAULT_LIQUID = {
   accents: ["green", "purple", "amber"],
 };
 
-const DEFAULT_SECTION_LAYOUT = { colMin: 258, gap: 20, autoH: false, cardMinH: 396, bento: false };
+const DEFAULT_SECTION_LAYOUT = { colMin: 258, gap: 20, autoH: true, cardMinH: 396, bento: false };
 
 /* ---------------- default config = Benak's v3 page ---------------- */
 const DEFAULT_CONFIG = {
-  fonts: "grotesk",
+  fonts: "readme",
   hero: {
     eyebrow: "",
     chip: "",
@@ -798,7 +798,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
   .bnk-sec--mono .bnk-card__title { font-weight: 700; }
   .bnk-card__blurb { font-size: 13.5px; line-height: 1.55; color: var(--bnk-ink-1) !important; }
 
-  .bnk-card__peek { margin-top: 16px; margin-bottom: 20px; padding-top: 13px; border-top: 1px solid var(--card-divider); }
+  .bnk-card__peek { margin-top: 16px; margin-bottom: 0; padding-top: 13px; border-top: 1px solid var(--card-divider); }
   .bnk-card__peek-label {
     display: block; margin: 0 0 8px; font-family: ${F.mono}; font-size: 10.5px;
     letter-spacing: 0.12em; text-transform: uppercase; color: var(--bnk-ink-2) !important;
@@ -819,10 +819,15 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
   .bnk-card__go--filled { background: var(--accent); color: var(--bnk-cta-on) !important; }
   .bnk-card__go--ghost { border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); color: var(--accent) !important; }
   .bnk-card__go--ghost:hover, .bnk-card:hover .bnk-card__go--ghost { border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
-  .bnk-card__go--plain { padding: 14px 0 0; border: 0; background: transparent; color: var(--accent) !important; font-size: 12.5px; }
+  .bnk-card__go--plain { padding: 0; border: 0; background: transparent; color: var(--accent) !important; font-size: 12.5px; }
   .bnk-card__go:hover .rm-arrow { transform: translateX(4px); }
 
-  .bnk-card__arrow { margin-top: auto; padding-top: 14px; align-self: flex-end; color: var(--accent) !important; font-size: 16px; }
+  .bnk-card__arrow { margin-top: auto; align-self: flex-end; color: var(--accent) !important; font-size: 16px; }
+
+  /* auto-height sections: cards size to content and CTAs keep a consistent gap
+     (fixed-height sections keep margin-top:auto so CTAs bottom-align instead) */
+  .bnk-sec--autoh .bnk-grid { align-items: start; }
+  .bnk-sec--autoh .bnk-card__go, .bnk-sec--autoh .bnk-card__arrow { margin-top: 20px; }
 
   .bnk-card:hover { transform: translateY(-3px); }
   .bnk-card:hover { background-color: #F4F4F5 !important; border-color: color-mix(in srgb, var(--accent) 45%, #D4D4D8) !important; }
@@ -865,7 +870,8 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
         `bnk-sec bnk-sec-${i} bnk-sec--${sec.align === "left" ? "left" : "center"}` +
         (st.bar ? " bnk-sec--bar" : "") +
         (st.mono ? " bnk-sec--mono" : "") +
-        (sec.layout.bento ? " bnk-sec--bento" : "");
+        (sec.layout.bento ? " bnk-sec--bento" : "") +
+        (sec.layout.autoH ? " bnk-sec--autoh" : "");
       const titleFont = st.mono ? F.mono : F.display;
       const titleTt = st.mono ? "uppercase" : "none";
       const minh = sec.layout.autoH ? "auto" : `${sec.layout.cardMinH}px`;
@@ -1310,19 +1316,19 @@ const APP_CSS = `
   details.glp-sec:not([open]) { margin-bottom: 14px; }
   .glp-sec__label {
     display: flex; align-items: center; gap: 8px;
-    font-family: 'Space Mono', monospace; font-size: 10.5px;
-    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+    font-family: 'Space Mono', monospace; font-size: 13px;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--ink-2);
     margin: 0 0 12px;
     cursor: pointer; user-select: none; list-style: none;
   }
   .glp-sec__label::-webkit-details-marker { display: none; }
   .glp-sec__label::before {
-    content: "›"; font-size: 14px; line-height: 1; flex: none;
+    content: "›"; font-size: 16px; line-height: 1; flex: none;
     transform: rotate(90deg); transition: transform 150ms ease;
   }
   details.glp-sec:not([open]) > .glp-sec__label::before { transform: none; }
   details.glp-sec:not([open]) > .glp-sec__label { margin-bottom: 0; }
-  .glp-sec__label:hover { color: var(--ink-2); }
+  .glp-sec__label:hover { color: var(--ink); }
   .glp-sec__label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
   .glp-field { margin-bottom: 12px; }
@@ -1939,11 +1945,20 @@ function SectionEditor({ section, index, count, open, onToggle, onMove, onRemove
             <StyleCheck checked={!!st.badge} label="Badge / eyebrow" onChange={(v) => setStyle({ badge: v })} />
             <StyleCheck checked={!!st.bar} label="Top accent bar" onChange={(v) => setStyle({ bar: v })} />
             <StyleCheck checked={!!st.peek} label="Preview list" onChange={(v) => setStyle({ peek: v })} />
-            <StyleCheck checked={!!st.cta} label="CTA button" onChange={(v) => setStyle({ cta: v })} />
-            <StyleCheck checked={!!st.ctaPlain} label="Plain-text CTA" onChange={(v) => setStyle({ ctaPlain: v })} />
             <StyleCheck checked={!!st.anchor} label="Whole card links" onChange={(v) => setStyle({ anchor: v })} />
             <StyleCheck checked={!!st.mono} label="Mono / uppercase" onChange={(v) => setStyle({ mono: v })} />
           </div>
+          <Field label="Call to action">
+            <Seg
+              value={st.cta ? (st.ctaPlain ? "plain" : "button") : "none"}
+              onChange={(v) => setStyle(v === "none" ? { cta: false, ctaPlain: false } : v === "plain" ? { cta: true, ctaPlain: true } : { cta: true, ctaPlain: false })}
+              options={[
+                { value: "none", label: "None" },
+                { value: "button", label: "Button" },
+                { value: "plain", label: "Plain link" },
+              ]}
+            />
+          </Field>
           <Field label="Card density">
             <Seg
               value={st.density}
@@ -2432,7 +2447,7 @@ function App() {
                 </div>
               )}
 
-              <details className="glp-sec" open>
+              <details className="glp-sec" name="glp-nav">
                 <summary className="glp-sec__label">Typography</summary>
                 {Object.entries(FONTS).map(([key, f]) => (
                   <button key={key} type="button" className={"glp-font" + (config.fonts === key ? " on" : "")} onClick={() => patch({ fonts: key })}>
@@ -2447,7 +2462,7 @@ function App() {
                 ))}
               </details>
 
-              <details className="glp-sec" open>
+              <details className="glp-sec" name="glp-nav">
                 <summary className="glp-sec__label">Hero</summary>
                 <Field label="Eyebrow (small caps line above the title — blank to hide)">
                   <input
@@ -2543,7 +2558,7 @@ function App() {
                 )}
               </details>
 
-              <details className="glp-sec" open>
+              <details className="glp-sec" name="glp-nav">
                 <summary className="glp-sec__label">Hub chrome</summary>
                 <Field label="Search &amp; Ask AI placement (Ask AI always sits beside search)">
                   <Seg
@@ -2582,7 +2597,7 @@ function App() {
                 )}
               </details>
 
-              <details className="glp-sec" open>
+              <details className="glp-sec" name="glp-nav">
                 <summary className="glp-sec__label">Sections</summary>
                 {config.sections.map((section, i) => (
                   <SectionEditor
@@ -2605,7 +2620,7 @@ function App() {
                 </button>
               </details>
 
-              <details className="glp-sec" open>
+              <details className="glp-sec" name="glp-nav">
                 <summary className="glp-sec__label">Page width</summary>
                 <Field label="Maximum content width">
                   <Seg
@@ -2620,7 +2635,7 @@ function App() {
                 </Field>
               </details>
 
-              <details className="glp-sec" open>
+              <details className="glp-sec" name="glp-nav">
                 <summary className="glp-sec__label">Contact banner</summary>
                 <label className="glp-toggle">
                   <input type="checkbox" checked={config.banner.enabled} onChange={(e) => setBanner({ enabled: e.target.checked })} />
@@ -2649,7 +2664,7 @@ function App() {
                 )}
               </details>
 
-              <details className="glp-sec" open>
+              <details className="glp-sec" name="glp-nav">
                 <summary className="glp-sec__label">Footer</summary>
                 <Field label="Footer line (blank to hide)">
                   <input className="glp-input" value={config.footer} onChange={(e) => patch({ footer: e.target.value })} />
