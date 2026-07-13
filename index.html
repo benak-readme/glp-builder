@@ -1310,19 +1310,19 @@ const APP_CSS = `
   details.glp-sec:not([open]) { margin-bottom: 14px; }
   .glp-sec__label {
     display: flex; align-items: center; gap: 8px;
-    font-family: 'Space Mono', monospace; font-size: 10.5px;
-    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+    font-family: 'Space Mono', monospace; font-size: 13px;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--ink-2);
     margin: 0 0 12px;
     cursor: pointer; user-select: none; list-style: none;
   }
   .glp-sec__label::-webkit-details-marker { display: none; }
   .glp-sec__label::before {
-    content: "›"; font-size: 14px; line-height: 1; flex: none;
+    content: "›"; font-size: 16px; line-height: 1; flex: none;
     transform: rotate(90deg); transition: transform 150ms ease;
   }
   details.glp-sec:not([open]) > .glp-sec__label::before { transform: none; }
   details.glp-sec:not([open]) > .glp-sec__label { margin-bottom: 0; }
-  .glp-sec__label:hover { color: var(--ink-2); }
+  .glp-sec__label:hover { color: var(--ink); }
   .glp-sec__label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
   .glp-field { margin-bottom: 12px; }
