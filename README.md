@@ -31,6 +31,10 @@ preview — then copy the generated snippet into
   automatically as you edit. The **Pages** menu (top bar) holds as many named
   designs as you like — switch, create, rename, duplicate, or delete them, and
   the current one auto-saves. Nothing is lost on refresh.
+- **Undo / redo** — top-bar buttons (and ⌘/Ctrl-Z, ⇧⌘/Ctrl-Z) roll back
+  recent changes, including accidental section or card deletions.
+- **One-color mode** — a top **Colors** section can force a single accent
+  across every card, overriding the per-card colors.
 - **Shareable links** — the Share button encodes your whole design into a
   URL (`#c=…`); anyone opening the link sees your exact configuration as an
   unsaved page they can add to their own list with one click. Links saved with

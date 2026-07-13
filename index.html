@@ -142,7 +142,11 @@ const LOCK_SVG =
   '<svg class="bnk-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 
 let _uid = 10;
-const uid = () => "c" + _uid++;
+/* Collision-proof across sessions: a monotonic counter alone restarts at 10
+   on every page load and would clash with ids already persisted in saved
+   designs, producing duplicate React keys (cross-section edits/deletes and
+   scroll jumps). The random suffix makes every id globally unique. */
+const uid = () => "c" + (_uid++).toString(36) + Math.random().toString(36).slice(2, 8);
 
 const CARD_DEFAULTS = {
   icon: "📘",
@@ -199,6 +203,7 @@ const DEFAULT_CONFIG = {
   searchMode: "hero",
   flattenHeader: true,
   headerImage: { enabled: false, url: "", height: 380, tint: 0, offset: 64 },
+  theme: { uniform: false, accent: "blue", customLight: "#0B63C5", customDark: "#6FB4F5" },
   layout: { maxW: 1120 },
   banner: {
     enabled: false,
@@ -288,6 +293,25 @@ const normSection = (s) => ({
   cards: (s.cards && s.cards.length ? s.cards : DEFAULT_CONFIG.sections[0].cards).map(normCard),
 });
 
+/* Reassign any duplicate section/card ids (legacy data saved before ids were
+   collision-proof) so React keys stay unique — otherwise deleting/editing one
+   section hits its duplicate too. */
+function dedupeIds(sections) {
+  const seen = new Set();
+  return sections.map((s) => {
+    let id = s.id;
+    if (!id || seen.has(id)) id = uid();
+    seen.add(id);
+    const cards = s.cards.map((c) => {
+      let cid = c.id;
+      if (!cid || seen.has(cid)) cid = uid();
+      seen.add(cid);
+      return cid === c.id ? c : { ...c, id: cid };
+    });
+    return { ...s, id, cards };
+  });
+}
+
 /* merge a (possibly older/partial) shared config over the defaults */
 function migrateConfig(loaded) {
   const D = DEFAULT_CONFIG;
@@ -298,6 +322,7 @@ function migrateConfig(loaded) {
     searchMode: loaded.searchMode || (loaded.moveSearch === false ? "native" : "hero"),
     flattenHeader: loaded.flattenHeader !== false,
     headerImage: { ...D.headerImage, ...(loaded.headerImage || {}) },
+    theme: { ...D.theme, ...(loaded.theme || {}) },
     layout: { maxW: (loaded.layout && loaded.layout.maxW) || 1120 },
     banner: { ...D.banner, ...(loaded.banner || {}) },
     footer: loaded.footer != null ? loaded.footer : D.footer,
@@ -305,7 +330,7 @@ function migrateConfig(loaded) {
 
   /* already v4 (has sections) */
   if (loaded.sections && loaded.sections.length) {
-    return { ...base, sections: loaded.sections.map(normSection) };
+    return { ...base, sections: dedupeIds(loaded.sections.map(normSection)) };
   }
 
   /* migrate v3 (single template + flat cards) into one section */
@@ -397,25 +422,31 @@ function buildCard(v, style) {
     : `<div class="bnk-card ${v.accentClass}${primaryCls}"\n       ${INLINE_CARD_STYLE}>`;
   const closeTag = style.anchor ? "</a>" : "</div>";
 
-  let inner = "";
-  if (style.file) inner += `\n      <span class="bnk-card__eyebrow">${v.fileLabel}</span>`;
-  else if (style.badge) inner += `\n      <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
-  if (style.num) inner += `\n      <span class="bnk-card__num">${v.num}</span>`;
-  if (style.icon) inner += `\n      <span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
-  inner += `\n      <span class="bnk-card__title">${v.title}</span>`;
-  inner += `\n      <span class="bnk-card__blurb">${v.blurb}</span>`;
-  if (style.peek && v.peekHtml) inner += `\n${v.peekHtml}`;
+  /* content lives in a growing body so cards stay equal height and the CTA
+     keeps a consistent gap / bottom-aligns regardless of content length */
+  let body = "";
+  if (style.file) body += `\n        <span class="bnk-card__eyebrow">${v.fileLabel}</span>`;
+  else if (style.badge) body += `\n        <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
+  if (style.num) body += `\n        <span class="bnk-card__num">${v.num}</span>`;
+  if (style.icon) body += `\n        <span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
+  body += `\n        <span class="bnk-card__title">${v.title}</span>`;
+  body += `\n        <span class="bnk-card__blurb">${v.blurb}</span>`;
+  if (style.peek && v.peekHtml) body += `\n${v.peekHtml}`;
+
+  let foot = "";
   if (style.cta) {
     const ctaCls = style.ctaPlain
       ? "bnk-card__go bnk-card__go--plain"
       : `bnk-card__go bnk-card__go--${v.ctaStyle === "filled" ? "filled" : "ghost"}`;
-    inner += style.anchor
+    foot = style.anchor
       ? `\n      <span class="${ctaCls}">${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></span>`
       : `\n      <a class="${ctaCls}" href="${v.href}">${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>`;
   } else if (style.anchor) {
     /* whole-card link with no CTA → trailing arrow (compact "tiles" feel) */
-    inner += `\n      <span class="rm-arrow bnk-card__arrow" aria-hidden="true">&#8594;</span>`;
+    foot = `\n      <span class="rm-arrow bnk-card__arrow" aria-hidden="true">&#8594;</span>`;
   }
+
+  const inner = `\n      <span class="bnk-card__body">${body}\n      </span>${foot}`;
 
   return `    <!-- ${v.comment} -->\n    ${openTag}${inner}\n    ${closeTag}`;
 }
@@ -504,15 +535,25 @@ function generateHTML(cfg) {
   const heroLeft = cfg.hero.align === "left";
   const hasLiquid = sections.some((s) => s.source === "liquid");
 
+  /* optional single global accent for every card */
+  const theme = cfg.theme || {};
+  const themeAccent = theme.uniform
+    ? theme.accent === "custom"
+      ? { light: theme.customLight, dark: theme.customDark }
+      : ACCENTS[theme.accent] || ACCENTS.blue
+    : null;
+
   /* per-section accent palettes */
   const palettes = sections.map((sec) => {
-    const p =
+    let p =
       sec.source === "liquid"
         ? sec.liquid.accents.map((k) => ACCENTS[k] || ACCENTS.green)
         : sec.cards.map((c) => cardAccent(c));
-    return p.length ? p : [ACCENTS.green];
+    if (!p.length) p = [ACCENTS.green];
+    if (themeAccent) p = p.map(() => themeAccent);
+    return p;
   });
-  const primary = palettes[0][0];
+  const primary = themeAccent || (palettes[0] && palettes[0][0]) || ACCENTS.blue;
 
   /* accent CSS vars, scoped per section */
   const lightAccents = sections
@@ -764,6 +805,10 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
   }
   .bnk-card--primary { border-color: color-mix(in srgb, var(--accent) 38%, var(--card-border)) !important; }
 
+  /* content grows to fill the card so all cards in a row stay equal height and
+     the CTA sits a consistent gap below the content (never cramped) */
+  .bnk-card__body { display: flex; flex-direction: column; flex: 1 1 auto; }
+
   .bnk-sec--bar .bnk-card::before {
     content: ""; position: absolute; inset: 0 0 auto 0; height: 3px;
     background: var(--accent); opacity: 0.85; transition: opacity 200ms ease;
@@ -811,7 +856,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
   .bnk-card__peek-item .bnk-tick { flex: none; color: var(--accent) !important; font-family: ${F.mono}; font-size: 11px; }
 
   .bnk-card__go {
-    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; margin-top: auto;
+    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; margin-top: 18px;
     font-family: ${F.mono}; font-size: 13.5px; letter-spacing: 0.05em;
     padding: 10px 18px; border-radius: 9px; text-decoration: none;
     transition: border-color 200ms ease;
@@ -822,12 +867,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
   .bnk-card__go--plain { padding: 0; border: 0; background: transparent; color: var(--accent) !important; font-size: 12.5px; }
   .bnk-card__go:hover .rm-arrow { transform: translateX(4px); }
 
-  .bnk-card__arrow { margin-top: auto; align-self: flex-end; color: var(--accent) !important; font-size: 16px; }
-
-  /* auto-height sections: cards size to content and CTAs keep a consistent gap
-     (fixed-height sections keep margin-top:auto so CTAs bottom-align instead) */
-  .bnk-sec--autoh .bnk-grid { align-items: start; }
-  .bnk-sec--autoh .bnk-card__go, .bnk-sec--autoh .bnk-card__arrow { margin-top: 20px; }
+  .bnk-card__arrow { margin-top: 18px; align-self: flex-end; color: var(--accent) !important; font-size: 16px; }
 
   .bnk-card:hover { transform: translateY(-3px); }
   .bnk-card:hover { background-color: #F4F4F5 !important; border-color: color-mix(in srgb, var(--accent) 45%, #D4D4D8) !important; }
@@ -870,8 +910,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
         `bnk-sec bnk-sec-${i} bnk-sec--${sec.align === "left" ? "left" : "center"}` +
         (st.bar ? " bnk-sec--bar" : "") +
         (st.mono ? " bnk-sec--mono" : "") +
-        (sec.layout.bento ? " bnk-sec--bento" : "") +
-        (sec.layout.autoH ? " bnk-sec--autoh" : "");
+        (sec.layout.bento ? " bnk-sec--bento" : "");
       const titleFont = st.mono ? F.mono : F.display;
       const titleTt = st.mono ? "uppercase" : "none";
       const minh = sec.layout.autoH ? "auto" : `${sec.layout.cardMinH}px`;
@@ -1377,8 +1416,13 @@ const APP_CSS = `
   .glp-font__hint { font-size: 10.5px; color: var(--ink-3); display: block; margin-top: 2px; }
 
   .glp-slider { display: flex; align-items: center; gap: 10px; }
-  .glp-slider input[type=range] { flex: 1; accent-color: var(--accent); }
-  .glp-slider output { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-2); width: 52px; text-align: right; flex: none; }
+  .glp-slider input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
+  .glp-numin {
+    width: 62px; flex: none; background: var(--bg); border: 1px solid var(--line-2); color: var(--ink);
+    border-radius: 6px; padding: 5px 7px; font-family: 'Space Mono', monospace; font-size: 11.5px; text-align: right;
+  }
+  .glp-numin:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-numunit { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-3); flex: none; width: 16px; }
 
   .glp-card {
     border: 1px solid var(--line-2);
@@ -1393,7 +1437,7 @@ const APP_CSS = `
   }
   .glp-card__swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; }
   .glp-card__name { font-weight: 600; font-size: 13.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .glp-card__meta { font-size: 11px; color: var(--ink-3); font-family: 'Space Mono', monospace; }
+  .glp-card__meta { font-size: 11px; color: var(--ink-3); font-family: 'Space Mono', monospace; flex: 0 1 auto; min-width: 0; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .glp-iconbtn {
     border: 0; background: transparent; color: var(--ink-3); cursor: pointer;
     font-size: 13px; padding: 3px 6px; border-radius: 5px; line-height: 1;
@@ -1506,7 +1550,8 @@ const APP_CSS = `
     border: 1px solid var(--line-2); background: transparent; color: var(--ink-2);
     font-size: 11.5px; padding: 5px 11px; border-radius: 7px; cursor: pointer; font-family: inherit;
   }
-  .glp-smallbtn:hover { color: var(--ink); border-color: var(--ink-3); }
+  .glp-smallbtn:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-3); }
+  .glp-smallbtn:disabled { opacity: .35; cursor: default; }
   .glp-smallbtn.done { color: var(--ok); border-color: var(--ok); }
 
   .glp-banner {
@@ -1576,14 +1621,28 @@ function Seg({ value, options, onChange }) {
 }
 
 function Slider({ label, value, min, max, step = 1, unit = "px", onChange }) {
+  /* local text state lets the number field be edited freely (incl. temporarily
+     empty, or values beyond the slider's range) without fighting the value */
+  const [txt, setTxt] = useState(String(value));
+  useEffect(() => { setTxt(String(value)); }, [value]);
   return (
     <Field label={label}>
       <div className="glp-slider">
         <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
-        <output>
-          {value}
-          {unit}
-        </output>
+        <input
+          type="number"
+          className="glp-numin"
+          min={min}
+          step={step}
+          value={txt}
+          onChange={(e) => {
+            setTxt(e.target.value);
+            const n = Number(e.target.value);
+            if (e.target.value !== "" && Number.isFinite(n) && n >= 0) onChange(n);
+          }}
+          onBlur={() => { if (txt === "" || !Number.isFinite(Number(txt))) setTxt(String(value)); }}
+        />
+        {unit ? <span className="glp-numunit">{unit}</span> : null}
       </div>
     </Field>
   );
@@ -1683,7 +1742,7 @@ function AccentSwatches({ selected, onSelect, multi = false, customCard = null, 
 }
 
 /* ---------- card editor ---------- */
-function CardEditor({ card, index, count, style, open, onToggle, onChange, onMove, onRemove }) {
+function CardEditor({ card, index, count, style, hideAccents, open, onToggle, onChange, onMove, onRemove }) {
   const acc = cardAccent(card);
   const set = (patch) => onChange({ ...card, ...patch });
   const setPeek = (i, val) => {
@@ -1740,9 +1799,11 @@ function CardEditor({ card, index, count, style, open, onToggle, onChange, onMov
             </div>
           )}
 
-          <Field label="Accent color">
-            <AccentSwatches selected={card.accent} onSelect={(k) => set({ accent: k })} customCard={card} onCustom={set} />
-          </Field>
+          {!hideAccents && (
+            <Field label="Accent color">
+              <AccentSwatches selected={card.accent} onSelect={(k) => set({ accent: k })} customCard={card} onCustom={set} />
+            </Field>
+          )}
 
           {style.cta && !style.ctaPlain && (
             <div className="glp-row2">
@@ -1816,7 +1877,7 @@ function CardEditor({ card, index, count, style, open, onToggle, onChange, onMov
 }
 
 /* ---------- Liquid (auto-from-projects) controls for a section ---------- */
-function LiquidControls({ section, setLiq, toggleLiqAccent }) {
+function LiquidControls({ section, setLiq, toggleLiqAccent, hideAccents }) {
   const st = section.style;
   const Q = section.liquid;
   return (
@@ -1887,15 +1948,17 @@ function LiquidControls({ section, setLiq, toggleLiqAccent }) {
           )}
         </div>
       )}
-      <Field label="Accent cycle (cards rotate through the selected colors)">
-        <AccentSwatches multi selected={Q.accents} onSelect={toggleLiqAccent} />
-      </Field>
+      {!hideAccents && (
+        <Field label="Accent cycle (cards rotate through the selected colors)">
+          <AccentSwatches multi selected={Q.accents} onSelect={toggleLiqAccent} />
+        </Field>
+      )}
     </>
   );
 }
 
 /* ---------- section editor ---------- */
-function SectionEditor({ section, index, count, open, onToggle, onMove, onRemove, onChange, cardOps, openCard, setOpenCard }) {
+function SectionEditor({ section, index, count, hideAccents, open, onToggle, onMove, onRemove, onChange, cardOps, openCard, setOpenCard }) {
   const set = (patch) => onChange({ ...section, ...patch });
   const setStyle = (patch) => onChange({ ...section, style: { ...section.style, ...patch } });
   const setLay = (patch) => onChange({ ...section, layout: { ...section.layout, ...patch } });
@@ -1996,7 +2059,7 @@ function SectionEditor({ section, index, count, open, onToggle, onMove, onRemove
             </span>
           </label>
           {!section.layout.autoH && (
-            <Slider label="Card minimum height" value={section.layout.cardMinH} min={140} max={520} step={4} onChange={(v) => setLay({ cardMinH: v })} />
+            <Slider label="Card minimum height" value={section.layout.cardMinH} min={140} max={800} step={4} onChange={(v) => setLay({ cardMinH: v })} />
           )}
 
           <div className="glp-sub">Cards</div>
@@ -2012,7 +2075,7 @@ function SectionEditor({ section, index, count, open, onToggle, onMove, onRemove
           </Field>
 
           {liquidOn ? (
-            <LiquidControls section={section} setLiq={setLiq} toggleLiqAccent={toggleLiqAccent} />
+            <LiquidControls section={section} setLiq={setLiq} toggleLiqAccent={toggleLiqAccent} hideAccents={hideAccents} />
           ) : (
             <>
               {section.cards.map((card, i) => (
@@ -2022,6 +2085,7 @@ function SectionEditor({ section, index, count, open, onToggle, onMove, onRemove
                   index={i}
                   count={section.cards.length}
                   style={st}
+                  hideAccents={hideAccents}
                   open={openCard === card.id}
                   onToggle={() => setOpenCard(openCard === card.id ? null : card.id)}
                   onChange={(next) => cardOps.set(card.id, next)}
@@ -2119,6 +2183,11 @@ function App() {
   const [device, setDevice] = useState("desktop");
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [histVer, setHistVer] = useState(0);
+  const past = useRef([]);
+  const future = useRef([]);
+  const snapRef = useRef(config);
+  const skipHist = useRef(false);
 
   const generated = useMemo(() => generateHTML(config), [config]);
   const exportHtml = override ?? generated;
@@ -2129,6 +2198,58 @@ function App() {
   const setLayout = (p) => setConfig((c) => ({ ...c, layout: { ...c.layout, ...p } }));
   const setBanner = (p) => setConfig((c) => ({ ...c, banner: { ...c.banner, ...p } }));
   const setHeaderImage = (p) => setConfig((c) => ({ ...c, headerImage: { ...c.headerImage, ...p } }));
+  const setTheme = (p) => setConfig((c) => ({ ...c, theme: { ...c.theme, ...p } }));
+
+  /* ---- undo / redo history (rollback) ---- */
+  useEffect(() => {
+    if (skipHist.current) { skipHist.current = false; snapRef.current = config; return; }
+    const t = setTimeout(() => {
+      if (config !== snapRef.current) {
+        past.current.push(snapRef.current);
+        if (past.current.length > 60) past.current.shift();
+        future.current = [];
+        snapRef.current = config;
+        setHistVer((v) => v + 1);
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [config]);
+
+  const applyHistory = (cfg) => {
+    skipHist.current = true;
+    snapRef.current = cfg;
+    setConfig(cfg);
+    setOpenCard(null);
+    setOpenSection((os) => (cfg.sections.some((s) => s.id === os) ? os : cfg.sections[0].id));
+    setHistVer((v) => v + 1);
+  };
+  const undo = () => {
+    /* fold any un-captured in-progress edit into history first */
+    if (config !== snapRef.current) { past.current.push(snapRef.current); future.current = []; snapRef.current = config; }
+    if (!past.current.length) return;
+    future.current.push(config);
+    applyHistory(past.current.pop());
+  };
+  const redo = () => {
+    if (!future.current.length) return;
+    past.current.push(config);
+    applyHistory(future.current.pop());
+  };
+  const canUndo = past.current.length > 0 || config !== snapRef.current;
+  const canRedo = future.current.length > 0;
+
+  useEffect(() => {
+    const h = (e) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return; // let native text undo win
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  });
 
   /* ---- section ops ---- */
   const updateSection = (id, next) => setConfig((c) => ({ ...c, sections: c.sections.map((s) => (s.id === id ? next : s)) }));
@@ -2392,6 +2513,8 @@ function App() {
           </button>
         </div>
         <div className="glp-bar__right">
+          <button className="glp-smallbtn" type="button" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo} style={{ padding: "8px 11px" }}>↶</button>
+          <button className="glp-smallbtn" type="button" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo} style={{ padding: "8px 11px" }}>↷</button>
           <div className="glp-pages">
             <button className="glp-smallbtn glp-pages__btn" type="button" onClick={() => { setPagesOpen((o) => !o); setRenaming(false); }} title="Saved pages" style={{ padding: "8px 13px" }}>
               <span className="glp-pages__label">{sharedView ? "Shared design (unsaved)" : currentName}</span>
@@ -2466,6 +2589,27 @@ function App() {
                   </button>
                 </div>
               )}
+
+              <details className="glp-sec" name="glp-nav">
+                <summary className="glp-sec__label">Colors</summary>
+                <label className="glp-toggle" style={{ paddingTop: 0 }}>
+                  <input type="checkbox" checked={config.theme.uniform} onChange={(e) => setTheme({ uniform: e.target.checked })} />
+                  <span className="glp-toggle__text">
+                    <b>Use one accent color for every card</b>
+                    <span>Overrides the per-card accent choices with a single color across all sections.</span>
+                  </span>
+                </label>
+                {config.theme.uniform && (
+                  <Field label="Accent color">
+                    <AccentSwatches
+                      selected={config.theme.accent}
+                      onSelect={(k) => setTheme({ accent: k })}
+                      customCard={{ customLight: config.theme.customLight, customDark: config.theme.customDark }}
+                      onCustom={setTheme}
+                    />
+                  </Field>
+                )}
+              </details>
 
               <details className="glp-sec" name="glp-nav">
                 <summary className="glp-sec__label">Typography</summary>
@@ -2625,6 +2769,7 @@ function App() {
                     section={section}
                     index={i}
                     count={config.sections.length}
+                    hideAccents={config.theme.uniform}
                     open={openSection === section.id}
                     onToggle={() => setOpenSection(openSection === section.id ? null : section.id)}
                     onMove={(dir) => moveSection(section.id, dir)}
