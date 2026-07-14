@@ -116,7 +116,6 @@ const FONTS = {
 const DEFAULT_STYLE = {
   anchor: false,
   icon: false,
-  iconBg: true, // tinted tile behind the icon/emoji (off = bare glyph)
   badge: false,
   num: false,
   file: false,
@@ -133,13 +132,13 @@ const DEFAULT_STYLE = {
    Content (cards/columns) is left untouched; only the look changes. */
 const PRESETS = [
   { key: "audience", label: "Audience hub", hint: "Badges, icons, preview lists + CTA",
-    style: { anchor: false, icon: true, iconBg: true, badge: true, bar: true, peek: true, cta: true, ctaPlain: false, mono: false, radius: 16, density: "comfortable" } },
+    style: { anchor: false, icon: true, badge: true, bar: true, peek: true, cta: true, ctaPlain: false, mono: false, radius: 16, density: "comfortable" } },
   { key: "help", label: "Help center", hint: "Compact, whole-card links",
-    style: { anchor: true, icon: false, iconBg: true, badge: false, bar: false, peek: false, cta: false, ctaPlain: false, mono: false, radius: 12, density: "compact" } },
-  { key: "bold", label: "Bold icons", hint: "Big bare icons, roomy, plain CTA",
-    style: { anchor: false, icon: true, iconBg: false, badge: false, bar: true, peek: false, cta: true, ctaPlain: true, mono: false, radius: 20, density: "roomy" } },
+    style: { anchor: true, icon: false, badge: false, bar: false, peek: false, cta: false, ctaPlain: false, mono: false, radius: 12, density: "compact" } },
+  { key: "icons", label: "Icon grid", hint: "Icons, accent bar, plain CTA",
+    style: { anchor: false, icon: true, badge: false, bar: true, peek: false, cta: true, ctaPlain: true, mono: false, radius: 20, density: "roomy" } },
   { key: "minimal", label: "Minimal", hint: "Just titles + text",
-    style: { anchor: true, icon: false, iconBg: true, badge: false, bar: false, peek: false, cta: false, ctaPlain: false, mono: false, radius: 12, density: "comfortable" } },
+    style: { anchor: true, icon: false, badge: false, bar: false, peek: false, cta: false, ctaPlain: false, mono: false, radius: 12, density: "comfortable" } },
 ];
 
 /* old template → granular style, used only when migrating saved configs */
@@ -935,14 +934,6 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
     font-size: 24px; line-height: 1; border-radius: 12px; color: var(--accent);
     background: color-mix(in srgb, var(--accent) 11%, transparent); margin-bottom: 16px;
   }
-  /* bare icon — drop the tinted tile, show the glyph on its own.
-     display:block (not the tile's flex) so it hugs its content and stays
-     left-aligned with the title instead of stretching + centering. */
-  .bnk-sec--iconbare .bnk-card__icon {
-    display: block; width: auto; height: auto;
-    background: transparent; border-radius: 0;
-    font-size: 30px; line-height: 1; margin-bottom: 14px;
-  }
   .bnk-card__title {
     margin: 0 0 8px; font-family: var(--title-font, ${F.display}); font-weight: 600;
     font-size: var(--title-size, 21px); line-height: 1.15; letter-spacing: -0.01em;
@@ -1053,7 +1044,6 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
         (sec.layout.bg === "subtle" ? " bnk-sec--bg-subtle" : sec.layout.bg === "accent" ? " bnk-sec--bg-accent" : "") +
         (!isCols && st.bar ? " bnk-sec--bar" : "") +
         (!isCols && st.mono ? " bnk-sec--mono" : "") +
-        (!isCols && st.icon && !st.iconBg ? " bnk-sec--iconbare" : "") +
         (!isCols && sec.layout.bento ? " bnk-sec--bento" : "");
       const titleFont = !isCols && st.mono ? F.mono : F.display;
       const titleTt = !isCols && st.mono ? "uppercase" : "none";
@@ -2254,12 +2244,6 @@ function CardStyleControls({ style: st, setStyle }) {
         <StyleCheck checked={!!st.anchor} label="Whole card links" onChange={(v) => setStyle({ anchor: v })} />
         <StyleCheck checked={!!st.mono} label="Mono / uppercase" onChange={(v) => setStyle({ mono: v })} />
       </div>
-      {st.icon && (
-        <label className="glp-check" style={{ margin: "0 0 12px" }}>
-          <input type="checkbox" checked={st.iconBg !== false} onChange={(e) => setStyle({ iconBg: e.target.checked })} />
-          Background tile behind icon
-        </label>
-      )}
       <Field label="Call to action">
         <Seg
           value={st.cta ? (st.ctaPlain ? "plain" : "button") : "none"}
