@@ -210,6 +210,9 @@ const DEFAULT_CONFIG = {
     title: "Welcome to Benak's ReadMe Demo",
     subtitle: "Documentation for every audience — pick your entry point or search everything.",
     align: "center",
+    /* null = use the alignment-based default size (38/42 title, 14.5 subtitle) */
+    titleSize: null,
+    subtitleSize: null,
     buttons: false,
     btnPrimary: { label: "Get started", href: "/bv-1" },
     btnSecondary: { label: "API Reference", href: "/bv-1/reference" },
@@ -581,6 +584,8 @@ function generateHTML(cfg) {
   const L = cfg.layout;
   const sections = cfg.sections;
   const heroLeft = cfg.hero.align === "left";
+  const heroTitleSize = cfg.hero.titleSize != null ? cfg.hero.titleSize : heroLeft ? 42 : 38;
+  const heroSubSize = cfg.hero.subtitleSize != null ? cfg.hero.subtitleSize : 14.5;
   const hasLiquid = sections.some((s) => s.type !== "columns" && s.source === "liquid");
 
   /* effective card style for a section: its own ("custom") or the global one */
@@ -1215,11 +1220,11 @@ ${chipCSS}
     margin: 0 0 20px;
     font-family: ${F.display};
     font-weight: 600;
-    font-size: ${heroLeft ? "42px" : "38px"};
+    font-size: ${heroTitleSize}px;
     letter-spacing: -0.01em;
     color: var(--bnk-heading) !important;
   }
-  .bnk-hero__sub { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--bnk-ink-2) !important; }
+  .bnk-hero__sub { margin: 0; font-size: ${heroSubSize}px; line-height: 1.5; color: var(--bnk-ink-2) !important; }
 ${heroButtonsCSS}${actionsCSS}${sectionCSS}${gridRules}
 ${cardCSS}
 ${accentRules}
@@ -3015,7 +3020,45 @@ function App() {
                 </Field>
               </NavSection>
 
-              <NavSection id="hero" label="Hero" openNav={openNav} setOpenNav={setOpenNav}>
+              <NavSection id="hero" label="Header & Hero" openNav={openNav} setOpenNav={setOpenNav}>
+                <div className="glp-sub" style={{ marginTop: 4 }}>Header</div>
+                <Field label="Search &amp; Ask AI placement (Ask AI always sits beside search)">
+                  <Seg
+                    value={config.searchMode}
+                    onChange={(v) => patch({ searchMode: v })}
+                    options={[
+                      { value: "native", label: "Native header" },
+                      { value: "header", label: "Centered in header" },
+                      { value: "hero", label: "Under hero" },
+                    ]}
+                  />
+                </Field>
+                <label className="glp-toggle">
+                  <input type="checkbox" checked={config.flattenHeader} onChange={(e) => patch({ flattenHeader: e.target.checked })} />
+                  <span className="glp-toggle__text">
+                    <b>Transparent single-row header</b>
+                    <span>Removes the header background and second nav row on this page only.</span>
+                  </span>
+                </label>
+                <label className="glp-toggle">
+                  <input type="checkbox" checked={config.headerImage.enabled} onChange={(e) => setHeaderImage({ enabled: e.target.checked })} />
+                  <span className="glp-toggle__text">
+                    <b>Hero background image</b>
+                    <span>Full-bleed image behind the hero — pair with the transparent header so it sits behind that too.</span>
+                  </span>
+                </label>
+                {config.headerImage.enabled && (
+                  <>
+                    <Field label="Image URL">
+                      <input className="glp-input" value={config.headerImage.url} onChange={(e) => setHeaderImage({ url: e.target.value })} placeholder="https://…/banner.jpg" />
+                    </Field>
+                    <Slider label="Image height" value={config.headerImage.height} min={160} max={720} step={4} onChange={(v) => setHeaderImage({ height: v })} />
+                    <Slider label="Header overlap (how far it tucks up behind the header)" value={config.headerImage.offset} min={0} max={160} step={4} onChange={(v) => setHeaderImage({ offset: v })} />
+                    <Slider label="Darken (tint)" value={config.headerImage.tint} min={0} max={80} unit="%" onChange={(v) => setHeaderImage({ tint: v })} />
+                  </>
+                )}
+
+                <div className="glp-sub">Hero</div>
                 <Field label="Eyebrow (small caps line above the title — blank to hide)">
                   <input
                     className="glp-input"
@@ -3040,9 +3083,11 @@ function App() {
                 <Field label="Page title">
                   <input className="glp-input" value={config.hero.title} onChange={(e) => setHero({ title: e.target.value })} />
                 </Field>
+                <Slider label="Title size" value={config.hero.titleSize != null ? config.hero.titleSize : (config.hero.align === "left" ? 42 : 38)} min={22} max={72} onChange={(v) => setHero({ titleSize: v })} />
                 <Field label="Subtitle">
                   <textarea className="glp-textarea" value={config.hero.subtitle} onChange={(e) => setHero({ subtitle: e.target.value })} />
                 </Field>
+                <Slider label="Subtitle size" value={config.hero.subtitleSize != null ? config.hero.subtitleSize : 15} min={12} max={26} onChange={(v) => setHero({ subtitleSize: v })} />
                 <Field label="Alignment">
                   <Seg
                     value={config.hero.align}
@@ -3107,44 +3152,6 @@ function App() {
                   <Field label="Ticker text (repeats automatically)">
                     <input className="glp-input" value={config.ticker.text} onChange={(e) => setTicker({ text: e.target.value })} />
                   </Field>
-                )}
-              </NavSection>
-
-              <NavSection id="chrome" label="Hub chrome" openNav={openNav} setOpenNav={setOpenNav}>
-                <Field label="Search &amp; Ask AI placement (Ask AI always sits beside search)">
-                  <Seg
-                    value={config.searchMode}
-                    onChange={(v) => patch({ searchMode: v })}
-                    options={[
-                      { value: "native", label: "Native header" },
-                      { value: "header", label: "Centered in header" },
-                      { value: "hero", label: "Under hero" },
-                    ]}
-                  />
-                </Field>
-                <label className="glp-toggle">
-                  <input type="checkbox" checked={config.flattenHeader} onChange={(e) => patch({ flattenHeader: e.target.checked })} />
-                  <span className="glp-toggle__text">
-                    <b>Transparent single-row header</b>
-                    <span>Removes the header background and second nav row on this page only.</span>
-                  </span>
-                </label>
-                <label className="glp-toggle">
-                  <input type="checkbox" checked={config.headerImage.enabled} onChange={(e) => setHeaderImage({ enabled: e.target.checked })} />
-                  <span className="glp-toggle__text">
-                    <b>Hero background image</b>
-                    <span>Full-bleed image behind the hero — pair with the transparent header so it sits behind that too.</span>
-                  </span>
-                </label>
-                {config.headerImage.enabled && (
-                  <>
-                    <Field label="Image URL">
-                      <input className="glp-input" value={config.headerImage.url} onChange={(e) => setHeaderImage({ url: e.target.value })} placeholder="https://…/banner.jpg" />
-                    </Field>
-                    <Slider label="Image height" value={config.headerImage.height} min={160} max={720} step={4} onChange={(v) => setHeaderImage({ height: v })} />
-                    <Slider label="Header overlap (how far it tucks up behind the header)" value={config.headerImage.offset} min={0} max={160} step={4} onChange={(v) => setHeaderImage({ offset: v })} />
-                    <Slider label="Darken (tint)" value={config.headerImage.tint} min={0} max={80} unit="%" onChange={(v) => setHeaderImage({ tint: v })} />
-                  </>
                 )}
               </NavSection>
 
