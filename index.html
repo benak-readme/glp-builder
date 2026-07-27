@@ -1627,10 +1627,27 @@ const APP_CSS = `
   .glp-textarea { resize: vertical; min-height: 54px; line-height: 1.45; }
   .glp-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-  .glp-toggle { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; cursor: pointer; }
-  .glp-toggle input { margin-top: 2px; accent-color: var(--accent); }
-  .glp-toggle__text b { display: block; font-weight: 500; color: var(--ink); font-size: 13px; }
-  .glp-toggle__text span { font-size: 11.5px; color: var(--ink-3); line-height: 1.4; }
+  .glp-toggle { display: flex; align-items: center; gap: 8px; padding: 7px 0; cursor: pointer; }
+  .glp-toggle input { accent-color: var(--accent); flex: none; }
+  .glp-toggle b { font-weight: 500; color: var(--ink); font-size: 13px; }
+  .glp-info {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; flex: none; border-radius: 50%;
+    border: 1px solid var(--ink-3); color: var(--ink-3);
+    font-family: 'Space Mono', monospace; font-size: 9px; cursor: help;
+  }
+  .glp-info:hover, .glp-info:focus-visible { border-color: var(--ink-2); color: var(--ink-2); outline: none; }
+  .glp-info__bubble {
+    position: fixed; transform: translate(-50%, calc(-100% - 8px));
+    width: 220px; max-width: 60vw; background: var(--panel-2); border: 1px solid var(--line-2);
+    color: var(--ink-2); font-family: Inter, -apple-system, sans-serif; font-size: 11px; line-height: 1.45;
+    border-radius: 7px; padding: 8px 10px; box-shadow: 0 8px 20px rgba(0,0,0,.35);
+    pointer-events: none; z-index: 200;
+  }
+  .glp-info__bubble::after {
+    content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--panel-2);
+  }
 
   /* sub-block heading + granular style checkbox grid */
   .glp-sub {
@@ -1711,6 +1728,8 @@ const APP_CSS = `
   .glp-drag-handle:active { cursor: grabbing; }
   .glp-card__head.glp-drop-over { box-shadow: inset 0 2px 0 var(--accent); }
   .glp-card__meta { font-size: 11px; color: var(--ink-3); font-family: 'Space Mono', monospace; flex: 0 1 auto; min-width: 0; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* a fuller summary (e.g. "Native search · Native header") rather than a terse count */
+  .glp-card__meta--wide { max-width: 220px; }
   .glp-iconbtn {
     border: 0; background: transparent; color: var(--ink-3); cursor: pointer;
     font-size: 13px; padding: 3px 6px; border-radius: 5px; line-height: 1;
@@ -1948,6 +1967,79 @@ function Slider({ label, value, min, max, step = 1, unit = "px", onChange }) {
         {unit ? <span className="glp-numunit">{unit}</span> : null}
       </div>
     </Field>
+  );
+}
+
+/* like Slider, minus the drag track — for values you set once and forget (a size,
+   a padding amount) rather than tune by eye against the live preview */
+function NumberField({ label, value, min, max, step = 1, unit = "px", onChange }) {
+  const [txt, setTxt] = useState(String(value));
+  useEffect(() => { setTxt(String(value)); }, [value]);
+  return (
+    <Field label={label}>
+      <div className="glp-slider">
+        <input
+          type="number"
+          className="glp-numin"
+          min={min}
+          max={max}
+          step={step}
+          value={txt}
+          onChange={(e) => {
+            setTxt(e.target.value);
+            const n = Number(e.target.value);
+            if (e.target.value !== "" && Number.isFinite(n) && n >= min && (max == null || n <= max)) onChange(n);
+          }}
+          onBlur={() => { if (txt === "" || !Number.isFinite(Number(txt))) setTxt(String(value)); }}
+        />
+        {unit ? <span className="glp-numunit">{unit}</span> : null}
+      </div>
+    </Field>
+  );
+}
+
+/* small "i" affordance that reveals `text` on hover/focus. Positioned via
+   getBoundingClientRect + position:fixed (not CSS :hover + absolute) because several
+   toggles live inside a .glp-card, whose overflow:hidden (needed to clip its own
+   rounded corners) would otherwise cut an absolutely-positioned bubble off. */
+function InfoTip({ text }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  const show = () => {
+    const r = ref.current.getBoundingClientRect();
+    setPos({ left: r.left + r.width / 2, top: r.top });
+  };
+  const hide = () => setPos(null);
+  return (
+    <span
+      ref={ref}
+      className="glp-info"
+      tabIndex={0}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
+      i
+      {pos && (
+        <span className="glp-info__bubble" style={{ left: pos.left, top: pos.top }}>
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/* compact single-line toggle — the description that used to sit always-visible
+   underneath now lives in an InfoTip, so a row of toggles reads as a list instead
+   of a stack of two-line paragraphs. */
+function Toggle({ checked, onChange, label, hint, style }) {
+  return (
+    <label className="glp-toggle" style={style}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <b>{label}</b>
+      {hint && <InfoTip text={hint} />}
+    </label>
   );
 }
 
@@ -2265,13 +2357,12 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
             />
           )}
 
-          <label className="glp-toggle">
-            <input type="checkbox" checked={card.primary} onChange={(e) => set({ primary: e.target.checked })} />
-            <span className="glp-toggle__text">
-              <b>Highlight as the primary card</b>
-              <span>Adds an accent-tinted border so this card reads as the main path.</span>
-            </span>
-          </label>
+          <Toggle
+            checked={card.primary}
+            onChange={(v) => set({ primary: v })}
+            label="Highlight as the primary card"
+            hint="Adds an accent-tinted border so this card reads as the main path."
+          />
 
           {style.peek && (
             <>
@@ -2298,13 +2389,13 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
                   </button>
                 )}
               </Field>
-              <label className="glp-toggle" style={{ paddingTop: 0 }}>
-                <input type="checkbox" checked={card.peekArrows} onChange={(e) => set({ peekArrows: e.target.checked })} />
-                <span className="glp-toggle__text">
-                  <b>Arrow bullets</b>
-                  <span>Show a small → in the accent color before each list item.</span>
-                </span>
-              </label>
+              <Toggle
+                checked={card.peekArrows}
+                onChange={(v) => set({ peekArrows: v })}
+                label="Arrow bullets"
+                hint="Show a small → in the accent color before each list item."
+                style={{ paddingTop: 0 }}
+              />
             </>
           )}
         </div>
@@ -2338,13 +2429,12 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
       </Field>
       {st.peek && (
         <>
-          <label className="glp-toggle">
-            <input type="checkbox" checked={Q.peek} onChange={(e) => setLiq({ peek: e.target.checked })} />
-            <span className="glp-toggle__text">
-              <b>List each project's guide categories</b>
-              <span>Pulls the first few category titles from each child project's guides.</span>
-            </span>
-          </label>
+          <Toggle
+            checked={Q.peek}
+            onChange={(v) => setLiq({ peek: v })}
+            label="List each project's guide categories"
+            hint="Pulls the first few category titles from each child project's guides."
+          />
           {Q.peek && (
             <div className="glp-row2">
               <Field label="List heading">
@@ -2595,13 +2685,13 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
 
           <div className="glp-sub">Spacing &amp; background</div>
           <Slider label="Space above section" value={section.layout.spaceAbove == null ? 36 : section.layout.spaceAbove} min={0} max={160} step={2} onChange={(v) => setLay({ spaceAbove: v })} />
-          <label className="glp-toggle" style={{ paddingTop: 0 }}>
-            <input type="checkbox" checked={!!section.layout.divider} onChange={(e) => setLay({ divider: e.target.checked })} />
-            <span className="glp-toggle__text">
-              <b>Divider line above</b>
-              <span>A hairline centered in the space above this section.</span>
-            </span>
-          </label>
+          <Toggle
+            checked={!!section.layout.divider}
+            onChange={(v) => setLay({ divider: v })}
+            label="Divider line above"
+            hint="A hairline centered in the space above this section."
+            style={{ paddingTop: 0 }}
+          />
           <Field label="Section background">
             <Seg
               value={section.layout.bg || "none"}
@@ -2661,24 +2751,23 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
               )}
 
               <div className="glp-sub">Grid</div>
-              <label className="glp-toggle" style={{ paddingTop: 0 }}>
-                <input type="checkbox" checked={section.layout.bento} onChange={(e) => setLay({ bento: e.target.checked })} />
-                <span className="glp-toggle__text">
-                  <b>Bento grid</b>
-                  <span>Asymmetric mixed-size 6-column layout.</span>
-                </span>
-              </label>
+              <Toggle
+                checked={section.layout.bento}
+                onChange={(v) => setLay({ bento: v })}
+                label="Bento grid"
+                hint="Asymmetric mixed-size 6-column layout."
+                style={{ paddingTop: 0 }}
+              />
               {!section.layout.bento && (
                 <Slider label="Minimum column width (cards per row)" value={section.layout.colMin} min={180} max={360} onChange={(v) => setLay({ colMin: v })} />
               )}
               <Slider label="Gap between cards" value={section.layout.gap} min={12} max={36} onChange={(v) => setLay({ gap: v })} />
-              <label className="glp-toggle">
-                <input type="checkbox" checked={section.layout.autoH} onChange={(e) => setLay({ autoH: e.target.checked })} />
-                <span className="glp-toggle__text">
-                  <b>Auto card height</b>
-                  <span>Let content decide the height instead of a fixed minimum.</span>
-                </span>
-              </label>
+              <Toggle
+                checked={section.layout.autoH}
+                onChange={(v) => setLay({ autoH: v })}
+                label="Auto card height"
+                hint="Let content decide the height instead of a fixed minimum."
+              />
               {!section.layout.autoH && (
                 <Slider label="Card minimum height" value={section.layout.cardMinH} min={140} max={800} step={4} onChange={(v) => setLay({ cardMinH: v })} />
               )}
@@ -2880,6 +2969,11 @@ function App() {
   const [openCard, setOpenCard] = useState(null);
   const [openNav, setOpenNav] = useState("sections");
   const [openSection, setOpenSection] = useState(boot.current.config.sections[0].id);
+  /* which of the Header & Hero panel's two cards is expanded — null = both collapsed */
+  const [openHeroPanel, setOpenHeroPanel] = useState(null);
+  /* which of Theme Editor's cards is expanded — "cardStyle" open by default since it's
+     the one most likely to get revisited while iterating on a section's look */
+  const [openThemePanel, setOpenThemePanel] = useState("cardStyle");
   const [mode, setMode] = useState("light");
   const [device, setDevice] = useState("desktop");
   const [copied, setCopied] = useState(false);
@@ -3433,223 +3527,304 @@ function App() {
               )}
 
               <NavSection id="theme" label="Theme Editor" openNav={openNav} setOpenNav={setOpenNav}>
-                <div className="glp-sub" style={{ marginTop: 4 }}>Quick start</div>
-                <div className="glp-presets">
-                  {PRESETS.map((p) => (
-                    <button key={p.key} type="button" className="glp-preset" title={p.hint} onClick={() => applyPreset(p)}>
-                      <b>{p.label}</b>
-                      <span>{p.hint}</span>
-                    </button>
-                  ))}
-                </div>
+                {(() => {
+                  const st = config.cardStyle || DEFAULT_STYLE;
+                  const featureCount = ["icon", "badge", "bar", "peek", "anchor", "mono"].filter((k) => st[k]).length;
+                  const densityLabel = { roomy: "Roomy", comfortable: "Comfortable", compact: "Compact" }[st.density];
+                  const cardStyleSummary = `${featureCount} feature${featureCount === 1 ? "" : "s"} · ${densityLabel}`;
+                  const colorsSummary = config.theme.matchReadme
+                    ? "Match ReadMe"
+                    : config.theme.uniform
+                    ? `Uniform · ${config.theme.accent === "custom" ? "Custom" : ACCENTS[config.theme.accent]?.label}`
+                    : "Per-card colors";
+                  const widthLabel = { 960: "Narrow", 1120: "Default", 1280: "Wide" }[config.layout.maxW] || "Default";
+                  const toggle = (id) => setOpenThemePanel(openThemePanel === id ? null : id);
+                  return (
+                    <>
+                      <div className="glp-sub" style={{ marginTop: 4 }}>Quick start</div>
+                      <div className="glp-presets">
+                        {PRESETS.map((p) => (
+                          <button key={p.key} type="button" className="glp-preset" title={p.hint} onClick={() => applyPreset(p)}>
+                            <b>{p.label}</b>
+                            <span>{p.hint}</span>
+                          </button>
+                        ))}
+                      </div>
 
-                <div className="glp-sub">Global card style</div>
-                <div className="glp-note" style={{ marginBottom: 12 }}>
-                  The default look for every card section set to <b>Global</b>. Individual sections can override it by switching to <b>Custom</b>.
-                </div>
-                <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
+                      <div className="glp-card">
+                        <div className="glp-card__head" onClick={() => toggle("cardStyle")}>
+                          <span className="glp-card__name">Card style</span>
+                          <span className="glp-card__meta glp-card__meta--wide">{cardStyleSummary}</span>
+                          <span className="glp-iconbtn" style={{ transform: openThemePanel === "cardStyle" ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
+                        </div>
+                        {openThemePanel === "cardStyle" && (
+                          <div className="glp-card__body">
+                            <div className="glp-note" style={{ marginTop: 10, marginBottom: 12 }}>
+                              The default look for every card section set to <b>Global</b>. Individual sections can override it by switching to <b>Custom</b>.
+                            </div>
+                            <CardStyleControls style={st} setStyle={setCardStyle} />
+                          </div>
+                        )}
+                      </div>
 
-                <div className="glp-sub">Typography</div>
-                {Object.entries(FONTS).map(([key, f]) => (
-                  <button key={key} type="button" className={"glp-font" + (config.fonts === key ? " on" : "")} onClick={() => patch({ fonts: key })}>
-                    <span className="glp-font__aa" style={{ fontFamily: f.display }}>
-                      Aa
-                    </span>
-                    <span>
-                      <span className="glp-font__name">{f.label}</span>
-                      <span className="glp-font__hint">{f.hint}</span>
-                    </span>
-                  </button>
-                ))}
+                      <div className="glp-card">
+                        <div className="glp-card__head" onClick={() => toggle("typography")}>
+                          <span className="glp-card__name">Typography</span>
+                          <span className="glp-card__meta glp-card__meta--wide">{FONTS[config.fonts]?.label}</span>
+                          <span className="glp-iconbtn" style={{ transform: openThemePanel === "typography" ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
+                        </div>
+                        {openThemePanel === "typography" && (
+                          <div className="glp-card__body" style={{ paddingTop: 10 }}>
+                            {Object.entries(FONTS).map(([key, f]) => (
+                              <button key={key} type="button" className={"glp-font" + (config.fonts === key ? " on" : "")} onClick={() => patch({ fonts: key })}>
+                                <span className="glp-font__aa" style={{ fontFamily: f.display }}>
+                                  Aa
+                                </span>
+                                <span>
+                                  <span className="glp-font__name">{f.label}</span>
+                                  <span className="glp-font__hint">{f.hint}</span>
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
-                <div className="glp-sub">Colors</div>
-                <label className="glp-toggle" style={{ paddingTop: 0 }}>
-                  <input type="checkbox" checked={!!config.theme.matchReadme} onChange={(e) => setTheme({ matchReadme: e.target.checked })} />
-                  <span className="glp-toggle__text">
-                    <b>Match the colors from your ReadMe dash</b>
-                    <span>Every accent inherits your hub's brand color (ReadMe's <code>--color-link-primary</code>) so it matches your Appearance settings and adapts to light/dark automatically.</span>
-                  </span>
-                </label>
-                {!config.theme.matchReadme && (
-                  <>
-                    <label className="glp-toggle" style={{ paddingTop: 0 }}>
-                      <input type="checkbox" checked={config.theme.uniform} onChange={(e) => setTheme({ uniform: e.target.checked })} />
-                      <span className="glp-toggle__text">
-                        <b>Use one accent color for every card</b>
-                        <span>Overrides the per-card accent choices with a single color across all sections.</span>
-                      </span>
-                    </label>
-                    {config.theme.uniform && (
-                      <Field label="Accent color">
-                        <AccentSwatches
-                          selected={config.theme.accent}
-                          onSelect={(k) => setTheme({ accent: k })}
-                          customCard={{ customLight: config.theme.customLight, customDark: config.theme.customDark }}
-                          onCustom={setTheme}
-                        />
-                      </Field>
-                    )}
-                  </>
-                )}
+                      <div className="glp-card">
+                        <div className="glp-card__head" onClick={() => toggle("colors")}>
+                          <span className="glp-card__name">Colors</span>
+                          <span className="glp-card__meta glp-card__meta--wide">{colorsSummary}</span>
+                          <span className="glp-iconbtn" style={{ transform: openThemePanel === "colors" ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
+                        </div>
+                        {openThemePanel === "colors" && (
+                          <div className="glp-card__body" style={{ paddingTop: 10 }}>
+                            <Toggle
+                              checked={!!config.theme.matchReadme}
+                              onChange={(v) => setTheme({ matchReadme: v })}
+                              label="Match the colors from your ReadMe dash"
+                              hint="Every accent inherits your hub's brand color (ReadMe's --color-link-primary) so it matches your Appearance settings and adapts to light/dark automatically."
+                              style={{ paddingTop: 0 }}
+                            />
+                            {!config.theme.matchReadme && (
+                              <>
+                                <Toggle
+                                  checked={config.theme.uniform}
+                                  onChange={(v) => setTheme({ uniform: v })}
+                                  label="Use one accent color for every card"
+                                  hint="Overrides the per-card accent choices with a single color across all sections."
+                                  style={{ paddingTop: 0 }}
+                                />
+                                {config.theme.uniform && (
+                                  <Field label="Accent color">
+                                    <AccentSwatches
+                                      selected={config.theme.accent}
+                                      onSelect={(k) => setTheme({ accent: k })}
+                                      customCard={{ customLight: config.theme.customLight, customDark: config.theme.customDark }}
+                                      onCustom={setTheme}
+                                    />
+                                  </Field>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
-                <div className="glp-sub">Page width</div>
-                <Field label="Maximum content width">
-                  <Seg
-                    value={config.layout.maxW}
-                    onChange={(v) => setLayout({ maxW: v })}
-                    options={[
-                      { value: 960, label: "Narrow" },
-                      { value: 1120, label: "Default" },
-                      { value: 1280, label: "Wide" },
-                    ]}
-                  />
-                </Field>
+                      <div className="glp-card">
+                        <div className="glp-card__head" onClick={() => toggle("width")}>
+                          <span className="glp-card__name">Page width</span>
+                          <span className="glp-card__meta glp-card__meta--wide">{widthLabel}</span>
+                          <span className="glp-iconbtn" style={{ transform: openThemePanel === "width" ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
+                        </div>
+                        {openThemePanel === "width" && (
+                          <div className="glp-card__body" style={{ paddingTop: 10 }}>
+                            <Field label="Maximum content width">
+                              <Seg
+                                value={config.layout.maxW}
+                                onChange={(v) => setLayout({ maxW: v })}
+                                options={[
+                                  { value: 960, label: "Narrow" },
+                                  { value: 1120, label: "Default" },
+                                  { value: 1280, label: "Wide" },
+                                ]}
+                              />
+                            </Field>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </NavSection>
 
               <NavSection id="hero" label="Header & Hero" openNav={openNav} setOpenNav={setOpenNav}>
-                <div className="glp-sub" style={{ marginTop: 4 }}>Header</div>
-                <Field label="Search &amp; Ask AI placement (Ask AI always sits beside search)">
-                  <Seg
-                    value={config.searchMode}
-                    onChange={(v) => patch({ searchMode: v })}
-                    options={[
-                      { value: "native", label: "Native header" },
-                      { value: "header", label: "Centered in header" },
-                      { value: "hero", label: "Under hero" },
-                    ]}
-                  />
-                </Field>
-                <label className="glp-toggle">
-                  <input type="checkbox" checked={config.flattenHeader} onChange={(e) => patch({ flattenHeader: e.target.checked })} />
-                  <span className="glp-toggle__text">
-                    <b>Transparent single-row header</b>
-                    <span>Removes the header background and second nav row on this page only.</span>
-                  </span>
-                </label>
-                <label className="glp-toggle">
-                  <input
-                    type="checkbox"
-                    checked={config.headerImage.enabled}
-                    onChange={(e) => {
-                      const enabled = e.target.checked;
-                      setHeaderImage({ enabled });
-                      /* the image tucks up behind the header, so it's invisible unless the
-                         header is transparent — turn that on too instead of a silent no-op */
-                      if (enabled && !config.flattenHeader) patch({ flattenHeader: true });
-                    }}
-                  />
-                  <span className="glp-toggle__text">
-                    <b>Hero background image</b>
-                    <span>Full-bleed image behind the hero (turns on the transparent header above automatically, so it isn't hidden behind it).</span>
-                  </span>
-                </label>
-                {config.headerImage.enabled && (
-                  <>
-                    <Field label="Image URL">
-                      <input className="glp-input" value={config.headerImage.url} onChange={(e) => setHeaderImage({ url: e.target.value })} placeholder="https://…/banner.jpg" />
-                    </Field>
-                    <Slider label="Image height" value={config.headerImage.height} min={160} max={720} step={4} onChange={(v) => setHeaderImage({ height: v })} />
-                    <Slider label="Header overlap (how far it tucks up behind the header)" value={config.headerImage.offset} min={0} max={160} step={4} onChange={(v) => setHeaderImage({ offset: v })} />
-                    <Slider label="Darken (tint)" value={config.headerImage.tint} min={0} max={80} unit="%" onChange={(v) => setHeaderImage({ tint: v })} />
-                  </>
-                )}
+                {(() => {
+                  const headerStyleKey = config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native";
+                  const searchSummary = { native: "Native search", header: "Centered search", hero: "Search under hero" }[config.searchMode];
+                  const headerStyleSummary = { native: "Native header", transparent: "Transparent header", image: "Transparent + image" }[headerStyleKey];
+                  const heroBits = [config.hero.align === "left" ? "Left" : "Centered"];
+                  if (config.hero.buttons) heroBits.push("Buttons on");
+                  if (config.ticker.enabled) heroBits.push("Ticker on");
+                  const toggle = (id) => setOpenHeroPanel(openHeroPanel === id ? null : id);
+                  return (
+                    <>
+                      <div className="glp-card">
+                        <div className="glp-card__head" onClick={() => toggle("header")}>
+                          <span className="glp-card__name">Header</span>
+                          <span className="glp-card__meta glp-card__meta--wide">{searchSummary} · {headerStyleSummary}</span>
+                          <span className="glp-iconbtn" style={{ transform: openHeroPanel === "header" ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
+                        </div>
+                        {openHeroPanel === "header" && (
+                          <div className="glp-card__body">
+                            <Field label="Search &amp; Ask AI placement (Ask AI always sits beside search)">
+                              <Seg
+                                value={config.searchMode}
+                                onChange={(v) => patch({ searchMode: v })}
+                                options={[
+                                  { value: "native", label: "Native header" },
+                                  { value: "header", label: "Centered in header" },
+                                  { value: "hero", label: "Under hero" },
+                                ]}
+                              />
+                            </Field>
+                            <Field label="Header style">
+                              <Seg
+                                value={headerStyleKey}
+                                onChange={(v) =>
+                                  setConfig((c) => ({
+                                    ...c,
+                                    flattenHeader: v !== "native",
+                                    headerImage: { ...c.headerImage, enabled: v === "image" },
+                                  }))
+                                }
+                                options={[
+                                  { value: "native", label: "Native" },
+                                  { value: "transparent", label: "Transparent" },
+                                  { value: "image", label: "Transparent + image" },
+                                ]}
+                              />
+                            </Field>
+                            {config.headerImage.enabled && (
+                              <>
+                                <Field label="Image URL">
+                                  <input className="glp-input" value={config.headerImage.url} onChange={(e) => setHeaderImage({ url: e.target.value })} placeholder="https://…/banner.jpg" />
+                                </Field>
+                                <Slider label="Image height" value={config.headerImage.height} min={160} max={720} step={4} onChange={(v) => setHeaderImage({ height: v })} />
+                                <Slider label="Header overlap (how far it tucks up behind the header)" value={config.headerImage.offset} min={0} max={160} step={4} onChange={(v) => setHeaderImage({ offset: v })} />
+                                <Slider label="Darken (tint)" value={config.headerImage.tint} min={0} max={80} unit="%" onChange={(v) => setHeaderImage({ tint: v })} />
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
-                <div className="glp-sub">Hero</div>
-                <Field label="Eyebrow (small caps line above the title — blank to hide)">
-                  <input
-                    className="glp-input"
-                    value={config.hero.eyebrow}
-                    onChange={(e) => setHero({ eyebrow: e.target.value })}
-                    placeholder="e.g. Documentation center"
-                  />
-                </Field>
-                <div className="glp-row2">
-                  <Field label="Announcement chip (blank to hide)">
-                    <input
-                      className="glp-input"
-                      value={config.hero.chip}
-                      onChange={(e) => setHero({ chip: e.target.value })}
-                      placeholder="e.g. v2.4 is now available"
-                    />
-                  </Field>
-                  <Field label="Chip link (optional)">
-                    <input className="glp-input" value={config.hero.chipHref} onChange={(e) => setHero({ chipHref: normPath(e.target.value) })} placeholder="/changelog" />
-                  </Field>
-                </div>
-                <Field label="Page title">
-                  <input className="glp-input" value={config.hero.title} onChange={(e) => setHero({ title: e.target.value })} />
-                </Field>
-                <Slider label="Title size" value={config.hero.titleSize != null ? config.hero.titleSize : (config.hero.align === "left" ? 42 : 38)} min={22} max={72} onChange={(v) => setHero({ titleSize: v })} />
-                <Field label="Subtitle">
-                  <textarea className="glp-textarea" value={config.hero.subtitle} onChange={(e) => setHero({ subtitle: e.target.value })} />
-                </Field>
-                <Slider label="Subtitle size" value={config.hero.subtitleSize != null ? config.hero.subtitleSize : 15} min={12} max={26} onChange={(v) => setHero({ subtitleSize: v })} />
-                <Field label="Alignment">
-                  <Seg
-                    value={config.hero.align}
-                    onChange={(v) => setHero({ align: v })}
-                    options={[
-                      { value: "center", label: "Centered" },
-                      { value: "left", label: "Left" },
-                    ]}
-                  />
-                </Field>
-                <Slider label="Vertical padding (space above &amp; below the hero text)" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
-                <label className="glp-toggle">
-                  <input type="checkbox" checked={config.hero.buttons} onChange={(e) => setHero({ buttons: e.target.checked })} />
-                  <span className="glp-toggle__text">
-                    <b>Hero buttons</b>
-                    <span>Primary + secondary call-to-action under the subtitle.</span>
-                  </span>
-                </label>
-                {config.hero.buttons && (
-                  <>
-                    <div className="glp-row2">
-                      <Field label="Primary label">
-                        <input
-                          className="glp-input"
-                          value={config.hero.btnPrimary.label}
-                          onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, label: e.target.value } })}
-                        />
-                      </Field>
-                      <Field label="Primary link">
-                        <input
-                          className="glp-input"
-                          value={config.hero.btnPrimary.href}
-                          onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, href: normPath(e.target.value) } })}
-                        />
-                      </Field>
-                    </div>
-                    <div className="glp-row2">
-                      <Field label="Secondary label">
-                        <input
-                          className="glp-input"
-                          value={config.hero.btnSecondary.label}
-                          onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, label: e.target.value } })}
-                        />
-                      </Field>
-                      <Field label="Secondary link">
-                        <input
-                          className="glp-input"
-                          value={config.hero.btnSecondary.href}
-                          onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, href: normPath(e.target.value) } })}
-                        />
-                      </Field>
-                    </div>
-                  </>
-                )}
-                <label className="glp-toggle">
-                  <input type="checkbox" checked={config.ticker.enabled} onChange={(e) => setTicker({ enabled: e.target.checked })} />
-                  <span className="glp-toggle__text">
-                    <b>Announcement ticker</b>
-                    <span>Scrolling marquee strip at the very top.</span>
-                  </span>
-                </label>
-                {config.ticker.enabled && (
-                  <Field label="Ticker text (repeats automatically)">
-                    <input className="glp-input" value={config.ticker.text} onChange={(e) => setTicker({ text: e.target.value })} />
-                  </Field>
-                )}
+                      <div className="glp-card">
+                        <div className="glp-card__head" onClick={() => toggle("hero")}>
+                          <span className="glp-card__name">Hero</span>
+                          <span className="glp-card__meta glp-card__meta--wide">{heroBits.join(" · ")}</span>
+                          <span className="glp-iconbtn" style={{ transform: openHeroPanel === "hero" ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
+                        </div>
+                        {openHeroPanel === "hero" && (
+                          <div className="glp-card__body">
+                            <Field label="Eyebrow (small caps line above the title — blank to hide)">
+                              <input
+                                className="glp-input"
+                                value={config.hero.eyebrow}
+                                onChange={(e) => setHero({ eyebrow: e.target.value })}
+                                placeholder="e.g. Documentation center"
+                              />
+                            </Field>
+                            <div className="glp-row2">
+                              <Field label="Announcement chip (blank to hide)">
+                                <input
+                                  className="glp-input"
+                                  value={config.hero.chip}
+                                  onChange={(e) => setHero({ chip: e.target.value })}
+                                  placeholder="e.g. v2.4 is now available"
+                                />
+                              </Field>
+                              <Field label="Chip link (optional)">
+                                <input className="glp-input" value={config.hero.chipHref} onChange={(e) => setHero({ chipHref: normPath(e.target.value) })} placeholder="/changelog" />
+                              </Field>
+                            </div>
+                            <Field label="Page title">
+                              <input className="glp-input" value={config.hero.title} onChange={(e) => setHero({ title: e.target.value })} />
+                            </Field>
+                            <NumberField label="Title size" value={config.hero.titleSize != null ? config.hero.titleSize : (config.hero.align === "left" ? 42 : 38)} min={22} max={72} onChange={(v) => setHero({ titleSize: v })} />
+                            <Field label="Subtitle">
+                              <textarea className="glp-textarea" value={config.hero.subtitle} onChange={(e) => setHero({ subtitle: e.target.value })} />
+                            </Field>
+                            <NumberField label="Subtitle size" value={config.hero.subtitleSize != null ? config.hero.subtitleSize : 15} min={12} max={26} onChange={(v) => setHero({ subtitleSize: v })} />
+                            <Field label="Alignment">
+                              <Seg
+                                value={config.hero.align}
+                                onChange={(v) => setHero({ align: v })}
+                                options={[
+                                  { value: "center", label: "Centered" },
+                                  { value: "left", label: "Left" },
+                                ]}
+                              />
+                            </Field>
+                            <NumberField label="Vertical padding (space above &amp; below the hero text)" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
+                            <Toggle
+                              checked={config.hero.buttons}
+                              onChange={(v) => setHero({ buttons: v })}
+                              label="Hero buttons"
+                              hint="Primary + secondary call-to-action under the subtitle."
+                            />
+                            {config.hero.buttons && (
+                              <>
+                                <div className="glp-row2">
+                                  <Field label="Primary label">
+                                    <input
+                                      className="glp-input"
+                                      value={config.hero.btnPrimary.label}
+                                      onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, label: e.target.value } })}
+                                    />
+                                  </Field>
+                                  <Field label="Primary link">
+                                    <input
+                                      className="glp-input"
+                                      value={config.hero.btnPrimary.href}
+                                      onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, href: normPath(e.target.value) } })}
+                                    />
+                                  </Field>
+                                </div>
+                                <div className="glp-row2">
+                                  <Field label="Secondary label">
+                                    <input
+                                      className="glp-input"
+                                      value={config.hero.btnSecondary.label}
+                                      onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, label: e.target.value } })}
+                                    />
+                                  </Field>
+                                  <Field label="Secondary link">
+                                    <input
+                                      className="glp-input"
+                                      value={config.hero.btnSecondary.href}
+                                      onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, href: normPath(e.target.value) } })}
+                                    />
+                                  </Field>
+                                </div>
+                              </>
+                            )}
+                            <Toggle
+                              checked={config.ticker.enabled}
+                              onChange={(v) => setTicker({ enabled: v })}
+                              label="Announcement ticker"
+                              hint="Scrolling marquee strip at the very top."
+                            />
+                            {config.ticker.enabled && (
+                              <Field label="Ticker text (repeats automatically)">
+                                <input className="glp-input" value={config.ticker.text} onChange={(e) => setTicker({ text: e.target.value })} />
+                              </Field>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </NavSection>
 
               <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
@@ -3681,13 +3856,12 @@ function App() {
               </NavSection>
 
               <NavSection id="banner" label="Contact banner" openNav={openNav} setOpenNav={setOpenNav}>
-                <label className="glp-toggle">
-                  <input type="checkbox" checked={config.banner.enabled} onChange={(e) => setBanner({ enabled: e.target.checked })} />
-                  <span className="glp-toggle__text">
-                    <b>Show a banner below the cards</b>
-                    <span>Full-width call-to-action, e.g. "Need help building your integration?"</span>
-                  </span>
-                </label>
+                <Toggle
+                  checked={config.banner.enabled}
+                  onChange={(v) => setBanner({ enabled: v })}
+                  label="Show a banner below the cards"
+                  hint='Full-width call-to-action, e.g. "Need help building your integration?"'
+                />
                 {config.banner.enabled && (
                   <>
                     <Field label="Banner title">
