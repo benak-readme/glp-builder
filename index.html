@@ -114,7 +114,7 @@ const FONTS = {
    density : roomy | comfortable | compact (padding + title size)
 ------------------------------------------------------ */
 const DEFAULT_STYLE = {
-  anchor: false,
+  anchor: true,
   icon: false,
   badge: false,
   num: false,
@@ -125,7 +125,7 @@ const DEFAULT_STYLE = {
   ctaPlain: false,
   mono: false,
   radius: 16,
-  density: "roomy",
+  density: "comfortable",
 };
 
 /* one-click starter looks — each sets the GLOBAL card style (cfg.cardStyle).
@@ -277,7 +277,7 @@ const DEFAULT_CONFIG = {
       heading: "",
       intro: "",
       align: "center",
-      source: "static",
+      source: "liquid",
       styleMode: "global",
       style: { ...DEFAULT_STYLE },
       layout: { ...DEFAULT_SECTION_LAYOUT },
@@ -579,7 +579,7 @@ function sectionCards(sec, palette, style) {
     {
       accentClass: "bnk-card--a{{ ai }}",
       primary: false,
-      href: "/{{ child.subpath }}",
+      href: "/{{ child.subdomain }}",
       eyebrow: esc(Q.eyebrow),
       badgeHtml: Q.badge === "lock" ? LOCK_SVG : '<span class="bnk-dot"></span>',
       icon: iconMarkup(Q),
@@ -1184,7 +1184,7 @@ ${
     ? `
   Liquid: one or more sections render one card per child project using
   ReadMe's templating (see docs.readme.com/ent/docs/creating-a-global-landing-page).
-  Properties used: parentProject.childrenProjects, child.name, child.subpath,
+  Properties used: parentProject.childrenProjects, child.name, child.subdomain,
   child.description, child.guides (categories) → category.title.
 `
     : ""
@@ -1330,9 +1330,9 @@ ${script}
    number of per-section child-project loops.
    ============================================================ */
 const SAMPLE_PROJECTS = [
-  { name: "Payments API", subpath: "payments", desc: "Accept payments, manage refunds, and reconcile settlements." },
-  { name: "Identity", subpath: "identity", desc: "SSO, MFA, and user permission management for your apps." },
-  { name: "Client SDKs", subpath: "sdks", desc: "Official libraries for Node, Python, Go, and React Native." },
+  { name: "Payments API", subdomain: "payments", desc: "Accept payments, manage refunds, and reconcile settlements." },
+  { name: "Identity", subdomain: "identity", desc: "SSO, MFA, and user permission management for your apps." },
+  { name: "Client SDKs", subdomain: "sdks", desc: "Official libraries for Node, Python, Go, and React Native." },
 ];
 const SAMPLE_CATEGORIES = ["Getting started", "Authentication", "Webhooks"];
 
@@ -1357,7 +1357,7 @@ function expandLiquidForPreview(html) {
         .replace(/\{\{\s*forloop\.index\s*\}\}/g, String(i + 1))
         .replace(/\{\{\s*ai\s*\}\}/g, String(i % N))
         .replace(/\{\{\s*child\.name\s*\}\}/g, p.name)
-        .replace(/\{\{\s*child\.subpath\s*\}\}/g, p.subpath)
+        .replace(/\{\{\s*child\.subdomain\s*\}\}/g, p.subdomain)
         .replace(/\{\{\s*child\.description[^}]*\}\}/g, p.desc)
     ).join("\n");
   });
@@ -2212,7 +2212,7 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
     <>
       <div className="glp-note">
         One card renders per child project in your group, using ReadMe's Liquid templating — add or remove a project and the page updates
-        itself. Titles come from <code>child.name</code>, links from <code>/child.subpath</code>, and the list can show each project's top
+        itself. Titles come from <code>child.name</code>, links from <code>/child.subdomain</code>, and the list can show each project's top
         guide categories.
       </div>
       {st.badge && (
@@ -2860,7 +2860,7 @@ function App() {
         heading: "New section",
         intro: "",
         align: "center",
-        source: "static",
+        source: "liquid",
         styleMode: "global",
         style: { ...DEFAULT_STYLE },
         layout: { ...DEFAULT_SECTION_LAYOUT },
