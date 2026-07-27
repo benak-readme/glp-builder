@@ -168,12 +168,12 @@ const FA_COMMON = [
   "book","book-open","rocket","code","terminal","key","lock","cloud","gear","plug",
   "bolt","flask","cube","cubes","layer-group","compass","map","flag","star","heart",
   "circle-question","life-ring","graduation-cap","puzzle-piece","screwdriver-wrench","shield-halved",
-  "database","server","globe","envelope","credit-card","chart-line","users","user","gift","wand-magic-sparkles",
+  "database","server","globe","envelope","credit-card","chart-line","users","user","handshake","gift","wand-magic-sparkles",
 ];
 
 const CARD_DEFAULTS = {
-  icon: "📘",
-  iconType: "emoji",
+  icon: "book",
+  iconType: "fa",
   faStyle: "solid",
   title: "New audience",
   blurb: "Describe who this documentation is for.",
@@ -194,8 +194,8 @@ const CARD_DEFAULTS = {
 const DEFAULT_LIQUID = {
   eyebrow: "Documentation",
   badge: "dot",
-  icon: "📘",
-  iconType: "emoji",
+  icon: "book",
+  iconType: "fa",
   faStyle: "solid",
   blurbFallback: "Explore the guides and API reference for this project.",
   peek: true,
@@ -288,7 +288,7 @@ const DEFAULT_CONFIG = {
       columns: DEFAULT_COLUMNS(),
       cards: [
         {
-          id: uid(), icon: "📘", iconType: "emoji", faStyle: "solid",
+          id: uid(), icon: "book-open", iconType: "fa", faStyle: "solid",
           title: "Public", blurb: "Guides, references, and API docs open to everyone.",
           href: "/public", eyebrow: "Open access", badge: "dot", accent: "green",
           customLight: "#0C7A66", customDark: "#34C98E",
@@ -296,7 +296,7 @@ const DEFAULT_CONFIG = {
           peekArrows: true, ctaText: "Browse docs", ctaStyle: "filled", primary: true,
         },
         {
-          id: uid(), icon: "🤝", iconType: "emoji", faStyle: "solid",
+          id: uid(), icon: "handshake", iconType: "fa", faStyle: "solid",
           title: "Partners", blurb: "Integration guides and resources for approved partners.",
           href: "/partners", eyebrow: "Log in to view", badge: "lock", accent: "purple",
           customLight: "#5B48D0", customDark: "#A49AF0",
@@ -304,7 +304,7 @@ const DEFAULT_CONFIG = {
           peekArrows: false, ctaText: "Partner portal", ctaStyle: "ghost", primary: false,
         },
         {
-          id: uid(), icon: "🧪", iconType: "emoji", faStyle: "solid",
+          id: uid(), icon: "flask", iconType: "fa", faStyle: "solid",
           title: "Beta", blurb: "Preview features and docs that are still taking shape.",
           href: "/beta", eyebrow: "Log in to view", badge: "lock", accent: "amber",
           customLight: "#9C6212", customDark: "#E3B168",
@@ -324,13 +324,85 @@ const esc = (s = "") =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
+/* escape a value for interpolation inside a double-quoted CSS string (e.g. url("...")) —
+   an unescaped quote or newline in a user-supplied URL would otherwise break out of the
+   string and corrupt the rest of the generated <style> block */
+const escCssStr = (s = "") =>
+  String(s)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/[\r\n]/g, "");
+
 const cardAccent = (card) =>
   card.accent === "custom"
     ? { light: card.customLight, dark: card.customDark }
     : { light: (ACCENTS[card.accent] || ACCENTS.green).light, dark: (ACCENTS[card.accent] || ACCENTS.green).dark };
 
+/* emits one dark-mode rule block for BOTH of ReadMe's dark-mode signals — explicit
+   [data-color-mode="dark"] and "follow system" ([data-color-mode="system"] inside
+   prefers-color-scheme:dark) — from a single template, so a future edit to one path
+   can't silently drift from the other. `body(pad)` returns the CSS declarations,
+   already using `pad` as their leading indent. */
+const darkBlock = (selector, indent, body) => `
+${indent}[data-color-mode="dark"] ${selector} {
+${body(indent + "  ")}
+${indent}}
+${indent}@media (prefers-color-scheme: dark) {
+${indent}  [data-color-mode="system"] ${selector} {
+${body(indent + "    ")}
+${indent}  }
+${indent}}`;
+
 /* auto-prepend "/" to link paths (leaves full URLs and #anchors alone) */
 const normPath = (v) => (!v || /^[/#]/.test(v) || /^https?:/i.test(v) ? v : "/" + v);
+
+/* move the item with `id` in `arr` to sit at `toIndex` — the ↑/↓ buttons remain the
+   accessible/keyboard baseline; this backs drag-and-drop reordering to any position */
+function reorderById(arr, id, toIndex) {
+  const from = arr.findIndex((x) => x.id === id);
+  if (from < 0) return arr;
+  const clamped = Math.max(0, Math.min(toIndex, arr.length - 1));
+  if (from === clamped) return arr;
+  const copy = arr.slice();
+  const [item] = copy.splice(from, 1);
+  copy.splice(clamped, 0, item);
+  return copy;
+}
+
+/* shared native-HTML5-drag reordering for a list of id-keyed rows. The drag SOURCE
+   (draggable + dragstart/dragend) belongs only on a small handle, so grabbing
+   anywhere else in the row still just toggles it open/closed — but the DROP TARGET
+   (dragenter/dragover/drop) belongs on the whole row, so dropping anywhere on a row
+   works, not just its handle. Returns both prop-spreads plus the index currently
+   being dragged over (for a drop-target highlight). */
+function useDragReorder(onReorderToIndex) {
+  const draggingId = useRef(null);
+  const [overIndex, setOverIndex] = useState(null);
+  const dragHandleProps = (id) => ({
+    draggable: true,
+    onDragStart: (e) => {
+      draggingId.current = id;
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", id); } catch (err) {}
+      const row = e.currentTarget.closest(".glp-card");
+      if (row) e.dataTransfer.setDragImage(row, 12, 12);
+    },
+    onDragEnd: () => { draggingId.current = null; setOverIndex(null); },
+  });
+  const dropRowProps = (index) => ({
+    onDragEnter: (e) => { if (draggingId.current != null) { e.preventDefault(); setOverIndex(index); } },
+    onDragOver: (e) => { if (draggingId.current != null) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; } },
+    onDrop: (e) => {
+      if (draggingId.current == null) return;
+      e.preventDefault();
+      const id = draggingId.current;
+      draggingId.current = null;
+      setOverIndex(null);
+      onReorderToIndex(id, index);
+    },
+  });
+  return { dragHandleProps, dropRowProps, overIndex };
+}
 
 /* Font Awesome <i> markup (emoji falls back to the raw character) */
 const iconMarkup = (o) =>
@@ -450,8 +522,11 @@ function persistDesigns(ds, curId) {
   try {
     localStorage.setItem(DESIGNS_KEY, JSON.stringify(ds));
     if (curId) localStorage.setItem(CURRENT_KEY, curId);
+    return true;
   } catch (e) {
-    /* storage unavailable (private mode / sandbox) — autosave silently disabled */
+    /* storage unavailable/full (quota, private mode, sandbox) — caller reflects this in the UI
+       instead of claiming "Saved" over work that only exists in memory */
+    return false;
   }
 }
 
@@ -737,7 +812,7 @@ function generateHTML(cfg) {
     width: 100vw;
     transform: translateX(-50%);
     height: ${cfg.headerImage.height}px;
-    background: ${cfg.headerImage.url ? `url("${cfg.headerImage.url}")` : "linear-gradient(120deg, #2A3346, #10131A)"} center / cover no-repeat;
+    background: ${cfg.headerImage.url ? `url("${escCssStr(cfg.headerImage.url)}")` : "linear-gradient(120deg, #2A3346, #10131A)"} center / cover no-repeat;
     z-index: 0;
     pointer-events: none;
   }
@@ -1003,18 +1078,9 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
 
   .bnk-card__arrow { margin-top: 18px; align-self: flex-end; color: var(--accent) !important; font-size: 16px; }
 
-  .bnk-card:hover { transform: translateY(-3px); }
-  .bnk-card:hover { background-color: #F4F4F5 !important; border-color: color-mix(in srgb, var(--accent) 45%, #D4D4D8) !important; }
-  [data-color-mode="dark"] .bnk-card:hover {
-    background-color: rgba(255, 255, 255, 0.06) !important;
-    border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.18)) !important;
-  }
-  @media (prefers-color-scheme: dark) {
-    [data-color-mode="system"] .bnk-card:hover {
-      background-color: rgba(255, 255, 255, 0.06) !important;
-      border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.18)) !important;
-    }
-  }
+  .bnk-card:hover { transform: translateY(-3px); background-color: #F4F4F5 !important; border-color: color-mix(in srgb, var(--accent) 45%, #D4D4D8) !important; }
+${darkBlock(".bnk-card:hover", "  ", (pad) => `${pad}background-color: rgba(255, 255, 255, 0.06) !important;
+${pad}border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.18)) !important;`)}
   .bnk-card:hover .rm-arrow { transform: translateX(4px); }
   .bnk-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 `;
@@ -1235,40 +1301,20 @@ ${lightAccents}
   }
 
   /* ===== DARK MODE — via ReadMe's native data-color-mode signal ===== */
-  [data-color-mode="dark"] .bnk-landing {
-    --bnk-ink-1: #A1A1AA;
-    --bnk-ink-2: #8E8E96;
-    --bnk-heading: #ECEFF4;
+${darkBlock(".bnk-landing", "  ", (pad) => `${pad}--bnk-ink-1: #A1A1AA;
+${pad}--bnk-ink-2: #8E8E96;
+${pad}--bnk-heading: #ECEFF4;
 
-    --bnk-accent: ${primary.dark};
-${darkAccents("      ")}
-    --bnk-cta-on: #0B0F14;
+${pad}--bnk-accent: ${primary.dark};
+${darkAccents(pad)}
+${pad}--bnk-cta-on: #0B0F14;
 
-    --card-bg: rgba(255, 255, 255, 0.028);
-    --card-border: rgba(255, 255, 255, 0.09);
-    --card-title: #ECEFF4;
-    --card-divider: rgba(255, 255, 255, 0.08);
-    --card-shadow: none;
-    --card-blur: blur(9px) saturate(118%);
-  }
-  @media (prefers-color-scheme: dark) {
-    [data-color-mode="system"] .bnk-landing {
-      --bnk-ink-1: #A1A1AA;
-      --bnk-ink-2: #8E8E96;
-      --bnk-heading: #ECEFF4;
-
-      --bnk-accent: ${primary.dark};
-${darkAccents("        ")}
-      --bnk-cta-on: #0B0F14;
-
-      --card-bg: rgba(255, 255, 255, 0.028);
-      --card-border: rgba(255, 255, 255, 0.09);
-      --card-title: #ECEFF4;
-      --card-divider: rgba(255, 255, 255, 0.08);
-      --card-shadow: none;
-      --card-blur: blur(9px) saturate(118%);
-    }
-  }
+${pad}--card-bg: rgba(255, 255, 255, 0.028);
+${pad}--card-border: rgba(255, 255, 255, 0.09);
+${pad}--card-title: #ECEFF4;
+${pad}--card-divider: rgba(255, 255, 255, 0.08);
+${pad}--card-shadow: none;
+${pad}--card-blur: blur(9px) saturate(118%);`)}
 
   .bnk-landing *,
   .bnk-landing *::before { box-sizing: border-box; }
@@ -1634,6 +1680,7 @@ const APP_CSS = `
   /* autosave indicator */
   .glp-save { font-size: 11px; font-family: 'Space Mono', monospace; color: var(--ink-3); white-space: nowrap; }
   .glp-save.ok { color: var(--ok); }
+  .glp-save.err { color: #D64545; cursor: help; }
 
   .glp-slider { display: flex; align-items: center; gap: 10px; }
   .glp-slider input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
@@ -1657,6 +1704,12 @@ const APP_CSS = `
   }
   .glp-card__swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; }
   .glp-card__name { font-weight: 600; font-size: 13.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glp-drag-handle {
+    flex: none; display: flex; align-items: center; color: var(--ink-3);
+    cursor: grab; padding: 2px 2px 2px 0; font-size: 12px;
+  }
+  .glp-drag-handle:active { cursor: grabbing; }
+  .glp-card__head.glp-drop-over { box-shadow: inset 0 2px 0 var(--accent); }
   .glp-card__meta { font-size: 11px; color: var(--ink-3); font-family: 'Space Mono', monospace; flex: 0 1 auto; min-width: 0; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .glp-iconbtn {
     border: 0; background: transparent; color: var(--ink-3); cursor: pointer;
@@ -1684,9 +1737,12 @@ const APP_CSS = `
   .glp-custom-pair { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
   .glp-hexrow { display: flex; align-items: center; gap: 8px; }
   .glp-hexrow > span { flex: none; width: 42px; font-size: 11px; color: var(--ink-3); }
+  .glp-hex-wrap { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
   .glp-hex { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
     background: var(--bg); border: 1px solid var(--line-2); border-radius: 8px; padding: 3px 6px 3px 3px; }
   .glp-hex:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-hex--invalid { border-color: #D64545; }
+  .glp-hex__err { font-size: 10.5px; color: #D64545; line-height: 1.3; }
   .glp-hex__sw { width: 24px; height: 24px; border-radius: 6px; flex: none; border: 1px solid var(--line-2); }
   .glp-hex__txt { flex: 1; min-width: 0; border: 0 !important; background: transparent !important; padding: 4px 2px !important;
     font-family: 'Space Mono', monospace; font-size: 12.5px; text-transform: uppercase; }
@@ -1885,7 +1941,7 @@ function Slider({ label, value, min, max, step = 1, unit = "px", onChange }) {
           onChange={(e) => {
             setTxt(e.target.value);
             const n = Number(e.target.value);
-            if (e.target.value !== "" && Number.isFinite(n) && n >= 0) onChange(n);
+            if (e.target.value !== "" && Number.isFinite(n) && n >= min) onChange(n);
           }}
           onBlur={() => { if (txt === "" || !Number.isFinite(Number(txt))) setTxt(String(value)); }}
         />
@@ -1936,7 +1992,7 @@ function ContrastNote({ color, surface, label }) {
   const ok = r >= 3;
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: ok ? "var(--ink-3)" : "#E3B168" }}>
-      {label} {r.toFixed(1)}:1 {ok ? "✓" : "⚠"}
+      {label} {r.toFixed(1)}:1 {ok ? <i className="fa-solid fa-check" aria-hidden="true"></i> : <i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>}
     </span>
   );
 }
@@ -1946,18 +2002,24 @@ function HexColor({ value, onChange }) {
   const [txt, setTxt] = useState(value);
   useEffect(() => { setTxt(value); }, [value]);
   const valid = normHex(txt);
+  /* an in-progress edit (e.g. "#0B6") is invalid but not worth flagging as an error yet —
+     only surface the hint once the field has settled without becoming a valid hex */
+  const invalid = txt.trim() !== "" && !valid;
   return (
-    <div className="glp-hex">
-      <span className="glp-hex__sw" style={{ background: valid || value }} />
-      <input
-        className="glp-input glp-hex__txt"
-        value={txt}
-        spellCheck={false}
-        placeholder="#0B63C5"
-        onChange={(e) => { setTxt(e.target.value); const h = normHex(e.target.value); if (h) onChange(h); }}
-        onBlur={() => setTxt(value)}
-      />
-      <input type="color" className="glp-hex__pick" value={normHex(value) || "#000000"} onChange={(e) => onChange(e.target.value)} title="Pick a color" />
+    <div className="glp-hex-wrap">
+      <div className={"glp-hex" + (invalid ? " glp-hex--invalid" : "")}>
+        <span className="glp-hex__sw" style={{ background: valid || value }} />
+        <input
+          className="glp-input glp-hex__txt"
+          value={txt}
+          spellCheck={false}
+          placeholder="#0B63C5"
+          onChange={(e) => { setTxt(e.target.value); const h = normHex(e.target.value); if (h) onChange(h); }}
+          onBlur={() => { if (!txt.trim()) setTxt(value); }}
+        />
+        <input type="color" className="glp-hex__pick" value={normHex(value) || "#000000"} onChange={(e) => onChange(e.target.value)} title="Pick a color" />
+      </div>
+      {invalid && <span className="glp-hex__err">Not a valid hex color — try #RRGGBB</span>}
     </div>
   );
 }
@@ -1970,7 +2032,16 @@ function IconField({ label, obj, onChange }) {
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <Seg
           value={type}
-          onChange={(v) => onChange({ iconType: v })}
+          onChange={(v) => {
+            /* switching type while keeping an incompatible value silently produces
+               garbage (e.g. fa-solid fa-📘) with no visible error — reseed a sane
+               default instead, but only when the current value wouldn't work as-is */
+            const cur = (obj.icon || "").trim();
+            const looksEmoji = /[\u{1F000}-\u{1FFFF}☀-➿]/u.test(cur);
+            const looksFaSlug = /^[a-z][a-z0-9-]*$/i.test(cur);
+            const icon = v === "fa" && !looksFaSlug ? "book" : v === "emoji" && !looksEmoji ? "📘" : cur;
+            onChange({ iconType: v, icon });
+          }}
           options={[
             { value: "emoji", label: "Emoji" },
             { value: "fa", label: "Font Awesome" },
@@ -1999,7 +2070,7 @@ function IconField({ label, obj, onChange }) {
       {type === "emoji" && (
         <div className="glp-emojis">
           {EMOJI_COMMON.map((e) => (
-            <button key={e} type="button" className={"glp-emoji" + (obj.icon === e ? " on" : "")} onClick={() => onChange({ icon: e })}>
+            <button key={e} type="button" aria-label={`Icon: ${e}`} className={"glp-emoji" + (obj.icon === e ? " on" : "")} onClick={() => onChange({ icon: e })}>
               {e}
             </button>
           ))}
@@ -2009,7 +2080,7 @@ function IconField({ label, obj, onChange }) {
         <>
           <div className="glp-fagrid">
             {FA_COMMON.map((n) => (
-              <button key={n} type="button" title={n} className={"glp-faicon" + (obj.icon === n ? " on" : "")} onClick={() => onChange({ icon: n })}>
+              <button key={n} type="button" title={n} aria-label={`Icon: ${n}`} className={"glp-faicon" + (obj.icon === n ? " on" : "")} onClick={() => onChange({ icon: n })}>
                 <i className={"fa-" + (obj.faStyle || "solid") + " fa-" + n} aria-hidden="true"></i>
               </button>
             ))}
@@ -2035,6 +2106,7 @@ function AccentSwatches({ selected, onSelect, multi = false, customCard = null, 
               key={key}
               type="button"
               title={a.label}
+              aria-label={a.label}
               className={"glp-swatch" + (on ? " on" : "")}
               style={{ background: `linear-gradient(135deg, ${a.light} 50%, ${a.dark} 50%)` }}
               onClick={() => onSelect(key)}
@@ -2074,7 +2146,56 @@ function AccentSwatches({ selected, onSelect, multi = false, customCard = null, 
 }
 
 /* ---------- card editor ---------- */
-function CardEditor({ card, index, count, style, hideAccents, open, onToggle, onChange, onMove, onRemove, onDuplicate }) {
+/* ---------- shared: badge text + icon row (CardEditor + LiquidControls) ---------- */
+function BadgeIconField({ eyebrowLabel, eyebrow, badge, onEyebrowChange, onBadgeChange }) {
+  return (
+    <div className="glp-row2">
+      <Field label={eyebrowLabel}>
+        <input className="glp-input" value={eyebrow} onChange={(e) => onEyebrowChange(e.target.value)} />
+      </Field>
+      <Field label="Badge icon">
+        <Seg
+          value={badge}
+          onChange={onBadgeChange}
+          options={[
+            { value: "dot", label: <><i className="fa-solid fa-circle" style={{ fontSize: 7 }} aria-hidden="true"></i> Open</> },
+            { value: "lock", label: <><i className="fa-solid fa-lock" aria-hidden="true"></i> Locked</> },
+          ]}
+        />
+      </Field>
+    </div>
+  );
+}
+
+/* ---------- shared: CTA text + style controls (CardEditor + LiquidControls) ---------- */
+function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain, onTextChange, onStyleChange }) {
+  if (ctaPlain) {
+    return (
+      <Field label={plainTextLabel}>
+        <input className="glp-input" value={ctaText} onChange={(e) => onTextChange(e.target.value)} />
+      </Field>
+    );
+  }
+  return (
+    <div className="glp-row2">
+      <Field label={textLabel}>
+        <input className="glp-input" value={ctaText} onChange={(e) => onTextChange(e.target.value)} />
+      </Field>
+      <Field label="Button style">
+        <Seg
+          value={ctaStyle}
+          onChange={onStyleChange}
+          options={[
+            { value: "filled", label: "Filled" },
+            { value: "ghost", label: "Outlined" },
+          ]}
+        />
+      </Field>
+    </div>
+  );
+}
+
+function CardEditor({ card, index, count, style, hideAccents, open, onToggle, onChange, onMove, onRemove, onDuplicate, dragHandleProps, dropRowProps, dragOver }) {
   const acc = cardAccent(card);
   const set = (patch) => onChange({ ...card, ...patch });
   const setPeek = (i, val) => {
@@ -2084,7 +2205,10 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
   };
   return (
     <div className="glp-card">
-      <div className="glp-card__head" onClick={onToggle}>
+      <div className={"glp-card__head" + (dragOver ? " glp-drop-over" : "")} onClick={onToggle} {...dropRowProps}>
+        <span className="glp-drag-handle" title="Drag to reorder" onClick={(e) => e.stopPropagation()} {...dragHandleProps}>
+          <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+        </span>
         <span className="glp-card__swatch" style={{ background: acc.light }} />
         <span className="glp-card__name">{card.title || "Untitled card"}</span>
         <span className="glp-card__meta">{card.href}</span>
@@ -2114,23 +2238,13 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
 
           {style.icon && <IconField label="Icon" obj={card} onChange={set} />}
           {style.badge && (
-            <div className="glp-row2">
-              <Field label="Badge text">
-                <input className="glp-input" value={card.eyebrow} onChange={(e) => set({ eyebrow: e.target.value })} />
-              </Field>
-              {style.badge && (
-                <Field label="Badge icon">
-                  <Seg
-                    value={card.badge}
-                    onChange={(v) => set({ badge: v })}
-                    options={[
-                      { value: "dot", label: "● Open" },
-                      { value: "lock", label: "🔒 Locked" },
-                    ]}
-                  />
-                </Field>
-              )}
-            </div>
+            <BadgeIconField
+              eyebrowLabel="Badge text"
+              eyebrow={card.eyebrow}
+              badge={card.badge}
+              onEyebrowChange={(v) => set({ eyebrow: v })}
+              onBadgeChange={(v) => set({ badge: v })}
+            />
           )}
 
           {!hideAccents && (
@@ -2139,27 +2253,16 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
             </Field>
           )}
 
-          {style.cta && !style.ctaPlain && (
-            <div className="glp-row2">
-              <Field label="Button text">
-                <input className="glp-input" value={card.ctaText} onChange={(e) => set({ ctaText: e.target.value })} />
-              </Field>
-              <Field label="Button style">
-                <Seg
-                  value={card.ctaStyle}
-                  onChange={(v) => set({ ctaStyle: v })}
-                  options={[
-                    { value: "filled", label: "Filled" },
-                    { value: "ghost", label: "Outlined" },
-                  ]}
-                />
-              </Field>
-            </div>
-          )}
-          {style.cta && style.ctaPlain && (
-            <Field label="Link text (e.g. Open Folder)">
-              <input className="glp-input" value={card.ctaText} onChange={(e) => set({ ctaText: e.target.value })} />
-            </Field>
+          {style.cta && (
+            <CtaStyleFields
+              textLabel="Button text"
+              plainTextLabel="Link text (e.g. Open Folder)"
+              ctaText={card.ctaText}
+              ctaStyle={card.ctaStyle}
+              ctaPlain={style.ctaPlain}
+              onTextChange={(v) => set({ ctaText: v })}
+              onStyleChange={(v) => set({ ctaStyle: v })}
+            />
           )}
 
           <label className="glp-toggle">
@@ -2221,23 +2324,13 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
         guide categories.
       </div>
       {st.badge && (
-        <div className="glp-row2">
-          <Field label="Badge text (all cards)">
-            <input className="glp-input" value={Q.eyebrow} onChange={(e) => setLiq({ eyebrow: e.target.value })} />
-          </Field>
-          {st.badge && (
-            <Field label="Badge icon">
-              <Seg
-                value={Q.badge}
-                onChange={(v) => setLiq({ badge: v })}
-                options={[
-                  { value: "dot", label: "● Open" },
-                  { value: "lock", label: "🔒 Locked" },
-                ]}
-              />
-            </Field>
-          )}
-        </div>
+        <BadgeIconField
+          eyebrowLabel="Badge text (all cards)"
+          eyebrow={Q.eyebrow}
+          badge={Q.badge}
+          onEyebrowChange={(v) => setLiq({ eyebrow: v })}
+          onBadgeChange={(v) => setLiq({ badge: v })}
+        />
       )}
       {st.icon && <IconField label="Icon (all cards)" obj={Q} onChange={setLiq} />}
       <Field label="Fallback description (used when a project has none)">
@@ -2263,23 +2356,15 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
         </>
       )}
       {st.cta && (
-        <div className="glp-row2">
-          <Field label={st.ctaPlain ? "Link text" : "Button text (all cards)"}>
-            <input className="glp-input" value={Q.ctaText} onChange={(e) => setLiq({ ctaText: e.target.value })} />
-          </Field>
-          {!st.ctaPlain && (
-            <Field label="Button style">
-              <Seg
-                value={Q.ctaStyle}
-                onChange={(v) => setLiq({ ctaStyle: v })}
-                options={[
-                  { value: "filled", label: "Filled" },
-                  { value: "ghost", label: "Outlined" },
-                ]}
-              />
-            </Field>
-          )}
-        </div>
+        <CtaStyleFields
+          textLabel="Button text (all cards)"
+          plainTextLabel="Link text"
+          ctaText={Q.ctaText}
+          ctaStyle={Q.ctaStyle}
+          ctaPlain={st.ctaPlain}
+          onTextChange={(v) => setLiq({ ctaText: v })}
+          onStyleChange={(v) => setLiq({ ctaStyle: v })}
+        />
       )}
       {!hideAccents && (
         <Field label="Accent cycle (cards rotate through the selected colors)">
@@ -2303,6 +2388,9 @@ function CardStyleControls({ style: st, setStyle }) {
         <StyleCheck checked={!!st.anchor} label="Whole card links" onChange={(v) => setStyle({ anchor: v })} />
         <StyleCheck checked={!!st.mono} label="Mono / uppercase" onChange={(v) => setStyle({ mono: v })} />
       </div>
+      {/* NB: this "button" value means "a styled CTA is shown" (filled or ghost, chosen
+          elsewhere) — a different axis from ColumnEditor's per-CTA style Seg below, whose
+          "button" value renders as an outline (labeled "Outline" there to avoid the clash) */}
       <Field label="Call to action">
         <Seg
           value={st.cta ? (st.ctaPlain ? "plain" : "button") : "none"}
@@ -2331,7 +2419,7 @@ function CardStyleControls({ style: st, setStyle }) {
 }
 
 /* ---------- single text-column editor ---------- */
-function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, onRemove, onDuplicate }) {
+function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, onRemove, onDuplicate, dragHandleProps, dropRowProps, dragOver }) {
   const set = (patch) => onChange({ ...column, ...patch });
   const ctas = column.ctas || [];
   const setCta = (i, patch) => set({ ctas: ctas.map((c, j) => (j === i ? { ...c, ...patch } : c)) });
@@ -2339,7 +2427,10 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
   const removeCta = (i) => set({ ctas: ctas.filter((_, j) => j !== i) });
   return (
     <div className="glp-card">
-      <div className="glp-card__head" onClick={onToggle}>
+      <div className={"glp-card__head" + (dragOver ? " glp-drop-over" : "")} onClick={onToggle} {...dropRowProps}>
+        <span className="glp-drag-handle" title="Drag to reorder" onClick={(e) => e.stopPropagation()} {...dragHandleProps}>
+          <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+        </span>
         <span className="glp-card__name">{column.heading || `Column ${index + 1}`}</span>
         <button className="glp-iconbtn" title="Move up" disabled={index === 0}
           onClick={(e) => { e.stopPropagation(); onMove(-1); }} type="button">&#8593;</button>
@@ -2398,7 +2489,7 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
 }
 
 /* ---------- section editor ---------- */
-function SectionEditor({ section, index, count, hideAccents, globalStyle, open, onToggle, onMove, onRemove, onDuplicate, onChange, cardOps, openCard, setOpenCard }) {
+function SectionEditor({ section, index, count, hideAccents, globalStyle, open, onToggle, onMove, onRemove, onDuplicate, onChange, cardOps, openCard, setOpenCard, dragHandleProps, dropRowProps, dragOver }) {
   const set = (patch) => onChange({ ...section, ...patch });
   const setStyle = (patch) => onChange({ ...section, style: { ...section.style, ...patch } });
   const setLay = (patch) => onChange({ ...section, layout: { ...section.layout, ...patch } });
@@ -2425,6 +2516,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
       [arr[i], arr[j]] = [arr[j], arr[i]];
       set({ columns: arr });
     },
+    reorderTo: (id, toIndex) => set({ columns: reorderById(section.columns, id, toIndex) }),
     remove: (id) => { if (section.columns.length > 1) set({ columns: section.columns.filter((c) => c.id !== id) }); },
     add: () => {
       if (section.columns.length >= 4) return;
@@ -2443,10 +2535,15 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
       set({ columns: arr });
     },
   };
+  const colDrag = useDragReorder(colOps.reorderTo);
+  const cardDrag = useDragReorder(cardOps.reorderTo);
 
   return (
     <div className="glp-card glp-section">
-      <div className="glp-card__head" onClick={onToggle}>
+      <div className={"glp-card__head" + (dragOver ? " glp-drop-over" : "")} onClick={onToggle} {...dropRowProps}>
+        <span className="glp-drag-handle" title="Drag to reorder" onClick={(e) => e.stopPropagation()} {...dragHandleProps}>
+          <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+        </span>
         <span className="glp-card__name">{section.label || section.heading || `Section ${index + 1}`}</span>
         <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "auto" : section.cards.length + " cards"}</span>
         <button className="glp-iconbtn" title="Move up" disabled={index === 0}
@@ -2533,6 +2630,9 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                   onMove={(dir) => colOps.move(col.id, dir)}
                   onRemove={() => colOps.remove(col.id)}
                   onDuplicate={() => colOps.duplicate(col.id)}
+                  dragHandleProps={colDrag.dragHandleProps(col.id)}
+                  dropRowProps={colDrag.dropRowProps(i)}
+                  dragOver={colDrag.overIndex === i}
                 />
               ))}
               <button className="glp-add" type="button" onClick={colOps.add} disabled={section.columns.length >= 4}>
@@ -2613,6 +2713,9 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                       onMove={(dir) => cardOps.move(card.id, dir)}
                       onRemove={() => cardOps.remove(card.id)}
                       onDuplicate={() => cardOps.duplicate(card.id)}
+                      dragHandleProps={cardDrag.dragHandleProps(card.id)}
+                      dropRowProps={cardDrag.dropRowProps(i)}
+                      dragOver={cardDrag.overIndex === i}
                     />
                   ))}
                   <button className="glp-add" type="button" onClick={cardOps.add} disabled={section.cards.length >= 12}>
@@ -2709,8 +2812,8 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
           value={mode}
           onChange={setMode}
           options={[
-            { value: "light", label: "☀ Light" },
-            { value: "dark", label: "☾ Dark" },
+            { value: "light", label: <><i className="fa-solid fa-sun" aria-hidden="true"></i> Light</> },
+            { value: "dark", label: <><i className="fa-solid fa-moon" aria-hidden="true"></i> Dark</> },
           ]}
         />
         <Seg
@@ -2771,6 +2874,9 @@ function App() {
   const [sharedView, setSharedView] = useState(boot.current.sharedView);
   const [pagesOpen, setPagesOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  /* Enter/Escape already resolve the rename (commit/cancel); the ref stops the blur
+     that follows (React unmounting the input) from committing or double-committing */
+  const renameHandled = useRef(false);
   const [openCard, setOpenCard] = useState(null);
   const [openNav, setOpenNav] = useState("sections");
   const [openSection, setOpenSection] = useState(boot.current.config.sections[0].id);
@@ -2838,6 +2944,9 @@ function App() {
   const canUndo = past.current.length > 0 || config !== snapRef.current;
   const canRedo = future.current.length > 0;
 
+  /* intentionally no dependency array: undo/redo/canUndo/canRedo close over `config` and
+     the past/future refs, which change every edit — re-binding on every render keeps the
+     listener's closure fresh instead of going stale behind a memoized dependency list */
   useEffect(() => {
     const h = (e) => {
       if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
@@ -2862,6 +2971,8 @@ function App() {
       [arr[i], arr[j]] = [arr[j], arr[i]];
       return { ...c, sections: arr };
     });
+  const reorderSection = (id, toIndex) => setConfig((c) => ({ ...c, sections: reorderById(c.sections, id, toIndex) }));
+  const sectionDrag = useDragReorder(reorderSection);
   const removeSection = (id) => setConfig((c) => (c.sections.length > 1 ? { ...c, sections: c.sections.filter((s) => s.id !== id) } : c));
   const addSection = () =>
     setConfig((c) => {
@@ -2926,6 +3037,11 @@ function App() {
           return { ...s, cards: arr };
         }),
       })),
+    reorderTo: (cardId, toIndex) =>
+      setConfig((c) => ({
+        ...c,
+        sections: c.sections.map((s) => (s.id !== secId ? s : { ...s, cards: reorderById(s.cards, cardId, toIndex) })),
+      })),
     remove: (cardId) =>
       setConfig((c) => ({
         ...c,
@@ -2966,8 +3082,10 @@ function App() {
   const stripHash = () => {
     try { window.history.replaceState(null, "", window.location.pathname + window.location.search); } catch (e) {}
   };
-  const uniqueName = (base) => {
-    const names = new Set(designs.map((d) => d.name));
+  /* excludeId lets renameCurrent check uniqueness against every OTHER page without
+     tripping over the current page's own (soon-to-be-replaced) name */
+  const uniqueName = (base, excludeId) => {
+    const names = new Set(designs.filter((d) => d.id !== excludeId).map((d) => d.name));
     if (!names.has(base)) return base;
     let n = 2;
     while (names.has(`${base} ${n}`)) n++;
@@ -2981,12 +3099,13 @@ function App() {
     if (firstAutosave.current) { firstAutosave.current = false; return; }
     setSaveState("saving");
     const t = setTimeout(() => {
+      let ok = true;
       setDesigns((ds) => {
         const next = ds.map((d) => (d.id === currentId ? { ...d, config, override: override ?? "", updatedAt: nowMs() } : d));
-        persistDesigns(next, currentId);
+        ok = persistDesigns(next, currentId);
         return next;
       });
-      setSaveState("saved");
+      setSaveState(ok ? "saved" : "error");
     }, 500);
     return () => clearTimeout(t);
   }, [config, override, currentId, sharedView]);
@@ -3011,7 +3130,7 @@ function App() {
     const d = makeDesign(uniqueName("Untitled page"), DEFAULT_CONFIG, "");
     const ds = [...designs, d];
     setDesigns(ds);
-    persistDesigns(ds, d.id);
+    setSaveState(persistDesigns(ds, d.id) ? "saved" : "error");
     setConfig(DEFAULT_CONFIG);
     setOverride(null);
     setCurrentId(d.id);
@@ -3028,7 +3147,7 @@ function App() {
     const d = makeDesign(uniqueName((src ? src.name : "Page") + " copy"), config, override ?? "");
     const ds = [...designs, d];
     setDesigns(ds);
-    persistDesigns(ds, d.id);
+    setSaveState(persistDesigns(ds, d.id) ? "saved" : "error");
     setCurrentId(d.id);
     setSharedView(false);
     setPagesOpen(false);
@@ -3040,17 +3159,18 @@ function App() {
     const d = makeDesign(uniqueName("Shared page"), config, override ?? "");
     const ds = [...designs, d];
     setDesigns(ds);
-    persistDesigns(ds, d.id);
+    setSaveState(persistDesigns(ds, d.id) ? "saved" : "error");
     setCurrentId(d.id);
     setSharedView(false);
     stripHash();
   };
 
   const renameCurrent = (name) => {
-    const nm = (name || "").trim() || "Untitled page";
+    const trimmed = (name || "").trim() || "Untitled page";
+    const nm = uniqueName(trimmed, currentId);
     const ds = designs.map((d) => (d.id === currentId ? { ...d, name: nm } : d));
     setDesigns(ds);
-    persistDesigns(ds, currentId);
+    setSaveState(persistDesigns(ds, currentId) ? "saved" : "error");
     setRenaming(false);
   };
 
@@ -3060,10 +3180,12 @@ function App() {
     } catch (e) {}
     let ds = designs.filter((d) => d.id !== currentId);
     if (!ds.length) ds = [makeDesign("Untitled page", DEFAULT_CONFIG, "")];
-    const target = ds[0];
+    /* land on the most recently edited remaining page, matching the switcher's own
+       sort order, rather than whatever happens to be first in array order */
+    const target = ds.slice().sort((a, b) => b.updatedAt - a.updatedAt)[0];
     const cfg = migrateConfig(target.config);
     setDesigns(ds);
-    persistDesigns(ds, target.id);
+    setSaveState(persistDesigns(ds, target.id) ? "saved" : "error");
     setConfig(cfg);
     setOverride(target.override || null);
     setCurrentId(target.id);
@@ -3072,6 +3194,15 @@ function App() {
     setOpenCard(null);
     setPagesOpen(false);
     setRenaming(false);
+  };
+
+  /* manual CODE-tab edits aren't in the undo history (only `config` is), so discarding
+     them is the one destructive action in the app with no ⌘Z path back — confirm first */
+  const discardOverride = () => {
+    try {
+      if (!window.confirm("Discard your manual HTML edits? This can't be undone.")) return;
+    } catch (e) {}
+    setOverride(null);
   };
 
   const copyText = async (text) => {
@@ -3198,7 +3329,18 @@ function App() {
           <button className="glp-smallbtn" type="button" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo} style={{ padding: "8px 11px" }}>↶</button>
           <button className="glp-smallbtn" type="button" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo} style={{ padding: "8px 11px" }}>↷</button>
           {!sharedView && currentId && (
-            <span className={"glp-save" + (saveState === "saved" ? " ok" : "")}>{saveState === "saving" ? "Saving…" : "Saved ✓"}</span>
+            <span
+              className={"glp-save" + (saveState === "saved" ? " ok" : saveState === "error" ? " err" : "")}
+              title={saveState === "error" ? "Browser storage is unavailable or full — this page only exists in memory. Use Share link or Download .html to keep it." : undefined}
+            >
+              {saveState === "saving" ? (
+                "Saving…"
+              ) : saveState === "error" ? (
+                <><i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Not saved</>
+              ) : (
+                <><i className="fa-solid fa-check" aria-hidden="true"></i> Saved</>
+              )}
+            </span>
           )}
           <div className="glp-pages">
             <button className="glp-smallbtn glp-pages__btn" type="button" onClick={() => { setPagesOpen((o) => !o); setRenaming(false); }} title="Saved pages" style={{ padding: "8px 13px" }}>
@@ -3212,7 +3354,7 @@ function App() {
                   <div className="glp-pages__list">
                     {designs.slice().sort((a, b) => b.updatedAt - a.updatedAt).map((d) => (
                       <button key={d.id} type="button" className={"glp-pages__item" + (d.id === currentId && !sharedView ? " on" : "")} onClick={() => switchTo(d.id)}>
-                        <span className="glp-pages__check">{d.id === currentId && !sharedView ? "✓" : ""}</span>
+                        <span className="glp-pages__check">{d.id === currentId && !sharedView ? <i className="fa-solid fa-check" aria-hidden="true"></i> : ""}</span>
                         <span className="glp-pages__name">{d.name}</span>
                         <span className="glp-pages__time">{relTime(d.updatedAt)}</span>
                       </button>
@@ -3225,7 +3367,16 @@ function App() {
                         className="glp-input"
                         autoFocus
                         defaultValue={currentName}
-                        onKeyDown={(e) => { if (e.key === "Enter") renameCurrent(e.target.value); if (e.key === "Escape") setRenaming(false); }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") { renameHandled.current = true; renameCurrent(e.target.value); }
+                          if (e.key === "Escape") { renameHandled.current = true; setRenaming(false); }
+                        }}
+                        onBlur={(e) => {
+                          /* clicking away (e.g. the backdrop) used to silently discard the typed
+                             name — commit it instead, matching every other field in the app */
+                          if (renameHandled.current) { renameHandled.current = false; return; }
+                          renameCurrent(e.target.value);
+                        }}
                       />
                       <button className="glp-smallbtn" type="button" onClick={(e) => renameCurrent(e.currentTarget.previousElementSibling.value)}>
                         Save
@@ -3244,13 +3395,19 @@ function App() {
             )}
           </div>
           <button className={"glp-smallbtn" + (shared === true ? " done" : "")} onClick={share} type="button" disabled={shared === "working"} style={{ padding: "8px 13px" }}>
-            {shared === "working" ? "Creating link…" : shared === true ? "✓ Link copied" : "Share link"}
+            {shared === "working" ? (
+              "Creating link…"
+            ) : shared === true ? (
+              <><i className="fa-solid fa-check" aria-hidden="true"></i> Link copied</>
+            ) : (
+              "Share link"
+            )}
           </button>
           <button className="glp-smallbtn" onClick={download} type="button" style={{ padding: "8px 13px" }}>
             Download .html
           </button>
           <button className={"glp-copy" + (copied ? " done" : "")} onClick={copy} type="button">
-            {copied ? "✓ Copied" : "Copy HTML"}
+            {copied ? <><i className="fa-solid fa-check" aria-hidden="true"></i> Copied</> : "Copy HTML"}
           </button>
         </div>
       </div>
@@ -3269,7 +3426,7 @@ function App() {
               {override !== null && (
                 <div className="glp-banner" style={{ borderRadius: 10, border: "1px solid rgba(227,177,104,.3)", marginBottom: 16 }}>
                   <span>Manual code edits are active — "Copy HTML" exports your edited code, not these settings.</span>
-                  <button className="glp-smallbtn" type="button" onClick={() => setOverride(null)}>
+                  <button className="glp-smallbtn" type="button" onClick={discardOverride}>
                     Discard edits
                   </button>
                 </div>
@@ -3370,10 +3527,20 @@ function App() {
                   </span>
                 </label>
                 <label className="glp-toggle">
-                  <input type="checkbox" checked={config.headerImage.enabled} onChange={(e) => setHeaderImage({ enabled: e.target.checked })} />
+                  <input
+                    type="checkbox"
+                    checked={config.headerImage.enabled}
+                    onChange={(e) => {
+                      const enabled = e.target.checked;
+                      setHeaderImage({ enabled });
+                      /* the image tucks up behind the header, so it's invisible unless the
+                         header is transparent — turn that on too instead of a silent no-op */
+                      if (enabled && !config.flattenHeader) patch({ flattenHeader: true });
+                    }}
+                  />
                   <span className="glp-toggle__text">
                     <b>Hero background image</b>
-                    <span>Full-bleed image behind the hero — pair with the transparent header so it sits behind that too.</span>
+                    <span>Full-bleed image behind the hero (turns on the transparent header above automatically, so it isn't hidden behind it).</span>
                   </span>
                 </label>
                 {config.headerImage.enabled && (
@@ -3503,6 +3670,9 @@ function App() {
                     cardOps={cardOpsFor(section.id)}
                     openCard={openCard}
                     setOpenCard={setOpenCard}
+                    dragHandleProps={sectionDrag.dragHandleProps(section.id)}
+                    dropRowProps={sectionDrag.dropRowProps(i)}
+                    dragOver={sectionDrag.overIndex === i}
                   />
                 ))}
                 <button className="glp-add" type="button" onClick={addSection} disabled={config.sections.length >= 6}>
@@ -3552,7 +3722,7 @@ function App() {
               {override !== null && (
                 <div className="glp-banner">
                   <span>Edited by hand — builder changes won't apply until you sync.</span>
-                  <button className="glp-smallbtn" type="button" onClick={() => setOverride(null)}>
+                  <button className="glp-smallbtn" type="button" onClick={discardOverride}>
                     Sync from builder
                   </button>
                 </div>

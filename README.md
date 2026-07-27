@@ -9,28 +9,40 @@ preview — then copy the generated snippet into
 
 - **Multiple card sections** — stack as many sections as you need, each with
   its own heading, intro, alignment (independent of the hero), card style,
-  and grid. Great for "For developers" up top and "Resources" below.
+  and grid. Great for "For developers" up top and "Resources" below. Each
+  section also has its own **builder label** (sidebar/tab name only, never
+  shown on the page) so you can keep track of what a section is for even if
+  its on-page heading is blank or renamed.
+- **Drag-and-drop reordering** — drag the grip handle on any section, card,
+  or column to move it to any position; the ↑/↓ buttons still work too.
 - **Fully granular card styles** — no more fixed templates. Compose any card
   look from individual switches: icon tile, badge/eyebrow, auto-number,
   `File_0N` label, top accent bar, preview list, CTA button, plain-text CTA,
   whole-card link, mono/uppercase, plus density and corner-radius controls.
-- **Font Awesome icons** — cards accept emoji *or* a Font Awesome icon
-  (e.g. solid `rocket`), using ReadMe's built-in Font Awesome. Light &
-  duotone are Pro-only and may not show in the in-app preview.
+- **Font Awesome icons by default** — cards use ReadMe's built-in Font
+  Awesome (e.g. solid `rocket`) out of the box; emoji are still available as
+  an alternate icon type. Light & duotone FA styles are Pro-only and may not
+  show in the in-app preview.
 - **Per-section Liquid mode** — any section's cards can auto-generate one per
   child project via ReadMe's Liquid templating (`parentProject.childrenProjects`),
   so the page updates itself when projects are added or removed. Optionally
   lists each project's top guide categories.
-- **Search placement** — three modes: leave it native, center search + Ask AI
-  in the header, or move them into a row under the hero. Ask AI always sits
-  beside search.
+- **Search placement** — three modes: leave it native (the default), center
+  search + Ask AI in the header, or move them into a row under the hero.
+  Ask AI always sits beside search.
+- **Native ReadMe styling by default** — new pages start with search/Ask AI
+  left alone, the header un-flattened, and colors inheriting ReadMe's own
+  accent (`--color-link-primary`) — so a fresh page matches your hub's look
+  until you deliberately customize it.
 - **Hero background image** — an optional full-bleed image (with darkening
   tint) behind the hero; pair it with the transparent header so it sits
   behind that too.
 - **Saved pages + autosave** — your work is kept in the browser
   automatically as you edit. The **Pages** menu (top bar) holds as many named
   designs as you like — switch, create, rename, duplicate, or delete them, and
-  the current one auto-saves. Nothing is lost on refresh.
+  the current one auto-saves. Nothing is lost on refresh. If browser storage
+  is ever unavailable or full, the save indicator switches to a "Not saved"
+  warning rather than silently claiming success.
 - **Undo / redo** — top-bar buttons (and ⌘/Ctrl-Z, ⇧⌘/Ctrl-Z) roll back
   recent changes, including accidental section or card deletions.
 - **One-color mode** — a top **Colors** section can force a single accent
