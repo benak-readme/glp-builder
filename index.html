@@ -236,14 +236,14 @@ const DEFAULT_COLUMNS = () => [
   makeColumn({ heading: "Support", body: "Talk to our team or browse community answers." }),
 ];
 
-/* ---------------- default config = Benak's v3 page ---------------- */
+/* ---------------- default config (fresh-install starter) ---------------- */
 const DEFAULT_CONFIG = {
   fonts: "readme",
   hero: {
     eyebrow: "",
     chip: "",
     chipHref: "",
-    title: "Welcome to Benak's ReadMe Demo",
+    title: "Welcome to our documentation",
     subtitle: "Documentation for every audience — pick your entry point or search everything.",
     align: "center",
     /* null = use the alignment-based default size (38/42 title, 14.5 subtitle) */
@@ -251,14 +251,16 @@ const DEFAULT_CONFIG = {
     subtitleSize: null,
     padY: 0,
     buttons: false,
-    btnPrimary: { label: "Get started", href: "/bv-1" },
-    btnSecondary: { label: "API Reference", href: "/bv-1/reference" },
+    btnPrimary: { label: "Get started", href: "/getting-started" },
+    btnSecondary: { label: "API Reference", href: "/reference" },
   },
   ticker: { enabled: false, text: "Documentation • Endpoints • SDKs • Guides" },
-  searchMode: "hero",
-  flattenHeader: true,
+  /* native = ReadMe's own default search/Ask AI placement, no relocation */
+  searchMode: "native",
+  flattenHeader: false,
   headerImage: { enabled: false, url: "", height: 380, tint: 0, offset: 64 },
-  theme: { uniform: false, matchReadme: false, accent: "blue", customLight: "#0B63C5", customDark: "#6FB4F5" },
+  /* matchReadme = inherit the hub's own accent color instead of picking one */
+  theme: { uniform: false, matchReadme: true, accent: "blue", customLight: "#0B63C5", customDark: "#6FB4F5" },
   /* global card style — sections in "global" style mode inherit this look */
   cardStyle: { ...DEFAULT_STYLE },
   layout: { maxW: 1120 },
@@ -274,6 +276,7 @@ const DEFAULT_CONFIG = {
     {
       id: uid(),
       type: "cards",
+      label: "",
       heading: "",
       intro: "",
       align: "center",
@@ -287,7 +290,7 @@ const DEFAULT_CONFIG = {
         {
           id: uid(), icon: "📘", iconType: "emoji", faStyle: "solid",
           title: "Public", blurb: "Guides, references, and API docs open to everyone.",
-          href: "/bv-1", eyebrow: "Open access", badge: "dot", accent: "green",
+          href: "/public", eyebrow: "Open access", badge: "dot", accent: "green",
           customLight: "#0C7A66", customDark: "#34C98E",
           peekLabel: "Popular", peekItems: ["Quickstart guide", "API reference", "Authentication"],
           peekArrows: true, ctaText: "Browse docs", ctaStyle: "filled", primary: true,
@@ -295,7 +298,7 @@ const DEFAULT_CONFIG = {
         {
           id: uid(), icon: "🤝", iconType: "emoji", faStyle: "solid",
           title: "Partners", blurb: "Integration guides and resources for approved partners.",
-          href: "/bv-2", eyebrow: "Log in to view", badge: "lock", accent: "purple",
+          href: "/partners", eyebrow: "Log in to view", badge: "lock", accent: "purple",
           customLight: "#5B48D0", customDark: "#A49AF0",
           peekLabel: "Inside", peekItems: ["Certification paths", "Co-marketing kits", "Sandbox access"],
           peekArrows: false, ctaText: "Partner portal", ctaStyle: "ghost", primary: false,
@@ -303,7 +306,7 @@ const DEFAULT_CONFIG = {
         {
           id: uid(), icon: "🧪", iconType: "emoji", faStyle: "solid",
           title: "Beta", blurb: "Preview features and docs that are still taking shape.",
-          href: "/bv-3", eyebrow: "Log in to view", badge: "lock", accent: "amber",
+          href: "/beta", eyebrow: "Log in to view", badge: "lock", accent: "amber",
           customLight: "#9C6212", customDark: "#E3B168",
           peekLabel: "Inside", peekItems: ["Early API changelogs", "Feature previews", "Feedback board"],
           peekArrows: false, ctaText: "Preview docs", ctaStyle: "ghost", primary: false,
@@ -345,6 +348,8 @@ const normColumn = (c) => makeColumn({ ...c, id: c && c.id });
 const normSection = (s) => ({
   id: s.id || uid(),
   type: s.type === "columns" ? "columns" : "cards",
+  /* builder-only label for the sidebar/tab — independent of the on-page heading */
+  label: s.label || "",
   heading: s.heading || "",
   intro: s.intro || "",
   align: s.align === "left" ? "left" : "center",
@@ -1364,7 +1369,7 @@ function expandLiquidForPreview(html) {
 
   /* parent tokens + anything left over */
   out = out
-    .replace(/\{\{\s*parentProject\.name\s*\}\}/g, "Benak Group")
+    .replace(/\{\{\s*parentProject\.name\s*\}\}/g, "Your Group")
     .replace(/\{\{\s*parentProject\.description[^}]*\}\}/g, "All product documentation in one place.");
   return out;
 }
@@ -1451,7 +1456,7 @@ function buildPreviewDoc(userHtml, mode) {
 <body>
   <div class="rm-Header">
     <div class="rm-Header-top">
-      <span class="rm-Header-brand"><span class="brand-mark">B</span>Benak Group</span>
+      <span class="rm-Header-brand"><span class="brand-mark">Y</span>Your Group</span>
       <div class="rm-Header-search"><button class="rm-SearchToggle"><span>&#128269;</span> Search docs&hellip; <kbd>&#8984;K</kbd></button></div>
       <div class="rm-AskAi"><button class="rm-AskAi-button">&#10022; Ask AI</button></div>
     </div>
@@ -2442,7 +2447,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
   return (
     <div className="glp-card glp-section">
       <div className="glp-card__head" onClick={onToggle}>
-        <span className="glp-card__name">{section.heading || `Section ${index + 1}`}</span>
+        <span className="glp-card__name">{section.label || section.heading || `Section ${index + 1}`}</span>
         <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "auto" : section.cards.length + " cards"}</span>
         <button className="glp-iconbtn" title="Move up" disabled={index === 0}
           onClick={(e) => { e.stopPropagation(); onMove(-1); }} type="button">&#8593;</button>
@@ -2456,6 +2461,14 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
       </div>
       {open && (
         <div className="glp-card__body">
+          <Field label="Builder label (sidebar only — not shown on the page)">
+            <input
+              className="glp-input"
+              value={section.label}
+              onChange={(e) => set({ label: e.target.value })}
+              placeholder={section.heading || `Section ${index + 1}`}
+            />
+          </Field>
           <Field label="Section heading (blank to hide)">
             <input className="glp-input" value={section.heading} onChange={(e) => set({ heading: e.target.value })} placeholder="e.g. For developers" />
           </Field>
@@ -2857,6 +2870,7 @@ function App() {
       const ns = {
         id,
         type: "cards",
+        label: "",
         heading: "New section",
         intro: "",
         align: "center",
