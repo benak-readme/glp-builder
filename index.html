@@ -2122,8 +2122,20 @@ const APP_CSS = `
   .glp-sec__label:hover { color: var(--ink); }
   .glp-sec__label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
-  .glp-field { margin-bottom: 12px; }
-  .glp-field label { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 5px; }
+  .glp-field { margin-bottom: 9px; }
+  .glp-field label { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
+  /* label-left rows: one line instead of two for sliders, numbers and short segmented choices */
+  .glp-field--inline { display: grid; grid-template-columns: 104px minmax(0, 1fr); align-items: center; gap: 10px; }
+  .glp-field--inline > label { margin: 0; line-height: 1.3; }
+  .glp-field--inline .glp-seg { justify-self: start; max-width: 100%; }
+  .glp-toggles2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .glp-subtabs { display: flex; gap: 2px; margin: 2px 0 12px; border-bottom: 1px solid var(--line); }
+  .glp-subtabs button {
+    border: 0; background: transparent; color: var(--ink-3); cursor: pointer; font-family: inherit;
+    font-size: 12px; font-weight: 600; padding: 7px 10px 8px; margin-bottom: -1px; border-bottom: 2px solid transparent;
+  }
+  .glp-subtabs button:hover { color: var(--ink); }
+  .glp-subtabs button.on { color: var(--ink); border-bottom-color: var(--accent); }
   .glp-input, .glp-textarea, .glp-select {
     width: 100%;
     background: var(--bg);
@@ -2135,7 +2147,7 @@ const APP_CSS = `
     font-family: inherit;
   }
   .glp-input:focus, .glp-textarea:focus, .glp-select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
-  .glp-textarea { resize: vertical; min-height: 54px; line-height: 1.45; }
+  .glp-textarea { resize: vertical; min-height: 40px; line-height: 1.45; field-sizing: content; max-height: 160px; }
 
   /* a text field with its own size control folded into the same row, instead of a
      separate row underneath — the pair reads as one input with the number a detail
@@ -2179,7 +2191,7 @@ const APP_CSS = `
   .glp-sub {
     font-family: 'Space Mono', monospace; font-size: 10px;
     letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3);
-    margin: 16px 0 8px;
+    margin: 14px 0 7px;
   }
   .glp-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 2px 0 12px; }
   .glp-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
@@ -2266,6 +2278,13 @@ const APP_CSS = `
   }
   .glp-iconbtn:hover { background: var(--line); color: var(--ink); }
   .glp-iconbtn:disabled { opacity: .3; cursor: default; }
+  .glp-card__head { position: relative; }
+  .glp-rowacts {
+    position: absolute; right: 34px; top: 50%; transform: translateY(-50%);
+    display: flex; gap: 2px; padding-left: 18px; opacity: 0; pointer-events: none; transition: opacity 120ms ease;
+    background: linear-gradient(90deg, transparent, var(--rowbg, var(--panel-2)) 18px);
+  }
+  .glp-card__head:hover > .glp-rowacts, .glp-card__head:focus-within > .glp-rowacts { opacity: 1; pointer-events: auto; }
   .glp-chev i { font-size: 10px; transition: transform 150ms ease; }
   .glp-chev.open i { transform: rotate(90deg); }
   .glp button:focus-visible, .glp [role=button]:focus-visible, .glp-info:focus-visible {
@@ -2274,7 +2293,7 @@ const APP_CSS = `
   .glp-card__body { padding: 4px 12px 14px; border-top: 1px solid var(--line); }
 
   /* nested section container gets a subtle accent edge */
-  .glp-section > .glp-card__head { background: rgba(76,141,255,.06); }
+  .glp-section > .glp-card__head { --rowbg: color-mix(in srgb, #4C8DFF 6%, var(--panel-2)); background: var(--rowbg); }
   .glp-section > .glp-card__body { padding: 8px 12px 14px; }
 
   .glp-swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
@@ -2314,6 +2333,16 @@ const APP_CSS = `
 
   .glp-peekitem { display: flex; gap: 6px; margin-bottom: 6px; }
   .glp-peekitem .glp-input { flex: 1; }
+  .glp-iconrow { display: flex; gap: 6px; align-items: center; }
+  .glp-iconrow .glp-input { flex: 1; min-width: 0; }
+  .glp-iconpick {
+    flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 9px;
+    border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg); color: var(--ink); cursor: pointer; font-size: 15px;
+  }
+  .glp-iconpick:hover, .glp-iconpick.on { border-color: var(--accent); }
+  .glp-iconpick__caret { font-size: 8px; color: var(--ink-3); }
+  .glp-iconpop { margin-top: 8px; padding: 10px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg); }
+  .glp-iconpop .glp-seg { margin-bottom: 8px; }
   .glp-linkrow .glp-input { min-width: 0; }
   .glp-linkrow .glp-input:first-child { flex: 1.4; }
 
@@ -2500,12 +2529,12 @@ const APP_CSS = `
 `;
 
 /* ---------- small reusable inputs ---------- */
-function Field({ label, children, style }) {
+function Field({ label, children, style, inline }) {
   /* link the label to a lone input/textarea child so clicking it focuses the field */
   const id = useId();
   const linkable = React.isValidElement(children) && (children.type === "input" || children.type === "textarea" || children.type === "select");
   return (
-    <div className="glp-field" style={style}>
+    <div className={"glp-field" + (inline ? " glp-field--inline" : "")} style={style}>
       <label htmlFor={linkable ? id : undefined}>{label}</label>
       {linkable ? React.cloneElement(children, { id: children.props.id || id }) : children}
     </div>
@@ -2530,7 +2559,7 @@ function Slider({ label, value, min, max, step = 1, unit = "px", onChange }) {
   const [txt, setTxt] = useState(String(value));
   useEffect(() => { setTxt(String(value)); }, [value]);
   return (
-    <Field label={label}>
+    <Field label={label} inline>
       <div className="glp-slider">
         <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} />
         <input
@@ -2558,7 +2587,7 @@ function NumberField({ label, value, min, max, step = 1, unit = "px", onChange }
   const [txt, setTxt] = useState(String(value));
   useEffect(() => { setTxt(String(value)); }, [value]);
   return (
-    <Field label={label}>
+    <Field label={label} inline>
       <div className="glp-slider">
         <input
           type="number"
@@ -2730,68 +2759,61 @@ function HexColor({ value, onChange }) {
 /* icon input — emoji character or a Font Awesome icon name + style */
 function IconField({ label, obj, onChange }) {
   const type = obj.iconType || "emoji";
+  const [open, setOpen] = useState(false);
+  const setType = (v) => {
+    /* switching type while keeping an incompatible value silently produces
+       garbage (e.g. fa-solid fa-📘) with no visible error, so reseed a sane
+       default, but only when the current value wouldn't work as-is */
+    const cur = (obj.icon || "").trim();
+    const looksEmoji = /[\u{1F000}-\u{1FFFF}☀-➿]/u.test(cur);
+    const looksFaSlug = /^[a-z][a-z0-9-]*$/i.test(cur);
+    const icon = v === "fa" && !looksFaSlug ? "book" : v === "emoji" && !looksEmoji ? "📘" : cur;
+    onChange({ iconType: v, icon });
+  };
   return (
     <Field label={label}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <Seg
-          value={type}
-          onChange={(v) => {
-            /* switching type while keeping an incompatible value silently produces
-               garbage (e.g. fa-solid fa-📘) with no visible error — reseed a sane
-               default instead, but only when the current value wouldn't work as-is */
-            const cur = (obj.icon || "").trim();
-            const looksEmoji = /[\u{1F000}-\u{1FFFF}☀-➿]/u.test(cur);
-            const looksFaSlug = /^[a-z][a-z0-9-]*$/i.test(cur);
-            const icon = v === "fa" && !looksFaSlug ? "book" : v === "emoji" && !looksEmoji ? "📘" : cur;
-            onChange({ iconType: v, icon });
-          }}
-          options={[
-            { value: "emoji", label: "Emoji" },
-            { value: "fa", label: "Font Awesome" },
-          ]}
+      <div className="glp-iconrow">
+        <button type="button" className={"glp-iconpick" + (open ? " on" : "")} title="Choose an icon" aria-label="Choose an icon" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {type === "fa" ? <i className={"fa-" + (obj.faStyle || "solid") + " fa-" + String(obj.icon || "").replace(/^fa-/, "")} aria-hidden="true"></i> : <span>{obj.icon}</span>}
+          <i className="fa-solid fa-chevron-down glp-iconpick__caret" aria-hidden="true"></i>
+        </button>
+        <input
+          className="glp-input"
+          value={obj.icon}
+          onChange={(e) => onChange({ icon: e.target.value })}
+          placeholder={type === "fa" ? "Font Awesome name, e.g. rocket" : "Emoji"}
+          title={type === "fa" ? "Any Font Awesome name, without the fa- prefix. Light and duotone are Pro-only." : undefined}
         />
-        {type === "emoji" ? (
-          <input className="glp-input" style={{ width: 80 }} value={obj.icon} onChange={(e) => onChange({ icon: e.target.value })} />
-        ) : (
-          <>
-            <input
-              className="glp-input"
-              style={{ flex: 1, minWidth: 110 }}
-              value={obj.icon}
-              onChange={(e) => onChange({ icon: e.target.value })}
-              placeholder="e.g. rocket, book-open"
-            />
-            <select className="glp-select" style={{ width: 104 }} value={obj.faStyle || "solid"} onChange={(e) => onChange({ faStyle: e.target.value })}>
-              <option value="solid">Solid</option>
-              <option value="regular">Regular</option>
-              <option value="light">Light</option>
-              <option value="brands">Brands</option>
-            </select>
-          </>
+        {type === "fa" && (
+          <select className="glp-select" style={{ width: 92, flex: "none" }} value={obj.faStyle || "solid"} onChange={(e) => onChange({ faStyle: e.target.value })} aria-label="Icon style">
+            <option value="solid">Solid</option>
+            <option value="regular">Regular</option>
+            <option value="light">Light</option>
+            <option value="brands">Brands</option>
+          </select>
         )}
       </div>
-      {type === "emoji" && (
-        <div className="glp-emojis">
-          {EMOJI_COMMON.map((e) => (
-            <button key={e} type="button" aria-label={`Icon: ${e}`} className={"glp-emoji" + (obj.icon === e ? " on" : "")} onClick={() => onChange({ icon: e })}>
-              {e}
-            </button>
-          ))}
+      {open && (
+        <div className="glp-iconpop">
+          <Seg value={type} onChange={setType} options={[{ value: "fa", label: "Font Awesome" }, { value: "emoji", label: "Emoji" }]} />
+          {type === "emoji" ? (
+            <div className="glp-emojis">
+              {EMOJI_COMMON.map((e) => (
+                <button key={e} type="button" aria-label={`Icon: ${e}`} className={"glp-emoji" + (obj.icon === e ? " on" : "")} onClick={() => { onChange({ icon: e }); setOpen(false); }}>
+                  {e}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="glp-fagrid">
+              {FA_COMMON.map((n) => (
+                <button key={n} type="button" title={n} aria-label={`Icon: ${n}`} className={"glp-faicon" + (obj.icon === n ? " on" : "")} onClick={() => { onChange({ icon: n }); setOpen(false); }}>
+                  <i className={"fa-" + (obj.faStyle || "solid") + " fa-" + n} aria-hidden="true"></i>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-      {type === "fa" && (
-        <>
-          <div className="glp-fagrid">
-            {FA_COMMON.map((n) => (
-              <button key={n} type="button" title={n} aria-label={`Icon: ${n}`} className={"glp-faicon" + (obj.icon === n ? " on" : "")} onClick={() => onChange({ icon: n })}>
-                <i className={"fa-" + (obj.faStyle || "solid") + " fa-" + n} aria-hidden="true"></i>
-              </button>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 6, lineHeight: 1.45 }}>
-            Or type any Font Awesome name (without the <code>fa-</code> prefix). Light &amp; duotone are Pro-only and may not show in the preview.
-          </div>
-        </>
       )}
     </Field>
   );
@@ -2960,10 +2982,13 @@ function RowHead({ noun, max, index, count, open, onToggle, onMove, onDuplicate,
         <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
       </span>
       {children}
-      {count > 1 && btn("Move up", "fa-arrow-up", index === 0, () => onMove(-1))}
-      {count > 1 && btn("Move down", "fa-arrow-down", index === count - 1, () => onMove(1))}
-      {btn("Duplicate " + noun, "fa-clone", count >= max, onDuplicate)}
-      {count > 1 && btn("Delete " + noun, "fa-xmark", false, onRemove)}
+      {/* row actions float over the right edge and appear on hover/focus, so names get the full width */}
+      <span className="glp-rowacts">
+        {count > 1 && btn("Move up", "fa-arrow-up", index === 0, () => onMove(-1))}
+        {count > 1 && btn("Move down", "fa-arrow-down", index === count - 1, () => onMove(1))}
+        {btn("Duplicate " + noun, "fa-clone", count >= max, onDuplicate)}
+        {count > 1 && btn("Delete " + noun, "fa-xmark", false, onRemove)}
+      </span>
       <span className={"glp-iconbtn glp-chev" + (open ? " open" : "")} aria-hidden="true">
         <i className="fa-solid fa-chevron-right"></i>
       </span>
@@ -3020,23 +3045,23 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
       {open && (
         <div className="glp-card__body">
           <div className="glp-row2">
-            <Field label="Card title">
+            <Field label="Title">
               <input className="glp-input" value={card.title} onChange={(e) => set({ title: e.target.value })} />
             </Field>
-            <Field label="Links to (path)">
+            <Field label="Link">
               <input className="glp-input" value={card.href} onChange={(e) => set({ href: e.target.value })} placeholder="my-project" />
             </Field>
           </div>
-          <Field label={style.links ? "Description (blank to hide)" : "Description"}>
-            <textarea className="glp-textarea" value={card.blurb} onChange={(e) => set({ blurb: e.target.value })} />
+          <Field label="Description">
+            <textarea className="glp-textarea" rows={2} placeholder={style.links ? "Blank to hide" : ""} value={card.blurb} onChange={(e) => set({ blurb: e.target.value })} />
           </Field>
 
           {style.links && (
             <>
-              <Field label="Links (wrap a word in *asterisks* for italics)">
+              <Field label="Links (*word* for italics)">
                 <LinkListEditor links={card.links} onChange={(links) => set({ links })} labelPh="Are you building with…?" />
               </Field>
-              <Field label="Footnote (blank to hide)">
+              <Field label="Footnote">
                 <input className="glp-input" value={card.note} onChange={(e) => set({ note: e.target.value })} placeholder="Don't have access yet?" />
               </Field>
               <div className="glp-row2">
@@ -3070,7 +3095,7 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
           {style.cta && (
             <CtaStyleFields
               textLabel="Button text"
-              plainTextLabel="Link text (e.g. Open Folder)"
+              plainTextLabel="Link text"
               ctaText={card.ctaText}
               ctaStyle={card.ctaStyle}
               ctaPlain={style.ctaPlain}
@@ -3205,7 +3230,7 @@ function CardStyleControls({ style: st, setStyle, liquid = false }) {
       {/* NB: this "button" value means "a styled CTA is shown" (filled or ghost, chosen
           elsewhere) — a different axis from ColumnEditor's per-CTA style Seg below, whose
           "button" value renders as an outline (labeled "Outline" there to avoid the clash) */}
-      <Field label="Call to action">
+      <Field label="Call to action" inline>
         <Seg
           value={st.cta ? (st.ctaPlain ? "plain" : "button") : "none"}
           onChange={(v) => setStyle(v === "none" ? { cta: false, ctaPlain: false } : v === "plain" ? { cta: true, ctaPlain: true } : { cta: true, ctaPlain: false })}
@@ -3216,7 +3241,7 @@ function CardStyleControls({ style: st, setStyle, liquid = false }) {
           ]}
         />
       </Field>
-      <Field label="Card density">
+      <Field label="Density" inline>
         <Seg
           value={st.density}
           onChange={(v) => setStyle({ density: v })}
@@ -3298,6 +3323,8 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
   const setLay = (patch) => onChange({ ...section, layout: { ...section.layout, ...patch } });
   const setLiq = (patch) => onChange({ ...section, liquid: { ...section.liquid, ...patch } });
   const isCols = section.type === "columns";
+  const [tabSel, setTab] = useState("content");
+  const tab = isCols && tabSel === "style" ? "content" : tabSel;
   /* the style that actually renders this section's cards: its own or the global one */
   const est = section.styleMode === "custom" ? section.style : globalStyle;
   const liquidOn = section.source === "liquid";
@@ -3350,71 +3377,33 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
       </RowHead>
       {open && (
         <div className="glp-card__body">
-          <Field label="Section heading (blank to hide)">
-            <input className="glp-input" value={section.heading} onChange={(e) => set({ heading: e.target.value })} placeholder="e.g. For developers" />
-          </Field>
-          <Field label="Intro text (blank to hide)">
-            <textarea className="glp-textarea" value={section.intro} onChange={(e) => set({ intro: e.target.value })} />
-          </Field>
-          <Field label="Text alignment">
-            <Seg
-              value={section.align}
-              onChange={(v) => set({ align: v })}
-              options={[
-                { value: "center", label: "Centered" },
-                { value: "left", label: "Left" },
-              ]}
-            />
-          </Field>
-          <Field label="Section type">
-            <Seg
-              value={isCols ? "columns" : "cards"}
-              onChange={(v) => set({ type: v })}
-              options={[
-                { value: "cards", label: "Cards" },
-                { value: "columns", label: "Text columns" },
-              ]}
-            />
-          </Field>
+          <div className="glp-subtabs" role="tablist" aria-label="Section settings">
+            {[["content", "Content"], ["layout", "Layout"], ...(isCols ? [] : [["style", "Card style"]])].map(([k, l]) => (
+              <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
+            ))}
+          </div>
 
-          <div className="glp-sub">Spacing &amp; background</div>
-          <Slider label="Space above section" value={section.layout.spaceAbove == null ? 36 : section.layout.spaceAbove} min={0} max={160} step={2} onChange={(v) => setLay({ spaceAbove: v })} />
-          <Toggle
-            checked={!!section.layout.divider}
-            onChange={(v) => setLay({ divider: v })}
-            label="Divider line above"
-            hint="A line centered in the space above this section."
-            style={{ paddingTop: 0 }}
-          />
-          {section.layout.divider && (
-            <Field label="Divider style">
-              <Seg
-                value={section.layout.dividerStyle === "accent" ? "accent" : "hairline"}
-                onChange={(v) => setLay({ dividerStyle: v })}
-                options={[
-                  { value: "hairline", label: "Hairline" },
-                  { value: "accent", label: "Accent rule" },
-                ]}
-              />
-            </Field>
-          )}
-          <Field label="Section background">
-            <Seg
-              value={section.layout.bg || "none"}
-              onChange={(v) => setLay({ bg: v })}
-              options={[
-                { value: "none", label: "None" },
-                { value: "subtle", label: "Subtle" },
-                { value: "accent", label: "Accent" },
-                { value: "dark", label: "Dark" },
-              ]}
-            />
-          </Field>
-
-          {isCols ? (
+          {tab === "content" && (
             <>
-              <Slider label="Gap between columns" value={section.layout.gap} min={12} max={56} onChange={(v) => setLay({ gap: v })} />
-              <div className="glp-sub">Columns</div>
+              <Field label="Heading">
+                <input className="glp-input" value={section.heading} onChange={(e) => set({ heading: e.target.value })} placeholder="Blank to hide" />
+              </Field>
+              <Field label="Intro">
+                <textarea className="glp-textarea" rows={2} value={section.intro} onChange={(e) => set({ intro: e.target.value })} placeholder="Blank to hide" />
+              </Field>
+              <Field label="Type" inline>
+                <Seg
+                  value={isCols ? "columns" : "cards"}
+                  onChange={(v) => set({ type: v })}
+                  options={[
+                    { value: "cards", label: "Cards" },
+                    { value: "columns", label: "Text columns" },
+                  ]}
+                />
+              </Field>
+              {isCols ? (
+                <>
+                  <div className="glp-sub">Columns</div>
               {section.columns.map((col, i) => (
                 <ColumnEditor
                   key={col.id}
@@ -3435,62 +3424,19 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
               <button className="glp-add" type="button" onClick={colOps.add} disabled={section.columns.length >= 4}>
                 + Add column ({section.columns.length}/4)
               </button>
-            </>
-          ) : (
-            <>
-              <div className="glp-sub">Card style</div>
-              <Field label="Card style source">
-                <Seg
-                  value={section.styleMode === "custom" ? "custom" : "global"}
-                  onChange={(v) => set({ styleMode: v })}
-                  options={[
-                    { value: "global", label: "Global" },
-                    { value: "custom", label: "Custom" },
-                  ]}
-                />
-              </Field>
-              {section.styleMode === "custom" ? (
-                <CardStyleControls style={section.style} setStyle={setStyle} liquid={liquidOn} />
+                </>
               ) : (
-                <div className="glp-note">
-                  Using the <b>global card style</b>. Edit it in <b>Theme&nbsp;Editor → Global card style</b> to restyle every global section at once. Switch to <b>Custom</b> to override just this section.
-                </div>
-              )}
-
-              <div className="glp-sub">Grid</div>
-              <Toggle
-                checked={section.layout.bento}
-                onChange={(v) => setLay({ bento: v })}
-                label="Bento grid"
-                hint="Asymmetric mixed-size 6-column layout."
-                style={{ paddingTop: 0 }}
-              />
-              {!section.layout.bento && (
-                <Slider label="Minimum column width (cards per row)" value={section.layout.colMin} min={180} max={360} onChange={(v) => setLay({ colMin: v })} />
-              )}
-              <Slider label="Gap between cards" value={section.layout.gap} min={12} max={36} onChange={(v) => setLay({ gap: v })} />
-              <Toggle
-                checked={section.layout.autoH}
-                onChange={(v) => setLay({ autoH: v })}
-                label="Auto card height"
-                hint="Let content decide the height instead of a fixed minimum."
-              />
-              {!section.layout.autoH && (
-                <Slider label="Card minimum height" value={section.layout.cardMinH} min={140} max={800} step={4} onChange={(v) => setLay({ cardMinH: v })} />
-              )}
-
-              <div className="glp-sub">Cards</div>
-              <Field label="Card source">
-                <Seg
-                  value={section.source}
-                  onChange={(v) => set({ source: v })}
-                  options={[
-                    { value: "static", label: "Manual cards" },
-                    { value: "liquid", label: "Auto from projects" },
-                  ]}
-                />
-              </Field>
-
+                <>
+                  <Field label="Cards" inline>
+                    <Seg
+                      value={section.source}
+                      onChange={(v) => set({ source: v })}
+                      options={[
+                        { value: "static", label: "Manual" },
+                        { value: "liquid", label: "Auto from projects" },
+                      ]}
+                    />
+                  </Field>
               {liquidOn ? (
                 <LiquidControls section={section} st={est} setLiq={setLiq} toggleLiqAccent={toggleLiqAccent} hideAccents={hideAccents} />
               ) : (
@@ -3518,6 +3464,86 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                     + Add card ({section.cards.length}/12)
                   </button>
                 </>
+              )}
+                </>
+              )}
+            </>
+          )}
+
+          {tab === "layout" && (
+            <>
+              <Field label="Alignment" inline>
+                <Seg
+                  value={section.align}
+                  onChange={(v) => set({ align: v })}
+                  options={[
+                    { value: "center", label: "Centered" },
+                    { value: "left", label: "Left" },
+                  ]}
+                />
+              </Field>
+              <Field label="Background" inline>
+                <Seg
+                  value={section.layout.bg || "none"}
+                  onChange={(v) => setLay({ bg: v })}
+                  options={[
+                    { value: "none", label: "None" },
+                    { value: "subtle", label: "Subtle" },
+                    { value: "accent", label: "Accent" },
+                    { value: "dark", label: "Dark" },
+                  ]}
+                />
+              </Field>
+              <Slider label="Space above" value={section.layout.spaceAbove == null ? 36 : section.layout.spaceAbove} min={0} max={160} step={2} onChange={(v) => setLay({ spaceAbove: v })} />
+              <Field label="Divider above" inline>
+                <Seg
+                  value={!section.layout.divider ? "none" : section.layout.dividerStyle === "accent" ? "accent" : "hairline"}
+                  onChange={(v) => setLay(v === "none" ? { divider: false } : { divider: true, dividerStyle: v })}
+                  options={[
+                    { value: "none", label: "None" },
+                    { value: "hairline", label: "Hairline" },
+                    { value: "accent", label: "Accent" },
+                  ]}
+                />
+              </Field>
+              {isCols ? (
+                <Slider label="Column gap" value={section.layout.gap} min={12} max={56} onChange={(v) => setLay({ gap: v })} />
+              ) : (
+                <>
+                  {!section.layout.bento && (
+                    <Slider label="Min card width" value={section.layout.colMin} min={180} max={420} onChange={(v) => setLay({ colMin: v })} />
+                  )}
+                  <Slider label="Card gap" value={section.layout.gap} min={12} max={36} onChange={(v) => setLay({ gap: v })} />
+                  {!section.layout.autoH && (
+                    <Slider label="Min card height" value={section.layout.cardMinH} min={140} max={800} step={4} onChange={(v) => setLay({ cardMinH: v })} />
+                  )}
+                  <div className="glp-toggles2">
+                    <Toggle checked={section.layout.bento} onChange={(v) => setLay({ bento: v })} label="Bento grid" hint="Asymmetric mixed-size 6-column layout." />
+                    <Toggle checked={section.layout.autoH} onChange={(v) => setLay({ autoH: v })} label="Auto height" hint="Let content decide card height instead of a fixed minimum." />
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
+          {tab === "style" && !isCols && (
+            <>
+              <Field label="Look" inline>
+                <Seg
+                  value={section.styleMode === "custom" ? "custom" : "global"}
+                  onChange={(v) => set({ styleMode: v })}
+                  options={[
+                    { value: "global", label: "Global" },
+                    { value: "custom", label: "Custom" },
+                  ]}
+                />
+              </Field>
+              {section.styleMode === "custom" ? (
+                <CardStyleControls style={section.style} setStyle={setStyle} liquid={liquidOn} />
+              ) : (
+                <div className="glp-note">
+                  Using the <b>global card style</b> from Theme&nbsp;Editor, shared by every Global section. Switch to <b>Custom</b> to change just this one.
+                </div>
               )}
             </>
           )}
@@ -4649,8 +4675,7 @@ function App() {
                   hint="A faint full-width line-art pattern behind the whole landing page (adapts to light/dark)."
                 />
 
-                <div className="glp-sub">Page width</div>
-                <Field label="Maximum content width">
+                                <Field label="Page width" inline>
                   <Seg
                     value={config.layout.maxW}
                     onChange={(v) => setLayout({ maxW: v })}
@@ -4710,17 +4735,17 @@ function App() {
                 {config.brandBar.enabled && (
                   <>
                     <div className="glp-note" style={{ marginBottom: 12 }}>
-                      Replaces ReadMe's header <b>on the landing page only</b> with your own logo and links. ReadMe's real search and Ask AI are moved into the page, so they keep working. No Custom CSS or JS needed.
+                      Replaces ReadMe's header on this page only. Search and Ask AI keep working.
                     </div>
                     <div className="glp-row2">
                       <Field label="Wordmark">
                         <input className="glp-input" value={config.brandBar.name} onChange={(e) => setBrandBar({ name: e.target.value })} />
                       </Field>
-                      <Field label="Tag (small caps, optional)">
+                      <Field label="Tag (optional)">
                         <input className="glp-input" value={config.brandBar.tag} onChange={(e) => setBrandBar({ tag: e.target.value })} placeholder="Developers" />
                       </Field>
                     </div>
-                    <Field label="Logo image URL (replaces the wordmark; optional)">
+                    <Field label="Logo URL (optional, replaces wordmark)">
                       <input className="glp-input" value={config.brandBar.logoUrl} onChange={(e) => setBrandBar({ logoUrl: e.target.value })} placeholder="https://files.readme.io/…/logo.svg" />
                     </Field>
                     <Field label="Nav links">
@@ -4751,7 +4776,7 @@ function App() {
                       <input className="glp-input" value={config.headerImage.url} onChange={(e) => setHeaderImage({ url: e.target.value })} placeholder="https://…/banner.jpg" />
                     </Field>
                     <Slider label="Image height" value={config.headerImage.height} min={160} max={720} step={4} onChange={(v) => setHeaderImage({ height: v })} />
-                    <Slider label="Header overlap (how far it tucks up behind the header)" value={config.headerImage.offset} min={0} max={160} step={4} onChange={(v) => setHeaderImage({ offset: v })} />
+                    <Slider label="Header overlap" value={config.headerImage.offset} min={0} max={160} step={4} onChange={(v) => setHeaderImage({ offset: v })} />
                     <Slider label="Darken (tint)" value={config.headerImage.tint} min={0} max={80} unit="%" onChange={(v) => setHeaderImage({ tint: v })} />
                   </>
                 )}
@@ -4834,7 +4859,7 @@ function App() {
                     />
                   </div>
                 </Field>
-                <Field label="Alignment">
+                <Field label="Alignment" inline>
                   <Seg
                     value={config.hero.align}
                     onChange={(v) => setHero({ align: v })}
