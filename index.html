@@ -1904,9 +1904,33 @@ const PREVIEW_EDIT_SCRIPT = `
       if (v !== el.__orig) parent.postMessage({ type: "glp-edit", path: el.getAttribute("data-glp"), value: v }, "*");
     });
   }
-  function armAll() { document.querySelectorAll("[data-glp]").forEach(arm); }
-  /* links inside the preview never navigate; clicks on editable text just place the caret */
+  function armAll() {
+    document.querySelectorAll("[data-glp]").forEach(arm);
+    /* stop link drag-ghosts from hijacking clicks on text inside cards/links */
+    document.querySelectorAll("a").forEach(function (a) { a.draggable = false; });
+  }
+  /* Chrome won't put a caret in editable text nested inside a link (whole-card
+     links, link-list rows): the click is treated as a link click. So for those,
+     focus the text ourselves and drop the caret exactly where the user clicked. */
+  function inLink(el) { return el.parentElement && el.parentElement.closest("a"); }
+  document.addEventListener("mousedown", function (e) {
+    var el = e.target.closest && e.target.closest("[data-glp]");
+    if (!el || e.button !== 0 || !inLink(el)) return;
+    e.preventDefault();
+    el.focus({ preventScroll: true });
+    var r = document.caretRangeFromPoint && document.caretRangeFromPoint(e.clientX, e.clientY);
+    if (r && el.contains(r.startContainer)) { var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+  }, true);
+  /* double-click still selects a word in those spots */
+  document.addEventListener("dblclick", function (e) {
+    var el = e.target.closest && e.target.closest("[data-glp]");
+    if (!el || !inLink(el)) return;
+    var s = getSelection();
+    if (s.modify) { s.modify("move", "backward", "word"); s.modify("extend", "forward", "word"); }
+  }, true);
+  /* links inside the preview never navigate */
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
+  document.addEventListener("auxclick", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
   armAll();
   document.addEventListener("DOMContentLoaded", armAll);
 })();
