@@ -47,52 +47,70 @@ const ACCENTS = {
    `readme` inherits the hub's own typeface via ReadMe's --font-family
    variable (set by ReadMe's defaults or the customer's Custom CSS /
    Appearance settings); importUrl is null so no Google font is loaded. */
-const FONTS = {
-  readme: {
-    label: "Match ReadMe",
-    hint: "Inherit the hub's own font (default or your Custom CSS)",
-    display: "var(--font-family, inherit)",
-    body: "var(--font-family, inherit)",
-    mono: "ui-monospace, SFMono-Regular, Menlo, monospace",
-    importUrl: null,
-  },
-  grotesk: {
-    label: "Space Grotesk + Inter",
-    hint: "Geometric and technical, the original look",
-    display: "'Space Grotesk', sans-serif",
-    body: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    mono: "'Space Mono', ui-monospace, monospace",
-    importUrl:
-      "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Inter:wght@400;500&family=Space+Mono:wght@400;700&display=swap",
-  },
-  editorial: {
-    label: "Fraunces + Source Sans 3",
-    hint: "Warm serif display, friendly body",
-    display: "'Fraunces', Georgia, serif",
-    body: "'Source Sans 3', -apple-system, sans-serif",
-    mono: "'IBM Plex Mono', ui-monospace, monospace",
-    importUrl:
-      "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap",
-  },
-  modern: {
-    label: "Manrope + Inter",
-    hint: "Soft, contemporary product feel",
-    display: "'Manrope', sans-serif",
-    body: "'Inter', -apple-system, sans-serif",
-    mono: "'JetBrains Mono', ui-monospace, monospace",
-    importUrl:
-      "https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;700&display=swap",
-  },
-  plex: {
-    label: "IBM Plex (all roles)",
-    hint: "Uniform, engineering-grade system",
-    display: "'IBM Plex Sans', sans-serif",
-    body: "'IBM Plex Sans', -apple-system, sans-serif",
-    mono: "'IBM Plex Mono', ui-monospace, monospace",
-    importUrl:
-      "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap",
-  },
+/* Page typography mirrors the fonts ReadMe's own Appearance settings offer, so
+   a landing page never uses a face the hub itself can't. "readme" = Match
+   ReadMe: inherit the hub's font (its default, a picked font, or an upload). */
+const FONT_FAMILIES = {
+  "Literata": { kind: "serif", w: "400;500;600;700" },
+  "Lora": { kind: "serif", w: "400;500;600;700" },
+  "Merriweather": { kind: "serif", w: "400;700" },
+  "Fraunces": { kind: "serif", w: "400;500;600;700" },
+  "IBM Plex Serif": { kind: "serif", w: "400;500;600;700" },
+  "DM Sans": { kind: "sans", w: "400;500;600;700" },
+  "Geist": { kind: "sans", w: "400;500;600;700" },
+  "IBM Plex Sans": { kind: "sans", w: "400;500;600;700" },
+  "Inter": { kind: "sans", w: "400;500;600;700" },
+  "Space Grotesk": { kind: "sans", w: "400;500;600;700" },
+  "Work Sans": { kind: "sans", w: "400;500;600;700" },
+  "Syne": { kind: "sans", w: "400;500;600;700" },
+  "DM Mono": { kind: "mono", w: "400;500" },
+  "Geist Mono": { kind: "mono", w: "400;500;600;700" },
+  "IBM Plex Mono": { kind: "mono", w: "400;500;600;700" },
+  "Space Mono": { kind: "mono", w: "400;700" },
+  /* not in ReadMe's lists; only kept so pages made with the old presets render unchanged */
+  "Source Sans 3": { kind: "sans", w: "400;500;600", legacy: true },
+  "Manrope": { kind: "sans", w: "500;600;700", legacy: true },
+  "JetBrains Mono": { kind: "mono", w: "400;700", legacy: true },
 };
+/* ReadMe's pickers (Appearance > Fonts), in its order */
+const BODY_FONTS = ["Literata", "Lora", "Merriweather", "DM Mono", "DM Sans", "Geist", "Geist Mono", "IBM Plex Mono", "IBM Plex Sans", "IBM Plex Serif", "Inter", "Space Grotesk", "Work Sans"];
+const HEADING_FONTS = ["Fraunces", "Syne", "Space Mono", "DM Mono", "DM Sans", "Geist", "Geist Mono", "IBM Plex Mono", "IBM Plex Sans", "IBM Plex Serif", "Inter", "Space Grotesk", "Work Sans"];
+/* the old one-click pairings, mapped for saved/shared pages */
+const LEGACY_FONT_PRESETS = {
+  readme: { heading: "readme", body: "readme" },
+  grotesk: { heading: "Space Grotesk", body: "Inter", mono: "Space Mono" },
+  editorial: { heading: "Fraunces", body: "Source Sans 3", mono: "IBM Plex Mono" },
+  modern: { heading: "Manrope", body: "Inter", mono: "JetBrains Mono" },
+  plex: { heading: "IBM Plex Sans", body: "IBM Plex Sans", mono: "IBM Plex Mono" },
+};
+const FONT_FALLBACK = {
+  serif: 'Georgia, "Times New Roman", serif',
+  sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  mono: "ui-monospace, SFMono-Regular, Menlo, monospace",
+};
+const fontStack = (name) => (FONT_FAMILIES[name] ? `'${name}', ${FONT_FALLBACK[FONT_FAMILIES[name].kind]}` : "var(--font-family, inherit)");
+/* the page's small labels/buttons use a mono; pick the family's own sibling when it has one */
+const MONO_SIBLING = { "Geist": "Geist Mono", "IBM Plex Sans": "IBM Plex Mono", "IBM Plex Serif": "IBM Plex Mono", "DM Sans": "DM Mono", "Space Grotesk": "Space Mono" };
+function resolveFonts(cfg) {
+  const t = cfg.typeface || { heading: "readme", body: "readme" };
+  const heading = FONT_FAMILIES[t.heading] ? t.heading : "readme";
+  const body = FONT_FAMILIES[t.body] ? t.body : "readme";
+  let mono = FONT_FAMILIES[t.mono] && FONT_FAMILIES[t.mono].kind === "mono" ? t.mono : null;
+  if (!mono) {
+    const pick = [heading, body].find((n) => FONT_FAMILIES[n] && FONT_FAMILIES[n].kind === "mono") || MONO_SIBLING[heading] || MONO_SIBLING[body];
+    mono = pick || null;
+  }
+  const families = [...new Set([heading, body, mono].filter((n) => FONT_FAMILIES[n]))];
+  return {
+    label: heading === "readme" && body === "readme" ? "Match ReadMe" : `${heading === "readme" ? "ReadMe" : heading} headings, ${body === "readme" ? "ReadMe" : body} body`,
+    display: fontStack(heading),
+    body: fontStack(body),
+    mono: mono ? fontStack(mono) : FONT_FALLBACK.mono,
+    importUrl: families.length
+      ? "https://fonts.googleapis.com/css2?" + families.map((n) => `family=${n.replace(/ /g, "+")}:wght@${FONT_FAMILIES[n].w}`).join("&") + "&display=swap"
+      : null,
+  };
+}
 
 /* ---------------- granular card style ----------------
    Every card look is composed from these switches instead of
@@ -244,7 +262,7 @@ const HERO_SUB_DEFAULT = 15;
 
 /* ---------------- default config (fresh-install starter) ---------------- */
 const DEFAULT_CONFIG = {
-  fonts: "readme",
+  typeface: { heading: "readme", body: "readme" },
   hero: {
     eyebrow: "",
     chip: "",
@@ -353,7 +371,7 @@ const PAGE_TEMPLATES = [
       const tile = (icon, title, blurb, href) => ({ ...CARD_DEFAULTS, id: uid(), icon, title, blurb, href, ctaText: "Open" });
       return migrateConfig({
         ...DEFAULT_CONFIG,
-        fonts: "readme",
+        typeface: { heading: "readme", body: "readme" },
         searchMode: "hero",
         flattenHeader: false,
         brandBar: {
@@ -600,8 +618,10 @@ function sanitizeConfig(c) {
   hero.btnPrimary = { label: str(h.btnPrimary && h.btnPrimary.label), href: str(h.btnPrimary && h.btnPrimary.href) };
   hero.btnSecondary = { label: str(h.btnSecondary && h.btnSecondary.label), href: str(h.btnSecondary && h.btnSecondary.href) };
   const bb = c.brandBar;
+  const okFont = (n) => (n === "readme" || FONT_FAMILIES[n] ? n : "readme");
   return {
     ...c,
+    typeface: { heading: okFont(c.typeface.heading), body: okFont(c.typeface.body), ...(FONT_FAMILIES[c.typeface.mono] ? { mono: c.typeface.mono } : {}) },
     hero,
     footer: str(c.footer),
     searchMode: SEARCH_MODES.includes(c.searchMode) ? c.searchMode : "native",
@@ -690,7 +710,11 @@ function migrateConfig(loaded) {
   if (!loaded || typeof loaded !== "object") loaded = {};
   if (Array.isArray(loaded.sections)) loaded = { ...loaded, sections: loaded.sections.filter((x) => x && typeof x === "object") };
   const base = {
-    fonts: loaded.fonts || D.fonts,
+    typeface: (() => {
+      const t = loaded.typeface;
+      if (t && typeof t === "object") return { heading: str(t.heading, "readme"), body: str(t.body, "readme"), ...(t.mono ? { mono: str(t.mono) } : {}) };
+      return { ...(LEGACY_FONT_PRESETS[loaded.fonts] || LEGACY_FONT_PRESETS.readme) };
+    })(),
     hero: { ...D.hero, ...(loaded.hero || {}) },
     ticker: { ...D.ticker, ...(loaded.ticker || {}) },
     brandBar: {
@@ -1054,7 +1078,7 @@ function generateHTML(cfg, opts) {
 }
 
 function generateHTMLInner(cfg) {
-  const F = FONTS[cfg.fonts] || FONTS.grotesk;
+  const F = resolveFonts(cfg);
   const L = cfg.layout;
   const sections = cfg.sections;
   const heroLeft = cfg.hero.align === "left";
@@ -2063,6 +2087,8 @@ ${userHtml.includes("data-glp=") ? PREVIEW_EDIT_SCRIPT : ""}
    ============================================================ */
 const APP_CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;700&display=swap');
+  /* faces for the font picker previews (regular weight is enough to judge them) */
+  @import url('https://fonts.googleapis.com/css2?family=Literata&family=Lora&family=Merriweather&family=Fraunces&family=IBM+Plex+Serif&family=DM+Sans&family=Geist&family=IBM+Plex+Sans&family=Inter&family=Space+Grotesk&family=Work+Sans&family=Syne&family=DM+Mono&family=IBM+Plex+Mono&family=Space+Mono&family=Source+Sans+3&family=Manrope&family=JetBrains+Mono&display=swap');
   /* ReadMe's brand faces, served by readme.com (CORS-open). The file names carry
      a build hash, so if readme.com redeploys and they 404, the stacks below fall
      back to Schibsted Grotesk / Georgia without breaking anything. */
@@ -2355,20 +2381,28 @@ const APP_CSS = `
   .glp-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
   .glp-check input { accent-color: var(--accent); flex: none; }
 
-  /* font picker */
-  .glp-fonts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
-  .glp-font {
-    display: flex; align-items: center; gap: 11px;
-    width: 100%; min-width: 0;
-    border: 1px solid var(--line-2); border-radius: 10px;
-    background: var(--panel-2); cursor: pointer;
-    padding: 9px 12px;
-    color: var(--ink-2); font-family: inherit; text-align: left;
+  /* font picker (ReadMe's list) */
+  .glp-fontsel { position: relative; min-width: 0; }
+  .glp-fontsel__btn {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    border: 1px solid var(--line-2); border-radius: 6px; background: var(--field); color: var(--ink);
+    padding: 7px 10px; font-size: 14px; cursor: pointer; text-align: left;
   }
-  .glp-font.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--ink); }
-  .glp-font__aa { font-size: 21px; line-height: 1; color: var(--ink); width: 34px; flex: none; }
-  .glp-font__name { font-size: 12.5px; font-weight: 600; display: block; }
-  .glp-font__hint { font-size: 10.5px; color: var(--ink-3); display: block; margin-top: 2px; }
+  .glp-fontsel__btn i { font-size: 10px; color: var(--ink-3); }
+  .glp-fontsel__btn.on, .glp-fontsel__btn:hover { border-color: var(--accent); }
+  .glp-fontsel__list {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 41; max-height: 340px; overflow-y: auto; padding: 5px;
+    background: var(--panel); border-radius: 10px; box-shadow: var(--shadow-lg);
+  }
+  .glp-fontsel__list button {
+    display: flex; align-items: baseline; gap: 8px; width: 100%; border: 0; background: transparent; color: var(--ink);
+    padding: 8px 10px; border-radius: 7px; font-size: 15px; cursor: pointer; text-align: left;
+  }
+  .glp-fontsel__list button:hover { background: var(--panel-2); }
+  .glp-fontsel__list button.on { background: var(--accent-soft); }
+  .glp-fontsel__list button small { font-family: var(--font-ui); font-size: 12px; color: var(--ink-3); }
+  .glp-fontsel__list button i { margin-left: auto; font-size: 11px; color: var(--accent); }
+  .glp-fontsel__first { margin-bottom: 4px; box-shadow: 0 1px 0 var(--line); border-radius: 7px 7px 0 0 !important; }
 
   /* starter presets */
   .glp-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
@@ -2543,6 +2577,10 @@ const APP_CSS = `
   .glp-modal__err { color: var(--danger); font-size: 12px; margin: 0 0 12px; }
   .glp-steps { margin: 0 0 12px; padding-left: 18px; line-height: 1.55; color: var(--ink); }
   .glp-steps li { margin-bottom: 12px; }
+  .glp-more { font-size: 12.5px; color: var(--ink-2); }
+  .glp-more summary { cursor: pointer; color: var(--ink-3); }
+  .glp-more summary:hover { color: var(--ink); }
+  .glp-more p { margin: 8px 0 0; }
   .glp-copyrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   .glp-copyrow code {
     flex: 1; min-width: 0; padding: 7px 10px; border-radius: 7px; background: var(--field); border: 1px solid var(--line-2);
@@ -3083,6 +3121,40 @@ function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain
         />
       </Field>
     </div>
+  );
+}
+
+/* ---------- font picker: ReadMe's font list, each option shown in its own face ---------- */
+function FontSelect({ label, value, options, onChange }) {
+  const [open, setOpen] = useState(false);
+  const list = FONT_FAMILIES[value] && !options.includes(value) ? [...options, value] : options; /* keep a legacy pick visible */
+  const face = (n) => (n === "readme" ? "var(--font-ui)" : `'${n}', ${FONT_FALLBACK[FONT_FAMILIES[n].kind]}`);
+  const name = (n) => (n === "readme" ? "Match ReadMe" : n + (FONT_FAMILIES[n] && FONT_FAMILIES[n].legacy ? " (older preset)" : ""));
+  return (
+    <Field label={label} inline>
+      <div className="glp-fontsel">
+        <button type="button" className={"glp-fontsel__btn" + (open ? " on" : "")} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span style={{ fontFamily: face(value) }}>{name(value)}</span>
+          <i className="fa-solid fa-chevron-down" aria-hidden="true"></i>
+        </button>
+        {open && (
+          <>
+            <div className="glp-pages__backdrop" onClick={() => setOpen(false)} />
+            <div className="glp-fontsel__list" role="listbox" aria-label={label}>
+              {["readme", ...list].map((n, i) => (
+                <button key={n} type="button" role="option" aria-selected={value === n}
+                  className={(value === n ? "on" : "") + (i === 0 ? " glp-fontsel__first" : "")}
+                  onClick={() => { onChange(n); setOpen(false); }}>
+                  <span style={{ fontFamily: face(n) }}>{name(n)}</span>
+                  {n === "readme" && <small>Whatever your hub uses</small>}
+                  {value === n && <i className="fa-solid fa-check" aria-hidden="true"></i>}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </Field>
   );
 }
 
@@ -3937,18 +4009,20 @@ function ImportDialog({ onClose, onCreate }) {
         {tab === "connector" ? (
           <div className="glp-modal__body">
             <ol className="glp-steps">
-              <li>In Claude, open <b>Settings → Connectors → Add custom connector</b>, name it <b>GLP Builder</b>, and paste this URL:
-                <div className="glp-copyrow">
-                  <code>{mcpUrl}</code>
-                  <button className="glp-smallbtn" type="button" onClick={() => copy(mcpUrl, "mcp")}>
-                    <i className={"fa-solid " + (copied === "mcp" ? "fa-check" : "fa-copy")} aria-hidden="true"></i> {copied === "mcp" ? "Copied" : "Copy"}
-                  </button>
-                </div>
-              </li>
+              <li>In Claude, open <b>Settings → Connectors</b>, find <b>GLP Builder</b>, and click <b>Connect</b>. It's already set up for everyone at ReadMe.</li>
               <li>In any chat, ask something like <i>"Recreate developer.acme.com as a GLP Builder page."</i></li>
               <li>Claude replies with a builder link. Open it, then click <b>Save as a page</b>.</li>
             </ol>
-            <p className="glp-note">One-time setup. On Team or Enterprise plans, an owner may need to add the connector for the organization first.</p>
+            <details className="glp-more">
+              <summary>Not listed in your Claude?</summary>
+              <p>Add it yourself under <b>Settings → Connectors → Add custom connector</b> with this URL:</p>
+              <div className="glp-copyrow">
+                <code>{mcpUrl}</code>
+                <button className="glp-smallbtn" type="button" onClick={() => copy(mcpUrl, "mcp")}>
+                  <i className={"fa-solid " + (copied === "mcp" ? "fa-check" : "fa-copy")} aria-hidden="true"></i> {copied === "mcp" ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </details>
           </div>
         ) : (
           <div className="glp-modal__body">
@@ -4887,16 +4961,11 @@ function App() {
                 <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
 
                 <div className="glp-sub">Typography</div>
-                <div className="glp-fonts">
-                  {Object.entries(FONTS).map(([key, f]) => (
-                    <button key={key} type="button" title={f.hint} className={"glp-font" + (config.fonts === key ? " on" : "")} onClick={() => patch({ fonts: key })}>
-                      <span className="glp-font__aa" style={{ fontFamily: f.display }}>
-                        Aa
-                      </span>
-                      <span className="glp-font__name">{f.label}</span>
-                    </button>
-                  ))}
-                </div>
+                <FontSelect label="Headings" value={config.typeface.heading} options={HEADING_FONTS}
+                  onChange={(v) => setConfig((c) => ({ ...c, typeface: { heading: v, body: c.typeface.body } }))} />
+                <FontSelect label="Body & UI" value={config.typeface.body} options={BODY_FONTS}
+                  onChange={(v) => setConfig((c) => ({ ...c, typeface: { heading: c.typeface.heading, body: v } }))} />
+                <p className="glp-hint" style={{ margin: "2px 0 0" }}>The same fonts ReadMe offers in Appearance. Match ReadMe also covers uploaded fonts.</p>
 
                 <div className="glp-sub">Colors</div>
                 <Toggle

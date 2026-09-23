@@ -12,7 +12,11 @@ The builder turns this JSON into the final HTML, so describe the page's **conten
 3. Output ONE JSON object. Omit anything you'd leave at its default; the builder fills defaults in.
 
 ## Top-level fields
-- `fonts`: "readme" (inherit the hub's font, best default) | "grotesk" | "editorial" | "modern" | "plex".
+- `typeface`: `{ heading, body }`. Use "readme" (Match ReadMe: inherit whatever the hub uses, the best default)
+  or one of ReadMe's supported fonts. Headings: "Fraunces" | "Syne" | "Space Mono" | "DM Mono" | "DM Sans" | "Geist" |
+  "Geist Mono" | "IBM Plex Mono" | "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans".
+  Body: "Literata" | "Lora" | "Merriweather" | "DM Mono" | "DM Sans" | "Geist" | "Geist Mono" | "IBM Plex Mono" |
+  "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans". Pick the closest match to the source page.
 - `brandBar`: custom header that replaces ReadMe's header on the landing page.
   `{ enabled, name, tag, logoUrl, links: [{label, href}], button: {enabled, label, href} }`.
   Use it when the page has its own logo row / top nav. `logoUrl` (an absolute image URL) replaces the wordmark.
@@ -63,7 +67,7 @@ dividerStyle: "hairline"|"accent", bg: "none"|"subtle"|"accent"|"dark", bento (b
 ## Complete example
 ```json
 {
- "fonts": "readme",
+ "typeface": { "heading": "readme", "body": "readme" },
  "hero": {
   "eyebrow": "Platform docs",
   "chip": "",
