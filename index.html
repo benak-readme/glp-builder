@@ -548,6 +548,15 @@ function restyleWithTemplate(cur, tpl) {
   };
 }
 
+/* true when a page still holds exactly a template's sample content (a new page,
+   or one only switched between templates): then a template switch loads that
+   template's samples instead of restyling content nobody wrote */
+const contentSig = (c) => JSON.stringify([c.hero, c.sections, c.brandBar, c.banner, c.footer], (k, v) => (k === "id" ? undefined : v));
+function isPristine(cfg) {
+  const t = [BLANK_TEMPLATE, ...PAGE_TEMPLATES].find((x) => x.key === (cfg.templateKey || "blank"));
+  try { return !!t && contentSig(migrateConfig(cfg)) === contentSig(t.build()); } catch (e) { return false; }
+}
+
 const BLANK_TEMPLATE = { key: "blank", label: "Blank", hint: "A hero and one card section, matching your hub", build: () => migrateConfig(DEFAULT_CONFIG) };
 const PAGE_TEMPLATES = [
   {
@@ -5215,20 +5224,18 @@ function App() {
   const setTheme = (p) => setConfig((c) => ({ ...c, theme: { ...c.theme, ...p } }));
   const setCardStyle = (p) => setConfig((c) => ({ ...c, cardStyle: { ...(c.cardStyle || DEFAULT_STYLE), ...p } }));
   const [tplNotice, setTplNotice] = useState(null);
-  /* switching templates keeps this page's content unless the user picks "Start fresh" */
-  const [tplKeep, setTplKeepRaw] = useState(() => { try { return localStorage.getItem("glp-builder:tplKeep") !== "0"; } catch (e) { return true; } });
-  const setTplKeep = (v) => { setTplKeepRaw(v); try { localStorage.setItem("glp-builder:tplKeep", v ? "1" : "0"); } catch (e) {} };
   const applyTemplate = (t) => {
     if (override !== null) {
       try { if (!window.confirm("This page has manual code edits. Switching templates discards them. Continue?")) return; } catch (e) {}
       setOverride(null);
     }
     const built = t.build();
-    const cfg = { ...(tplKeep ? restyleWithTemplate(config, built) : built), templateKey: t.key };
+    const keep = !isPristine(config);
+    const cfg = { ...(keep ? restyleWithTemplate(config, built) : built), templateKey: t.key };
     setConfig(cfg);
     setOpenSection(cfg.sections[0].id);
     setOpenCard(null);
-    setTplNotice(t.label);
+    setTplNotice({ label: t.label, keep });
   };
   useEffect(() => {
     if (!tplNotice) return;
@@ -5799,7 +5806,7 @@ function App() {
 
       {tplNotice && (
         <div className="glp-toast" role="status">
-          <span>{tplKeep ? "Applied" : "Switched to"} <b>{tplNotice}</b>{tplKeep ? ", content kept." : "."}</span>
+          <span>{tplNotice.keep ? "Applied" : "Switched to"} <b>{tplNotice.label}</b>{tplNotice.keep ? ", content kept." : "."}</span>
           <button type="button" className="glp-smallbtn" onClick={() => { undo(); setTplNotice(null); }}>Undo</button>
           <button type="button" className="glp-iconbtn" aria-label="Dismiss" onClick={() => setTplNotice(null)}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
@@ -6028,12 +6035,7 @@ function App() {
 
               <NavSection id="templates" label="Templates" openNav={openNav} setOpenNav={setOpenNav}>
                 <div className="glp-sub" style={{ marginTop: 4 }}>Page templates</div>
-                <Seg value={tplKeep ? "keep" : "fresh"} onChange={(v) => setTplKeep(v === "keep")} options={[{ value: "keep", label: "Keep my content" }, { value: "fresh", label: "Start fresh" }]} />
-                <p className="glp-hint" style={{ margin: "8px 0 12px" }}>
-                  {tplKeep
-                    ? <>Applies the template's look to this page. Your text, links, cards and colors stay. <b>Undo</b> switches back.</>
-                    : <>Replaces this page with the template's sample content. <b>Undo</b> brings your content back.</>}
-                </p>
+                <p className="glp-hint" style={{ margin: "0 0 12px" }}>Changes the look of this page. Your text, links, cards and colors stay; a page you haven't edited yet shows the template's sample content. <b>Undo</b> switches back.</p>
                 <div className="glp-choices glp-choices--tpl">
                   {[BLANK_TEMPLATE, ...PAGE_TEMPLATES].map((t) => (
                     <button key={t.key} type="button" className={"glp-choice" + (config.templateKey === t.key ? " on" : "")} aria-pressed={config.templateKey === t.key} title={t.hint} onClick={() => applyTemplate(t)}>
