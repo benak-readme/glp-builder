@@ -2697,7 +2697,7 @@ const APP_CSS = `
   .glp-navtabs {
     position: sticky; top: -20px; z-index: 6;
     margin: -20px -20px 16px; padding: 8px 10px;
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.4fr); gap: 4px;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
     background: var(--panel); border-bottom: 1px solid var(--line);
   }
   .glp-navtabs button {
@@ -2708,7 +2708,6 @@ const APP_CSS = `
   /* each area has its own hue (--tc): colored icon at rest, tinted pill when active */
   .glp-navtabs [data-tab="templates"] { --tc: var(--hue-templates); }
   .glp-navtabs [data-tab="theme"] { --tc: var(--hue-theme); }
-  .glp-navtabs [data-tab="page"] { --tc: var(--hue-header); }
   .glp-navtabs [data-tab="sections"] { --tc: var(--hue-sections); }
   .glp-navtabs button { color: var(--ink-2); font-size: 12px; font-weight: 500; border-radius: 10px; padding-left: 2px; padding-right: 2px; }
   .glp-navtabs button i { font-size: 15px; color: var(--tc); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
@@ -2988,6 +2987,10 @@ const APP_CSS = `
   .glp-iconbtn:hover { background: var(--line); color: var(--ink); }
   .glp-iconbtn:disabled { opacity: .3; cursor: default; }
   .glp-card__head { position: relative; }
+  .glp-fixedrow > .glp-card__head { --rowbg: var(--panel-2); background: var(--rowbg); }
+  .glp-fixedrow__icon { width: 14px; font-size: 12px; color: var(--ink-3); flex: none; }
+  .glp-add + .glp-fixedrow { margin-top: 18px; }
+  .glp-outline-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); margin: 14px 2px 8px; }
   .glp-rowacts {
     position: absolute; right: 34px; top: 50%; transform: translateY(-50%);
     display: flex; gap: 2px; padding-left: 18px; opacity: 0; pointer-events: none; transition: opacity 120ms ease;
@@ -3777,6 +3780,23 @@ function FontSelect({ label, value, options, onChange, bare, firstLabel = "Match
   return bare ? body : <Field label={label} inline>{body}</Field>;
 }
 
+/* ---------- pinned outline row (Header, Hero, Contact banner, Footer): opens like
+   a section but can't be dragged, duplicated or deleted ---------- */
+function FixedRow({ title, icon, meta, open, onToggle, children }) {
+  return (
+    <div className="glp-card glp-section glp-fixedrow">
+      <div className="glp-card__head" role="button" tabIndex={0} aria-expanded={open} onClick={onToggle}
+        onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onToggle(); } }}>
+        <i className={"fa-solid " + icon + " glp-fixedrow__icon"} aria-hidden="true"></i>
+        <span className="glp-card__name">{title}</span>
+        {meta ? <span className="glp-card__meta">{meta}</span> : null}
+        <span className={"glp-iconbtn glp-chev" + (open ? " open" : "")} aria-hidden="true"><i className="fa-solid fa-chevron-right"></i></span>
+      </div>
+      {open && <div className="glp-card__body">{children}</div>}
+    </div>
+  );
+}
+
 /* ---------- inline-renamable row name (builder-only label, never on the page).
    Click the pencil or double-click the name; Enter/blur saves, Escape cancels,
    clearing it falls back to the section heading / "Section N". ---------- */
@@ -4560,7 +4580,6 @@ const NAV_TABS = [
   { id: "templates", label: "Templates", icon: "fa-shapes" },
   { id: "theme", label: "Appearance", icon: "fa-palette" },
   { id: "sections", label: "Sections", icon: "fa-layer-group" },
-  { id: "page", label: "Header, Hero & Footer", icon: "fa-window-maximize" },
 ];
 
 function NavTabs({ openNav, setOpenNav }) {
@@ -4734,11 +4753,10 @@ function App() {
     try { v === "system" ? localStorage.removeItem("glp-builder:ui") : localStorage.setItem("glp-builder:ui", v); } catch (e) {}
   };
   const [colorEdit, setColorEdit] = useState("light");
-  const [pageTab, setPageTab] = useState("hero");
   const [openNav, setOpenNavRaw] = useState(() => {
     try {
       let v = localStorage.getItem("glp-builder:nav");
-      if (v === "hero" || v === "headerFooter") v = "page"; /* merged into Page */
+      if (v === "hero" || v === "headerFooter" || v === "page") v = "sections"; /* header, hero, banner and footer now live in the Sections outline */
       if (NAV_TABS.some((t) => t.id === v)) return v;
     } catch (e) {}
     return "sections";
@@ -5729,41 +5747,7 @@ function App() {
               </NavSection>
 
               <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
-                {config.sections.map((section, i) => (
-                  <SectionEditor
-                    key={section.id}
-                    section={section}
-                    index={i}
-                    count={config.sections.length}
-                    hideAccents={config.theme.colorMode !== "custom" || !!(config.theme.colors.light.brand || config.theme.colors.dark.brand)}
-                    globalStyle={config.cardStyle || DEFAULT_STYLE}
-                    open={openSection === section.id}
-                    onToggle={() => setOpenSection(openSection === section.id ? null : section.id)}
-                    onMove={(dir) => moveSection(section.id, dir)}
-                    onRemove={() => removeSection(section.id)}
-                    onDuplicate={() => duplicateSection(section.id)}
-                    onChange={(next) => updateSection(section.id, next)}
-                    cardOps={cardOpsFor(section.id)}
-                    openCard={openCard}
-                    setOpenCard={setOpenCard}
-                    dragHandleProps={sectionDrag.dragHandleProps(section.id)}
-                    dropRowProps={sectionDrag.dropRowProps(i)}
-                    dragOver={sectionDrag.overIndex === i}
-                  />
-                ))}
-                <button className="glp-add" type="button" onClick={addSection} disabled={config.sections.length >= 6}>
-                  + Add section ({config.sections.length}/6)
-                </button>
-              </NavSection>
-
-              <NavSection id="page" label="Header, Hero & Footer" openNav={openNav} setOpenNav={setOpenNav}>
-                <div className="glp-subtabs" role="tablist" aria-label="Page parts">
-                  {[["header", "Header"], ["hero", "Hero"], ["footer", "Footer"]].map(([k, l]) => (
-                    <button key={k} type="button" role="tab" aria-selected={pageTab === k} className={pageTab === k ? "on" : ""} onClick={() => setPageTab(k)}>{l}</button>
-                  ))}
-                </div>
-                {pageTab === "header" && (
-                  <>
+                <FixedRow title="Header" icon="fa-window-maximize" meta={config.brandBar.enabled ? "brand bar" : config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native"} open={openSection === "__header"} onToggle={() => setOpenSection(openSection === "__header" ? null : "__header")}>
                 <Field label="Header style">
                   <Seg
                     value={config.brandBar.enabled ? "brand" : config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native"}
@@ -5855,10 +5839,8 @@ function App() {
                   </>
                 )}
 
-                  </>
-                )}
-                {pageTab === "hero" && (
-                  <>
+                </FixedRow>
+                <FixedRow title="Hero" icon="fa-image" meta={config.hero.bg === "glow" ? "glow" : ""} open={openSection === "__hero"} onToggle={() => setOpenSection(openSection === "__hero" ? null : "__hero")}>
                 <Field label="Eyebrow (blank to hide)">
                   <input
                     className="glp-input"
@@ -6005,11 +5987,34 @@ function App() {
                     <input className="glp-input" value={config.ticker.text} onChange={(e) => setTicker({ text: e.target.value })} />
                   </Field>
                 )}
-                  </>
-                )}
-                {pageTab === "footer" && (
-                  <>
-                <div className="glp-sub" style={{ marginTop: 4 }}>Contact banner</div>
+                </FixedRow>
+                <div className="glp-outline-label">Sections</div>
+                {config.sections.map((section, i) => (
+                  <SectionEditor
+                    key={section.id}
+                    section={section}
+                    index={i}
+                    count={config.sections.length}
+                    hideAccents={config.theme.colorMode !== "custom" || !!(config.theme.colors.light.brand || config.theme.colors.dark.brand)}
+                    globalStyle={config.cardStyle || DEFAULT_STYLE}
+                    open={openSection === section.id}
+                    onToggle={() => setOpenSection(openSection === section.id ? null : section.id)}
+                    onMove={(dir) => moveSection(section.id, dir)}
+                    onRemove={() => removeSection(section.id)}
+                    onDuplicate={() => duplicateSection(section.id)}
+                    onChange={(next) => updateSection(section.id, next)}
+                    cardOps={cardOpsFor(section.id)}
+                    openCard={openCard}
+                    setOpenCard={setOpenCard}
+                    dragHandleProps={sectionDrag.dragHandleProps(section.id)}
+                    dropRowProps={sectionDrag.dropRowProps(i)}
+                    dragOver={sectionDrag.overIndex === i}
+                  />
+                ))}
+                <button className="glp-add" type="button" onClick={addSection} disabled={config.sections.length >= 6}>
+                  + Add section ({config.sections.length}/6)
+                </button>
+                <FixedRow title="Contact banner" icon="fa-bullhorn" meta={config.banner.enabled ? "on" : "off"} open={openSection === "__banner"} onToggle={() => setOpenSection(openSection === "__banner" ? null : "__banner")}>
                 <Toggle
                   checked={config.banner.enabled}
                   onChange={(v) => setBanner({ enabled: v })}
@@ -6051,13 +6056,14 @@ function App() {
                   </>
                 )}
 
-                <div className="glp-sub">Footer</div>
+                </FixedRow>
+                <FixedRow title="Footer" icon="fa-grip-lines" meta={config.footer.trim() ? "on" : "off"} open={openSection === "__footer"} onToggle={() => setOpenSection(openSection === "__footer" ? null : "__footer")}>
                 <Field label="Footer line (blank to hide)">
                   <input className="glp-input" value={config.footer} onChange={(e) => patch({ footer: e.target.value })} />
                 </Field>
-                  </>
-                )}
+                </FixedRow>
               </NavSection>
+
             </div>
             <Preview html={override !== null ? generated : previewHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
           </>
