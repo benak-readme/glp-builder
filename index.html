@@ -4902,6 +4902,22 @@ function extractDesign(reply) {
   return obj;
 }
 
+/* clipboard write that also works where the async Clipboard API is blocked
+   (Safari quirks, embedded browsers, denied permission): falls back to execCommand */
+async function writeClipboard(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.top = "0"; ta.style.left = "0"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) { return false; }
+}
+
 function ImportDialog({ onClose, onCreate }) {
   const [tab, setTab] = useState("connector");
   const [url, setUrl] = useState("");
@@ -4918,8 +4934,10 @@ function ImportDialog({ onClose, onCreate }) {
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, []);
+  const [manual, setManual] = useState(""); /* last resort: show the text to copy by hand */
   const copy = async (t, which) => {
-    try { await navigator.clipboard.writeText(t); setCopied(which); setTimeout(() => setCopied(""), 1600); } catch (e) {}
+    if (await writeClipboard(t)) { setManual(""); setCopied(which); setTimeout(() => setCopied(""), 1600); }
+    else setManual(which);
   };
   const target = url.trim() ? url.trim() : "[paste the landing page URL here]";
   const prompt =
@@ -4972,6 +4990,11 @@ function ImportDialog({ onClose, onCreate }) {
                 <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Open Claude
               </a>
             </div>
+            {manual === "prompt" && (
+              <Field label="Your browser blocked copying. Press ⌘C (Ctrl+C) to copy the selected prompt:">
+                <textarea className="glp-input" readOnly rows={4} value={prompt} autoFocus onFocus={(e) => e.target.select()} style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, marginBottom: 14 }} />
+              </Field>
+            )}
             <Field label="3. Paste Claude's reply">
               <textarea className="glp-textarea" style={{ minHeight: 140, fontFamily: "var(--font-mono)", fontSize: 12 }} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="```json { ... } ```" />
             </Field>
