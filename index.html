@@ -2199,10 +2199,18 @@ const APP_CSS = `
   .glp-bar__right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   .glp-uitoggle { font-size: 14px; width: 34px; height: 34px; border-radius: 8px; margin-right: 4px; }
   .glp-uitoggle.on { background: var(--panel-2); color: var(--ink); }
-  .glp-smallbtn.glp-claudebtn { display: inline-flex; align-items: center; gap: 7px; color: var(--accent); font-weight: 500; }
-  .glp-smallbtn.glp-claudebtn:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
-  .glp-claudebtn__short { display: none; }
-  @media (max-width: 1360px) { .glp-claudebtn__full { display: none; } .glp-claudebtn__short { display: inline; } }
+  /* the Claude import is a headline feature: a tinted pill beside Build/Code */
+  .glp-claudebtn {
+    display: inline-flex; align-items: center; gap: 8px; flex: none;
+    border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer; font-family: inherit;
+    font-size: 14px; font-weight: 500; color: var(--accent); background: var(--accent-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+    transition: background 150ms cubic-bezier(.25,1,.5,1), color 150ms cubic-bezier(.25,1,.5,1);
+  }
+  .glp-claudebtn:hover { background: var(--accent-fill); color: var(--accent-ink); }
+  .glp-claudebtn i { font-size: 14px; }
+  @media (max-width: 1439px) { .glp-logo__tag { display: none; } }
+  @media (max-width: 1180px) { .glp-claudebtn span { display: none; } }
   .glp-section > .glp-card__head .glp-card__meta { max-width: 120px; }
   .glp-uimenu { position: relative; }
   .glp-uimenu__list {
@@ -2437,6 +2445,8 @@ const APP_CSS = `
     background: linear-gradient(90deg, transparent, var(--rowbg, var(--panel-2)) 18px);
   }
   .glp-card__head:hover > .glp-rowacts, .glp-card__head:focus-within > .glp-rowacts { opacity: 1; pointer-events: auto; }
+  .glp-card__meta { transition: opacity 120ms ease; }
+  .glp-card__head:hover > .glp-card__meta, .glp-card__head:focus-within > .glp-card__meta { opacity: 0; }
   .glp-chev i { font-size: 10px; transition: transform 150ms ease; }
   .glp-chev.open i { transform: rotate(90deg); }
   .glp button:focus-visible, .glp [role=button]:focus-visible, .glp-info:focus-visible {
@@ -2481,6 +2491,7 @@ const APP_CSS = `
     border: 0; background: transparent; color: var(--ink-2);
     font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
   }
+  .glp-seg button { white-space: nowrap; }
   .glp-seg button:hover { color: var(--ink); }
   .glp-seg button.on { background: var(--panel); color: var(--ink); font-weight: 500; box-shadow: var(--hairline), 0 1px 2px rgb(5 5 5 / 0.06); }
   .glp[data-ui="midnight"] .glp-seg button.on { background: var(--accent-soft); }
@@ -3528,7 +3539,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
       <RowHead noun="section" max={6} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <RenameName value={section.label} fallback={section.heading || `Section ${index + 1}`} onChange={(v) => set({ label: v })} />
-        <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "from projects" : section.cards.length + " cards"}</span>
+        <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "auto" : section.cards.length + " cards"}</span>
       </RowHead>
       {open && (
         <div className="glp-card__body">
@@ -4666,6 +4677,11 @@ function App() {
             Code
           </button>
         </div>
+        <button className="glp-claudebtn" type="button" onClick={() => setImportOpen(true)}
+          title="Point Claude at any docs landing page and get an editable design back. No API key needed.">
+          <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+          <span>Recreate a page with Claude</span>
+        </button>
         <div className="glp-bar__right">
           <div className="glp-uimenu">
             <button className={"glp-iconbtn glp-uitoggle" + (uiMenu ? " on" : "")} type="button" onClick={() => setUiMenu(!uiMenu)}
@@ -4707,12 +4723,6 @@ function App() {
               )}
             </span>
           )}
-          <button className="glp-smallbtn glp-claudebtn" type="button" onClick={() => setImportOpen(true)}
-            title="Recreate any docs landing page with Claude (no API key)">
-            <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
-            <span className="glp-claudebtn__full">Recreate with Claude</span>
-            <span className="glp-claudebtn__short">Claude</span>
-          </button>
           <div className="glp-pages">
             <button className="glp-smallbtn glp-pages__btn" type="button" onClick={() => { setPagesOpen((o) => !o); setRenaming(false); }} title="Saved pages" style={{ padding: "8px 13px" }}>
               <span className="glp-pages__label">{sharedView ? "Shared design (unsaved)" : currentName}</span>
