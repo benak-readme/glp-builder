@@ -3130,6 +3130,14 @@ const APP_CSS = `
     position: fixed; left: 20px; bottom: 20px; z-index: 70; display: flex; align-items: center; gap: 10px;
     padding: 9px 10px 9px 14px; border-radius: 12px; background: var(--panel); box-shadow: var(--shadow-lg); font-size: 13.5px;
   }
+  .glp-nudge { align-items: flex-start; max-width: 380px; padding: 14px 10px 14px 14px; gap: 12px; }
+  .glp-nudge__icon { margin-top: 2px; font-size: 15px; color: var(--accent); }
+  .glp-nudge__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; line-height: 1.4; }
+  .glp-nudge__text b { font-weight: 600; color: var(--ink); }
+  .glp-nudge__text span { font-size: 12.5px; color: var(--ink-2); }
+  .glp-nudge__btns { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .glp-nudge__x { margin-top: -4px; }
+  .glp-copy--sm { padding: 6px 12px; font-size: 12.5px; }
   .glp-cardtpl-label { font-size: 13px; font-weight: 500; color: var(--ink-2); margin: 0 0 8px; }
   .glp-choices--4 .glp-choice__preview { height: 72px; }
   .glp-choices--4 .glp-choice__sub { line-height: 16px; }
@@ -5636,6 +5644,23 @@ function App() {
     return () => clearTimeout(t);
   }, [designs, fileState]);
 
+  /* backup nudge: once there's real work and no backup file, suggest one (snoozable) */
+  const NUDGE_KEY = "glp-builder:backupNudge";
+  const [nudgeSnoozed, setNudgeSnoozed] = useState(() => { try { return Number(localStorage.getItem(NUDGE_KEY) || 0) > Date.now(); } catch (e) { return false; } });
+  const [nudgeReady, setNudgeReady] = useState(false);
+  const snoozeNudge = (days) => {
+    setNudgeSnoozed(true);
+    try { localStorage.setItem(NUDGE_KEY, String(Date.now() + days * 864e5)); } catch (e) {}
+  };
+  const hasRealWork = useMemo(() => designs.length > 1 || !isPristine(config), [designs.length, config]);
+  useEffect(() => {
+    if (!hasRealWork || nudgeReady) return;
+    const t = setTimeout(() => setNudgeReady(true), 15000); /* let people get going before asking */
+    return () => clearTimeout(t);
+  }, [hasRealWork, nudgeReady]);
+  const showNudge = nudgeReady && hasRealWork && !sharedView && !tplNotice &&
+    (fileState === "reconnect" || (!nudgeSnoozed && (fileState === "off" || fileState === "unsupported")));
+
   const exportDesigns = () => {
     const blob = new Blob([designsFileJson(flushCurrent())], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -5812,6 +5837,33 @@ function App() {
   return (
     <div className="glp" data-ui={ui}>
       <style>{APP_CSS}</style>
+
+      {showNudge && (
+        <div className="glp-toast glp-nudge" role="status">
+          <i className={"fa-solid " + (fileState === "reconnect" ? "fa-plug-circle-exclamation" : "fa-hard-drive") + " glp-nudge__icon"} aria-hidden="true"></i>
+          <div className="glp-nudge__text">
+            <b>{fileState === "reconnect" ? "Your backup file is paused" : "Back up your pages"}</b>
+            <span>{fileState === "reconnect"
+              ? "One click lets the browser save to it again."
+              : fileState === "unsupported"
+                ? "They're only stored in this browser. Export a copy so clearing browser data can't lose them."
+                : "They're only stored in this browser. Pick a backup file and every change saves there too."}</span>
+            <div className="glp-nudge__btns">
+              {fileState === "reconnect" ? (
+                <button type="button" className="glp-copy glp-copy--sm" onClick={reconnectFile}>Reconnect</button>
+              ) : fileState === "unsupported" ? (
+                <button type="button" className="glp-copy glp-copy--sm" onClick={() => { exportDesigns(); snoozeNudge(14); }}>Export all pages</button>
+              ) : (
+                <button type="button" className="glp-copy glp-copy--sm" onClick={connectNewFile}>Back up to a file…</button>
+              )}
+              {fileState !== "reconnect" && <button type="button" className="glp-smallbtn" onClick={() => snoozeNudge(7)}>Not now</button>}
+            </div>
+          </div>
+          {fileState !== "reconnect" && (
+            <button type="button" className="glp-iconbtn glp-nudge__x" aria-label="Dismiss" onClick={() => snoozeNudge(7)}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
+          )}
+        </div>
+      )}
 
       {tplNotice && (
         <div className="glp-toast" role="status">
