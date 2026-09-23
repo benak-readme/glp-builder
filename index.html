@@ -2498,7 +2498,7 @@ const PREVIEW_EDIT_SCRIPT = `
 function buildPreviewDoc(userHtml, mode) {
   const dark = mode === "dark";
   return `<!doctype html>
-<html data-color-mode="${mode}">
+<html data-color-mode="${mode}" style="color-scheme: ${mode}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -2577,6 +2577,23 @@ function buildPreviewDoc(userHtml, mode) {
     border-radius: 4px; padding: 1px 5px;
     font-family: ui-monospace, monospace;
   }
+  .rm-Header-link, .rm-Header-right, .rm-SearchToggle, .rm-AskAi-button { white-space: nowrap; }
+  /* narrower previews (code view, small windows, mobile): tighten instead of wrapping */
+  @media (max-width: 1080px) {
+    .rm-SearchToggle { min-width: 220px; }
+    .rm-Header-right > span { display: none; }
+    .rm-Header-bottom { gap: 22px; font-size: 14px; }
+  }
+  @media (max-width: 760px) {
+    .rm-Header-top { grid-template-columns: auto 1fr auto; padding: 0 14px; gap: 10px; }
+    .rm-Header-center { justify-content: center; min-width: 0; }
+    .rm-SearchToggle { min-width: 0; flex: 1; }
+    .rm-SearchToggle kbd, .rm-Header-right .fa-chevron-down { display: none; }
+    .rm-AskAi-button { padding: 7px 10px; }
+    .rm-Header-theme { margin-left: 0; }
+    .rm-Header-bottom { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; gap: 20px; padding: 0 14px; }
+  }
+  @media (max-width: 480px) { .rm-AskAi-text { display: none; } .rm-Header-center { gap: 6px; } }
   .rm-AskAi { display: flex; }
   .rm-AskAi-button {
     display: inline-flex; align-items: center; gap: 7px;
@@ -2604,7 +2621,7 @@ function buildPreviewDoc(userHtml, mode) {
       <span class="rm-Header-brand"><span class="brand-mark"><i class="fa-solid fa-book-open"></i></span></span>
       <div class="rm-Header-center">
         <div class="rm-Header-search"><button class="rm-SearchToggle"><i class="fa-solid fa-magnifying-glass"></i><span>Search</span><kbd>&#8984;K</kbd></button></div>
-        <div class="rm-AskAi"><button class="rm-AskAi-button"><i class="fa-solid fa-wand-magic-sparkles"></i> Ask AI</button></div>
+        <div class="rm-AskAi"><button class="rm-AskAi-button"><i class="fa-solid fa-wand-magic-sparkles"></i><span class="rm-AskAi-text">Ask AI</span></button></div>
       </div>
       <div class="rm-Header-right"><span>Your Name</span><i class="fa-solid fa-chevron-down"></i><button type="button" class="rm-Header-theme" title="Switch preview to ${dark ? "light" : "dark"} mode" aria-label="Switch preview to ${dark ? "light" : "dark"} mode" onclick="parent.postMessage({ type: 'glp-preview-mode', mode: '${dark ? "light" : "dark"}' }, '*')"><i class="fa-solid fa-circle-half-stroke"></i></button></div>
     </div>
@@ -2685,6 +2702,14 @@ const APP_CSS = `
     --dot: rgb(5 5 5 / 0.13);
     --code-bg: rgb(250 250 250);
     --code-ink: rgb(40 40 40);
+    --code-gutter: rgb(150 152 160);
+    --syn-tag: rgb(36 70 170);
+    --syn-attr: rgb(130 60 170);
+    --syn-str: rgb(20 115 70);
+    --syn-com: rgb(112 116 126);
+    --syn-prop: rgb(165 60 45);
+    --syn-liquid: rgb(170 95 0);
+    --syn-punct: rgb(110 114 124);
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(5 5 5 / 0.06), 0 16px 40px rgb(0 3 63 / 0.14);
     --frame-shadow: 0 12px 32px rgb(0 3 63 / 0.1);
@@ -2736,7 +2761,15 @@ const APP_CSS = `
     --danger-line: rgb(130 50 70);
     --dot: rgb(255 255 255 / 0.07);
     --code-bg: rgb(9 10 14);
-    --code-ink: rgb(220 226 255);
+    --code-ink: rgb(214 218 232);
+    --code-gutter: rgb(84 88 104);
+    --syn-tag: rgb(150 170 235);
+    --syn-attr: rgb(196 170 240);
+    --syn-str: rgb(150 205 165);
+    --syn-com: rgb(112 118 138);
+    --syn-prop: rgb(235 170 150);
+    --syn-liquid: rgb(235 195 120);
+    --syn-punct: rgb(128 134 154);
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
     --frame-shadow: 0 20px 56px rgb(0 0 20 / 0.55);
@@ -3281,7 +3314,7 @@ const APP_CSS = `
   .glp-frame.mobile { max-width: 396px; }
 
   .glp-code {
-    width: 46%; min-width: 380px; flex: none;
+    width: 42%; min-width: 380px; flex: none;
     display: flex; flex-direction: column;
     border-right: 1px solid var(--line);
     background: var(--panel);
@@ -3291,14 +3324,46 @@ const APP_CSS = `
     padding: 9px 14px; flex: none; border-bottom: 1px solid var(--line);
   }
   .glp-code__bar .glp-view__label { margin-right: auto; }
-  .glp-code textarea {
-    flex: 1; width: 100%; border: 0; resize: none;
-    background: var(--code-bg); color: var(--code-ink);
-    font-family: var(--font-mono);
-    font-size: 12px; line-height: 1.6;
-    padding: 16px; outline: none;
-    tab-size: 2; white-space: pre; overflow: auto;
+  .glp-code__status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); white-space: nowrap; }
+  .glp-code__status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--ok-dot); }
+  .glp-code__status--warn { color: var(--warn); }
+  .glp-code__status--warn::before { background: var(--warn); }
+  .glp-code__meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); white-space: nowrap; }
+  .glp-code__sep { width: 1px; height: 14px; background: var(--line); }
+  /* editor: a transparent textarea over a syntax-highlighted mirror, with a line-number gutter */
+  .glp-editor {
+    flex: 1; min-height: 0; display: flex; background: var(--code-bg);
+    font-family: var(--font-mono); font-size: 12px; line-height: 20px; tab-size: 2;
   }
+  .glp-editor__gutter {
+    flex: none; overflow: hidden; padding: 14px 10px 14px 14px; text-align: right;
+    color: var(--code-gutter); user-select: none; border-right: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+  .glp-editor__gutter div { height: 20px; }
+  .glp-editor__stack { position: relative; flex: 1; min-width: 0; }
+  .glp-editor__hl, .glp-editor textarea {
+    position: absolute; inset: 0; margin: 0; border: 0; padding: 14px 16px 14px 14px;
+    font: inherit; line-height: inherit; tab-size: inherit; letter-spacing: 0;
+    white-space: pre; overflow: auto;
+  }
+  .glp-editor__hl { color: var(--code-ink); overflow: hidden; pointer-events: none; }
+  .glp-editor textarea {
+    resize: none; outline: none; background: transparent; color: transparent;
+    caret-color: var(--ink); -webkit-text-fill-color: transparent;
+    scrollbar-width: thin; scrollbar-color: var(--line-2) transparent;
+  }
+  .glp-editor textarea::selection { background: color-mix(in oklch, var(--accent) 30%, transparent); -webkit-text-fill-color: transparent; }
+  .glp-editor textarea::-webkit-scrollbar { width: 10px; height: 10px; }
+  .glp-editor textarea::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 5px; border: 2px solid var(--code-bg); }
+  .glp-editor textarea::-webkit-scrollbar-track, .glp-editor textarea::-webkit-scrollbar-corner { background: transparent; }
+  .s-tag { color: var(--syn-tag); }
+  .s-attr { color: var(--syn-attr); }
+  .s-str { color: var(--syn-str); }
+  .s-com { color: var(--syn-com); font-style: italic; }
+  .s-prop { color: var(--syn-prop); }
+  .s-liq { color: var(--syn-liquid); }
+  .s-p { color: var(--syn-punct); }
   .glp-chip {
     font-size: 11.5px; font-weight: 600;
     padding: 3px 9px; border-radius: 20px;
@@ -4586,6 +4651,64 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
 }
 
 /* ---------- preview pane ---------- */
+/* ---------- code view: lightweight HTML / CSS / Liquid highlighting ---------- */
+const escHl = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const hlSpan = (cls, t) => '<span class="' + cls + '">' + escHl(t) + "</span>";
+function hlCss(css) {
+  /* a word is a property only when it opens a declaration: right after "{" or ";" and followed by ":" */
+  let last = "{";
+  return css.replace(/(\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|(\{%[\s\S]*?%\}|\{\{[\s\S]*?\}\})|([\w-]+)(?=(\s*:)?)|(\s+)|([\s\S])/g,
+    (m, com, str, liq, word, colon, ws, ch) => {
+      if (com) return hlSpan("s-com", com);
+      if (ws) return m;
+      if (str) { last = '"'; return hlSpan("s-str", str); }
+      if (liq) { last = "%"; return hlSpan("s-liq", liq); }
+      if (word) { const prop = colon && (last === "{" || last === ";"); last = "w"; return prop ? hlSpan("s-prop", word) : escHl(word); }
+      last = ch; return escHl(ch);
+    });
+}
+function hlTag(tag) {
+  return tag.replace(/^(<\/?)([\w-]*)|("[^"]*"|'[^']*')|(\{%[\s\S]*?%\}|\{\{[\s\S]*?\}\})|([\w:@.-]+)(?==)|(\/?>$)|([\s\S])/g,
+    (m, open, name, str, liq, attr, close) =>
+      open != null ? hlSpan("s-p", open) + hlSpan("s-tag", name) : str ? hlSpan("s-str", str) : liq ? hlSpan("s-liq", liq) : attr ? hlSpan("s-attr", attr) : close ? hlSpan("s-p", close) : escHl(m));
+}
+function highlightHtml(src) {
+  let out = "";
+  const re = /(<!--[\s\S]*?(?:-->|$))|(<style\b[^>]*>)([\s\S]*?)(<\/style>|$)|(\{%[\s\S]*?%\}|\{\{[\s\S]*?\}\})|(<\/?[a-zA-Z][^>]*>)|([^<{]+|[\s\S])/g;
+  let m;
+  while ((m = re.exec(src))) {
+    if (m[1]) out += hlSpan("s-com", m[1]);
+    else if (m[2]) out += hlTag(m[2]) + hlCss(m[3]) + (m[4] ? hlTag(m[4]) : "");
+    else if (m[5]) out += hlSpan("s-liq", m[5]);
+    else if (m[6]) out += hlTag(m[6]);
+    else out += escHl(m[7]);
+    if (m[0] === "") re.lastIndex++;
+  }
+  return out;
+}
+function CodeEditor({ value, onChange }) {
+  const hlRef = useRef(null), gutRef = useRef(null);
+  const html = useMemo(() => highlightHtml(value) + "\n", [value]);
+  const lines = useMemo(() => value.split("\n").length, [value]);
+  const sync = (e) => {
+    const t = e.target;
+    if (hlRef.current) { hlRef.current.scrollTop = t.scrollTop; hlRef.current.scrollLeft = t.scrollLeft; }
+    if (gutRef.current) gutRef.current.scrollTop = t.scrollTop;
+  };
+  return (
+    <div className="glp-editor">
+      <div className="glp-editor__gutter" ref={gutRef} aria-hidden="true">
+        {Array.from({ length: lines }, (_, i) => <div key={i}>{i + 1}</div>)}
+        <div style={{ height: 40 }}></div>
+      </div>
+      <div className="glp-editor__stack">
+        <pre className="glp-editor__hl" ref={hlRef} aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
+        <textarea spellCheck={false} aria-label="Page HTML" value={value} onChange={(e) => onChange(e.target.value)} onScroll={sync} />
+      </div>
+    </div>
+  );
+}
+
 function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex }) {
   const editable = html.includes("data-glp=");
   /* Double-buffered preview: render the new doc into the hidden iframe and
@@ -4680,7 +4803,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
           ]}
         />
         {(() => {
-          const note = (editable ? "Click any text to edit it. " : "") + (liquidNote ? "Liquid preview shows 3 sample projects; ReadMe renders your real ones" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
+          const note = (editable ? "Click any text to edit it. " : "") + (liquidNote ? "Showing 3 sample projects (ReadMe fills in your real ones)" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
           return <span className="glp-view__note" title={note}>{note}</span>;
         })()}
       </div>
@@ -6280,14 +6403,14 @@ function App() {
                 </div>
               )}
               <div className="glp-code__bar">
-                <span className="glp-view__label">Raw HTML{hasLiquid && !override ? " + Liquid" : ""}</span>
-                {hasLiquid && !override && <span className="glp-chip glp-chip--liquid">liquid</span>}
-                <span className={"glp-chip" + (override !== null ? " glp-chip--warn" : "")}>
-                  {override !== null ? "manual edits" : "generated from builder"}
+                <span className="glp-view__label">{hasLiquid && override === null ? "HTML + Liquid" : "HTML"}</span>
+                <span className={"glp-code__status" + (override !== null ? " glp-code__status--warn" : "")}>
+                  {override !== null ? "Edited by hand" : "Synced with builder"}
                 </span>
-                <span className="glp-chip">{(exportHtml.length / 1024).toFixed(1)} KB</span>
+                <span className="glp-code__sep" aria-hidden="true"></span>
+                <span className="glp-code__meta">{exportHtml.split("\n").length} lines · {(exportHtml.length / 1024).toFixed(1)} KB</span>
               </div>
-              <textarea spellCheck={false} value={exportHtml} onChange={(e) => setOverride(e.target.value)} />
+              <CodeEditor value={exportHtml} onChange={setOverride} />
             </div>
             <Preview html={exportHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid && !override} />
           </>
