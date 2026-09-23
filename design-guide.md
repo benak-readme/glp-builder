@@ -12,7 +12,7 @@ The builder turns this JSON into the final HTML, so describe the page's **conten
 3. Output ONE JSON object. Omit anything you'd leave at its default; the builder fills defaults in.
 
 ## Top-level fields
-- `typeface`: `{ custom: true, heading, body, mono }` (omit it, or `custom: false`, to Match ReadMe). Use "readme" (Match ReadMe: inherit whatever the hub uses, the best default)
+- `typeface`: `{ custom: true, heading, body, mono }` (omit it, or `custom: false`, to Match Settings in ReadMe). Use "readme" (Match Settings in ReadMe: inherit whatever the hub uses, the best default)
   or one of ReadMe's supported fonts. Headings: "Fraunces" | "Syne" | "Space Mono" | "DM Mono" | "DM Sans" | "Geist" |
   "Geist Mono" | "IBM Plex Mono" | "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans".
   Body: "Literata" | "Lora" | "Merriweather" | "DM Mono" | "DM Sans" | "Geist" | "Geist Mono" | "IBM Plex Mono" |

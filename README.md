@@ -46,11 +46,12 @@ preview — then copy the generated snippet into
 - **Edit text right in the preview** — click any heading, card title, link
   label, or column text in the live preview and type; Enter saves it back
   into the builder (and the code), Escape cancels.
-- **Recreate a page with Claude** (Pages menu) — no API key needed. Add the
-  builder as a custom connector in Claude (`https://glp-builder.netlify.app/mcp`)
-  and ask it to recreate any docs landing page; Claude replies with a builder
-  link. Or copy a ready-made prompt into Claude and paste its JSON reply
-  back. The format Claude follows lives in `design-guide.md`; the connector is
+- **Import with Claude** (top bar) — no API key needed. GLP Builder is an
+  org-wide connector in Claude (Settings → Connectors → Connect; or add
+  `https://glp-builder.netlify.app/mcp` as a custom connector). Ask Claude to
+  recreate any docs landing page and it replies with a builder link. Or copy a
+  ready-made prompt into Claude and paste its JSON reply back. The format
+  Claude follows lives in `design-guide.md`; the connector is
   `netlify/functions/mcp.mjs`.
 - **Backups that survive clearing your browser** (Pages menu) — keep a
   `.json` backup file on your computer that every change is saved to
@@ -68,8 +69,6 @@ preview — then copy the generated snippet into
   warning rather than silently claiming success.
 - **Undo / redo** — top-bar buttons (and ⌘/Ctrl-Z, ⇧⌘/Ctrl-Z) roll back
   recent changes, including accidental section or card deletions.
-- **One-color mode** — a top **Colors** section can force a single accent
-  across every card, overriding the per-card colors.
 - **Shareable links** — the Share button stores your design and copies a
   short `…/g/<code>` URL (nice for Slack). Anyone opening it sees your exact
   configuration as an unsaved page they can add to their own list with one
@@ -77,8 +76,10 @@ preview — then copy the generated snippet into
   service is unreachable Share falls back to an inline link automatically.
 - Native ReadMe **dark/light/system theming** via `data-color-mode` — no JS
   theme hacks
-- 4 font pairings **plus a "Match ReadMe" option** that inherits the hub's
-  own typeface (ReadMe's `--font-family`, i.e. its default or your Custom CSS)
+- **Fonts and colors like ReadMe's Appearance settings** — "Match Settings in
+  ReadMe" (the default) inherits the hub's own fonts and brand color; Custom
+  offers ReadMe's supported heading/body/code fonts and per-role colors for
+  light and dark mode
 - Per-card accent colors, hero buttons/chip, announcement ticker, contact
   banner, page-width control
 - Copy or download the finished HTML

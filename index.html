@@ -104,7 +104,7 @@ function resolveFonts(cfg) {
   }
   const families = [...new Set([heading, body, mono].filter((n) => FONT_FAMILIES[n]))];
   return {
-    label: heading === "readme" && body === "readme" ? "Match ReadMe" : `${heading === "readme" ? "ReadMe" : heading} headings, ${body === "readme" ? "ReadMe" : body} body`,
+    label: heading === "readme" && body === "readme" ? "Match Settings in ReadMe" : `${heading === "readme" ? "ReadMe" : heading} headings, ${body === "readme" ? "ReadMe" : body} body`,
     display: fontStack(heading),
     body: fontStack(body),
     mono: mono ? fontStack(mono) : FONT_FALLBACK.mono,
@@ -1130,7 +1130,7 @@ function generateHTMLInner(cfg) {
   const effStyle = (sec) => (sec.styleMode === "custom" ? sec.style : cfg.cardStyle || DEFAULT_STYLE);
 
   /* optional single global accent for every card.
-     "Match ReadMe" wins over the uniform picker: it inherits the hub's own
+     "Match Settings in ReadMe" wins over the uniform picker: it inherits the hub's own
      brand/link color via ReadMe's CSS variable (adapts to light & dark on its
      own), falling back to our blue if the variable isn't present. */
   const theme = cfg.theme || {};
@@ -3269,7 +3269,7 @@ function ColorValue({ value, onChange, label }) {
 }
 
 /* ---------- font picker: ReadMe's font list, each option shown in its own face ---------- */
-function FontSelect({ label, value, options, onChange, bare, firstLabel = "Match ReadMe", firstSub = "Whatever your hub uses" }) {
+function FontSelect({ label, value, options, onChange, bare, firstLabel = "Match Settings in ReadMe", firstSub = "Whatever your hub uses" }) {
   const [open, setOpen] = useState(false);
   const list = FONT_FAMILIES[value] && !options.includes(value) ? [...options, value] : options; /* keep a legacy pick visible */
   const face = (n) => (n === "readme" ? "var(--font-ui)" : `'${n}', ${FONT_FALLBACK[FONT_FAMILIES[n].kind]}`);
@@ -5109,7 +5109,7 @@ function App() {
                   value={config.typeface.custom ? "custom" : "readme"}
                   onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, custom: v === "custom" } }))}
                   options={[
-                    { value: "readme", label: "Match ReadMe", sub: "Default", preview: <span className="glp-choice__aa">Aa</span> },
+                    { value: "readme", label: "Match Settings in ReadMe", sub: "Default", preview: <span className="glp-choice__aa">Aa</span> },
                     { value: "custom", label: "Custom", sub: "Pick fonts", preview: <span className="glp-choice__aa" style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}>Aa</span> },
                   ]}
                 />
@@ -5147,7 +5147,7 @@ function App() {
                   value={config.theme.colorMode}
                   onChange={(v) => setTheme({ colorMode: v })}
                   options={[
-                    { value: "readme", label: "Match ReadMe", sub: "Default", preview: <span className="glp-choice__dots"><i style={{ background: "var(--accent-fill)" }}></i><i></i><i></i></span> },
+                    { value: "readme", label: "Match Settings in ReadMe", sub: "Default", preview: <span className="glp-choice__dots"><i style={{ background: "var(--accent-fill)" }}></i><i></i><i></i></span> },
                     { value: "custom", label: "Custom", sub: "Set each color", preview: <span className="glp-choice__dots"><i style={{ background: config.theme.colors.light.brand || "#FF4C00" }}></i><i style={{ background: config.theme.colors.light.heading || "#1F1F1F" }}></i><i style={{ background: config.theme.colors.light.cardBg || "#FFFFFF" }}></i></span> },
                   ]}
                 />
