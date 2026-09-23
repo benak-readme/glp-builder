@@ -10,7 +10,7 @@
   html, body { margin: 0; padding: 0; height: 100%; background: #F2F2F2; }
   #root { height: 100%; }
   .boot { height:100%; display:flex; align-items:center; justify-content:center; color:#4A5670; font-family:-apple-system,"Segoe UI",sans-serif; font-size:14px; font-weight:500; }
-  @media (prefers-color-scheme: dark) { html, body { background: #00033F; } .boot { color: rgba(255,255,255,.72); } }
+  @media (prefers-color-scheme: dark) { html, body { background: #00021E; } .boot { color: rgba(255,255,255,.72); } }
 </style>
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -2136,10 +2136,10 @@ const APP_CSS = `
     overflow: hidden;
   }
   .glp[data-ui="midnight"] {
-    --bg: rgb(0 3 63);                     /* --accent-blue-primary-12 */
-    --panel: rgb(1 10 76);
-    --panel-2: rgb(2 18 89);               /* --accent-blue-primary-11 */
-    --field: rgb(0 6 58);
+    --bg: rgb(0 2 30);                     /* darker than the hero navy, for long sessions */
+    --panel: rgb(0 3 44);
+    --panel-2: rgb(0 3 63);                /* --accent-blue-primary-12, raised rows */
+    --field: rgb(0 2 26);
     --line: rgb(255 255 255 / 0.1);
     --line-2: rgb(255 255 255 / 0.17);
     --hairline: inset 0 0 0 1px rgb(255 255 255 / 0.1);
@@ -2150,19 +2150,19 @@ const APP_CSS = `
     --accent-fill: var(--brand-blue);
     --accent-hover: rgb(58 82 255);
     --accent-ink: rgb(255 255 255);
-    --accent-soft: rgb(24 40 140);
+    --accent-soft: rgb(14 26 108);
     --focus: 0 0 0 3px rgb(120 140 255);
     --focus-soft: 0 0 0 3px rgb(120 140 255 / 0.35);
     --ok: rgb(110 220 125);
     --ok-dot: rgb(74 198 89);
     --ok-soft: rgb(12 60 40);
     --warn: rgb(255 200 110);
-    --warn-soft: rgb(50 35 40);
+    --warn-soft: rgb(44 30 30);
     --warn-line: rgb(120 90 50);
     --danger: rgb(255 140 150);
     --danger-line: rgb(130 50 70);
     --dot: rgb(255 255 255 / 0.09);
-    --code-bg: rgb(0 4 50);
+    --code-bg: rgb(0 2 24);
     --code-ink: rgb(220 226 255);
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
@@ -2183,10 +2183,10 @@ const APP_CSS = `
     width: 28px; height: 28px; border-radius: 8px;
     background: var(--accent-fill);
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--font-display); font-style: italic; font-size: 15px; color: var(--accent-ink);
+    color: var(--accent-ink);
   }
-  .glp-logo__name { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 20px; letter-spacing: -0.01em; line-height: 1.1; }
-  .glp-logo__tag { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  .glp-logo__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; line-height: 18px; }
+  .glp-logo__tag { font-size: 12px; line-height: 16px; color: var(--ink-3); }
 
   .glp-tabs { display: flex; gap: 2px; margin-left: 10px; background: var(--bg); padding: 3px; border-radius: 999px; box-shadow: var(--hairline); }
   .glp-tab {
@@ -2199,6 +2199,11 @@ const APP_CSS = `
   .glp-bar__right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   .glp-uitoggle { font-size: 14px; width: 34px; height: 34px; border-radius: 8px; margin-right: 4px; }
   .glp-uitoggle.on { background: var(--panel-2); color: var(--ink); }
+  .glp-smallbtn.glp-claudebtn { display: inline-flex; align-items: center; gap: 7px; color: var(--accent); font-weight: 500; }
+  .glp-smallbtn.glp-claudebtn:hover:not(:disabled) { color: var(--accent); background: var(--accent-soft); }
+  .glp-claudebtn__short { display: none; }
+  @media (max-width: 1360px) { .glp-claudebtn__full { display: none; } .glp-claudebtn__short { display: inline; } }
+  .glp-section > .glp-card__head .glp-card__meta { max-width: 120px; }
   .glp-uimenu { position: relative; }
   .glp-uimenu__list {
     position: absolute; top: calc(100% + 6px); left: 0; z-index: 41; width: 176px; padding: 5px;
@@ -3826,8 +3831,8 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
 const NAV_TABS = [
   { id: "theme", label: "Theme", icon: "fa-palette" },
   { id: "sections", label: "Sections", icon: "fa-layer-group" },
-  { id: "hero", label: "Hero", icon: "fa-heading" },
-  { id: "headerFooter", label: "Header & Footer", icon: "fa-bars" },
+  { id: "hero", label: "Hero", icon: "fa-image" },
+  { id: "headerFooter", label: "Header & Footer", icon: "fa-window-maximize" },
 ];
 
 function NavTabs({ openNav, setOpenNav }) {
@@ -4639,7 +4644,15 @@ function App() {
 
       <div className="glp-bar">
         <div className="glp-logo">
-          <div className="glp-logo__mark">GL</div>
+          <div className="glp-logo__mark" aria-hidden="true">
+            {/* a tiny landing page: header bar over a row of cards */}
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+              <rect x="2" y="3" width="16" height="3.2" rx="1.2" />
+              <rect x="2" y="8.4" width="4.6" height="8.6" rx="1.2" />
+              <rect x="7.7" y="8.4" width="4.6" height="8.6" rx="1.2" opacity=".75" />
+              <rect x="13.4" y="8.4" width="4.6" height="8.6" rx="1.2" opacity=".5" />
+            </svg>
+          </div>
           <div>
             <div className="glp-logo__name">GLP Builder</div>
             <div className="glp-logo__tag">Global landing pages for ReadMe Enterprise</div>
@@ -4694,6 +4707,12 @@ function App() {
               )}
             </span>
           )}
+          <button className="glp-smallbtn glp-claudebtn" type="button" onClick={() => setImportOpen(true)}
+            title="Recreate any docs landing page with Claude (no API key)">
+            <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+            <span className="glp-claudebtn__full">Recreate with Claude</span>
+            <span className="glp-claudebtn__short">Claude</span>
+          </button>
           <div className="glp-pages">
             <button className="glp-smallbtn glp-pages__btn" type="button" onClick={() => { setPagesOpen((o) => !o); setRenaming(false); }} title="Saved pages" style={{ padding: "8px 13px" }}>
               <span className="glp-pages__label">{sharedView ? "Shared design (unsaved)" : currentName}</span>
