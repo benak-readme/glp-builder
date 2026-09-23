@@ -10,7 +10,7 @@
   html, body { margin: 0; padding: 0; height: 100%; background: #F2F2F2; }
   #root { height: 100%; }
   .boot { height:100%; display:flex; align-items:center; justify-content:center; color:#4A5670; font-family:-apple-system,"Segoe UI",sans-serif; font-size:14px; font-weight:500; }
-  @media (prefers-color-scheme: dark) { html, body { background: #0A0B10; } .boot { color: rgba(255,255,255,.72); } }
+  @media (prefers-color-scheme: dark) { html, body { background: #0A0C18; } .boot { color: rgba(255,255,255,.72); } }
 </style>
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -2598,12 +2598,12 @@ const APP_CSS = `
     overflow: hidden;
   }
   .glp[data-ui="midnight"] {
-    /* near-black with just a hint of blue (close to ReadMe's own dark mode);
-       saturated navy read too bright over a long session */
-    --bg: rgb(10 11 16);
-    --panel: rgb(15 17 24);
-    --panel-2: rgb(21 24 33);
-    --field: rgb(11 12 17);
+    /* dark with a gentle blue tint: between the old saturated navy (too
+       bright over a long session) and plain near-black */
+    --bg: rgb(10 12 24);
+    --panel: rgb(15 18 33);
+    --panel-2: rgb(21 25 44);
+    --field: rgb(11 13 25);
     --line: rgb(255 255 255 / 0.08);
     --line-2: rgb(255 255 255 / 0.14);
     --hairline: inset 0 0 0 1px rgb(255 255 255 / 0.1);
@@ -2614,7 +2614,7 @@ const APP_CSS = `
     --accent-fill: rgb(48 60 150);
     --accent-hover: rgb(58 72 172);
     --accent-ink: rgb(255 255 255);
-    --accent-soft: rgb(28 33 58);
+    --accent-soft: rgb(28 34 70);
     --focus: 0 0 0 3px rgb(140 154 230 / 0.6);
     --focus-soft: 0 0 0 3px rgb(140 154 230 / 0.25);
     --ok: rgb(110 220 125);
@@ -2626,7 +2626,7 @@ const APP_CSS = `
     --danger: rgb(255 140 150);
     --danger-line: rgb(130 50 70);
     --dot: rgb(255 255 255 / 0.07);
-    --code-bg: rgb(9 10 14);
+    --code-bg: rgb(9 11 21);
     --code-ink: rgb(220 226 255);
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
@@ -4748,6 +4748,7 @@ function App() {
     return () => (q.removeEventListener ? q.removeEventListener("change", on) : q.removeListener(on));
   }, []);
   const ui = uiPref === "system" ? (sysDark ? "midnight" : "light") : uiPref;
+  useEffect(() => { if (!previewModeTouched.current) setModeRaw(sysDark ? "dark" : "light"); }, [sysDark]);
   const [uiMenu, setUiMenu] = useState(false);
   const chooseUi = (v) => {
     setUiPref(v);
@@ -4770,7 +4771,13 @@ function App() {
     if (sideRef.current) sideRef.current.scrollTop = 0;
   };
   const [openSection, setOpenSection] = useState(boot.current.config.sections[0].id);
-  const [mode, setMode] = useState("light");
+  /* preview light/dark: starts on the machine's setting and follows it until
+     the user picks one in the preview toolbar (or via the Colors mode switch) */
+  const [mode, setModeRaw] = useState(() => {
+    try { return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; } catch (e) { return "light"; }
+  });
+  const previewModeTouched = useRef(false);
+  const setMode = (m) => { previewModeTouched.current = true; setModeRaw(m); };
   const [device, setDevice] = useState("desktop");
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
