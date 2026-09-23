@@ -10,6 +10,7 @@
   html, body { margin: 0; padding: 0; height: 100%; background: #F0F3F8; }
   #root { height: 100%; }
   .boot { height:100%; display:flex; align-items:center; justify-content:center; color:#4A5670; font-family:-apple-system,"Segoe UI",sans-serif; font-size:14px; font-weight:500; }
+  @media (prefers-color-scheme: dark) { html, body { background: #111a2e; } .boot { color: #b7c1d8; } }
 </style>
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -2145,6 +2146,20 @@ const APP_CSS = `
 
   .glp-bar__right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   .glp-uitoggle { font-size: 14px; width: 34px; height: 34px; border-radius: 8px; margin-right: 4px; }
+  .glp-uitoggle.on { background: var(--panel-2); color: var(--ink); }
+  .glp-uimenu { position: relative; }
+  .glp-uimenu__list {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 41; width: 176px; padding: 5px;
+    background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px; box-shadow: var(--shadow-lg);
+  }
+  .glp-uimenu__list button {
+    display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: transparent; cursor: pointer;
+    font-family: inherit; font-size: 13px; color: var(--ink-2); padding: 8px 9px; border-radius: 7px; text-align: left;
+  }
+  .glp-uimenu__list button:hover { background: var(--panel-2); color: var(--ink); }
+  .glp-uimenu__list button.on { color: var(--ink); font-weight: 600; }
+  .glp-uimenu__list button > i:first-child { width: 14px; color: var(--ink-3); }
+  .glp-uimenu__check { margin-left: auto; color: var(--accent); font-size: 11px; }
   .glp-copy {
     display: inline-flex; align-items: center; gap: 8px;
     border: 0; cursor: pointer;
@@ -3904,14 +3919,27 @@ function App() {
      that follows (React unmounting the input) from committing or double-committing */
   const renameHandled = useRef(false);
   const [openCard, setOpenCard] = useState(null);
-  /* builder appearance (not the page being built): light (default) or midnight */
-  const [ui, setUi] = useState(() => {
-    try { return localStorage.getItem("glp-builder:ui") === "midnight" ? "midnight" : "light"; } catch (e) { return "light"; }
+  /* builder appearance (not the page being built). The preference is
+     "system" (default: follow the OS light/dark setting, live), "light" or
+     "midnight"; `ui` is what actually renders. */
+  const [uiPref, setUiPref] = useState(() => {
+    try { const v = localStorage.getItem("glp-builder:ui"); return v === "light" || v === "midnight" ? v : "system"; } catch (e) { return "system"; }
   });
-  const toggleUi = () => {
-    const next = ui === "light" ? "midnight" : "light";
-    setUi(next);
-    try { localStorage.setItem("glp-builder:ui", next); } catch (e) {}
+  const darkQuery = () => { try { return window.matchMedia("(prefers-color-scheme: dark)"); } catch (e) { return null; } };
+  const [sysDark, setSysDark] = useState(() => { const q = darkQuery(); return !!(q && q.matches); });
+  useEffect(() => {
+    const q = darkQuery();
+    if (!q) return;
+    const on = (e) => setSysDark(e.matches);
+    q.addEventListener ? q.addEventListener("change", on) : q.addListener(on);
+    return () => (q.removeEventListener ? q.removeEventListener("change", on) : q.removeListener(on));
+  }, []);
+  const ui = uiPref === "system" ? (sysDark ? "midnight" : "light") : uiPref;
+  const [uiMenu, setUiMenu] = useState(false);
+  const chooseUi = (v) => {
+    setUiPref(v);
+    setUiMenu(false);
+    try { v === "system" ? localStorage.removeItem("glp-builder:ui") : localStorage.setItem("glp-builder:ui", v); } catch (e) {}
   };
   const [openNav, setOpenNavRaw] = useState(() => {
     try { const v = localStorage.getItem("glp-builder:nav"); if (NAV_TABS.some((t) => t.id === v)) return v; } catch (e) {}
@@ -4561,11 +4589,30 @@ function App() {
           </button>
         </div>
         <div className="glp-bar__right">
-          <button className="glp-iconbtn glp-uitoggle" type="button" onClick={toggleUi}
-            title={ui === "light" ? "Switch the builder to Midnight" : "Switch the builder to Light"}
-            aria-label={ui === "light" ? "Use the dark builder theme" : "Use the light builder theme"}>
-            <i className={"fa-solid " + (ui === "light" ? "fa-moon" : "fa-sun")} aria-hidden="true"></i>
-          </button>
+          <div className="glp-uimenu">
+            <button className={"glp-iconbtn glp-uitoggle" + (uiMenu ? " on" : "")} type="button" onClick={() => setUiMenu(!uiMenu)}
+              title="Builder appearance" aria-label="Builder appearance" aria-haspopup="menu" aria-expanded={uiMenu}>
+              <i className={"fa-solid " + (ui === "light" ? "fa-sun" : "fa-moon")} aria-hidden="true"></i>
+            </button>
+            {uiMenu && (
+              <>
+                <div className="glp-pages__backdrop" onClick={() => setUiMenu(false)} />
+                <div className="glp-uimenu__list" role="menu" aria-label="Builder appearance">
+                  {[
+                    ["system", "fa-circle-half-stroke", "Match system"],
+                    ["light", "fa-sun", "Light"],
+                    ["midnight", "fa-moon", "Midnight"],
+                  ].map(([v, icon, label]) => (
+                    <button key={v} type="button" role="menuitemradio" aria-checked={uiPref === v} className={uiPref === v ? "on" : ""} onClick={() => chooseUi(v)}>
+                      <i className={"fa-solid " + icon} aria-hidden="true"></i>
+                      <span>{label}</span>
+                      {uiPref === v && <i className="fa-solid fa-check glp-uimenu__check" aria-hidden="true"></i>}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
           <button className="glp-smallbtn" type="button" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo} aria-label="Undo" style={{ padding: "8px 11px" }}><i className="fa-solid fa-rotate-left" aria-hidden="true"></i></button>
           <button className="glp-smallbtn" type="button" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo} aria-label="Redo" style={{ padding: "8px 11px", marginRight: 8 }}><i className="fa-solid fa-rotate-right" aria-hidden="true"></i></button>
           {!sharedView && currentId && (
