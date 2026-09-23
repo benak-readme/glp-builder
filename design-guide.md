@@ -54,7 +54,7 @@ Name the page after the source, e.g. "Unbranded developer.acme.com".
   weight field beside it: `hero.titleWeight`, `banner.titleWeight`, a section's `headingWeight`, a card's
   `titleWeight`, a column's `headingWeight` (same values).
 - Text formatting: in descriptions, intros, the hero subtitle, column text, link labels, banner text and the footer,
-  `**word**` renders bold and `*word*` italic. Headings and card titles take `*word*` italic too.
+  `**word**` renders bold, `*word*` italic, and `***word***` both. Headings and card titles take `*word*` italic too.
 - `brandBar`: custom header that replaces ReadMe's header on the landing page.
   `{ enabled, name, tag, logoUrl, links: [{label, href}], button: {enabled, label, href} }`.
   Use it when the page has its own logo row / top nav. `logoUrl` (an absolute image URL) replaces the wordmark.

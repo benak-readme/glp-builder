@@ -763,9 +763,11 @@ ${indent}}`;
 
 /* escape, then turn *word* into <em>word</em> (link-list labels) */
 /* escape, then **bold** and *italic* (kept deliberately small: no nesting, no links) */
+/* **bold**, *italic*, and the two combined: ***both***, or italic inside bold and vice versa */
 const inlineEm = (s = "") =>
   esc(s)
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*\*\*([^*]+)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*((?:[^*]|\*[^*]+\*)+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>");
 
 /* the search placement that actually renders: the brand bar hides ReadMe's
@@ -2418,6 +2420,7 @@ const PREVIEW_EDIT_SCRIPT = `
   .glp-edbar button b, .glp-edbar button i { font-size: 14px; font-family: Georgia, serif; }
   .glp-edbar button:hover { background: rgba(255,255,255,.08); color: #fff; }
   .glp-edbar button.on { background: rgba(120,140,255,.28); color: #fff; }
+  .glp-edbar__sep { width: 1px; align-self: stretch; margin: 4px 4px; background: rgba(255,255,255,.14); }
   .glp-edbar__label { padding: 0 6px 0 4px; color: #8f94a3; font-size: 11.5px; }
   [data-glp-auto] { cursor: help; }
   [data-glp-auto]:hover { outline: 1px dashed rgba(33,58,255,.55); outline-offset: 3px; }
@@ -2503,7 +2506,7 @@ const PREVIEW_EDIT_SCRIPT = `
       var own = +el.style.fontWeight || 0, path = el.getAttribute("data-glp");
       /* the weight change re-renders the preview, so save any typing in this heading first */
       function commitNow() { var v = text(el); if (v !== el.__orig) { parent.postMessage({ type: "glp-edit", path: path, value: v }, "*"); el.__orig = v; } }
-      bar.appendChild(mk("span", { "class": "glp-edbar__label" }, "This heading"));
+      bar.appendChild(mk("span", { "class": "glp-edbar__sep", "aria-hidden": "true" }));
       [[400, "Regular"], [500, "Medium"], [600, "Semibold"], [700, "Bold"]].forEach(function (w) {
         var b = mk("button", { type: "button", "class": w[0] === own ? "on" : "", title: w[1] + " (this heading only)", style: "font-weight:" + w[0] }, w[1]);
         b.addEventListener("click", function () { commitNow(); el.style.fontWeight = w[0]; parent.postMessage({ type: "glp-heading-weight", path: path, value: w[0] }, "*"); showBar(el); });
