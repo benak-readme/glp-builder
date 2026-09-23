@@ -2807,11 +2807,13 @@ const APP_CSS = `
 
   .glp-navhead {
     position: sticky; top: -20px; z-index: 6;
-    margin: -20px -10px 16px -20px; background: var(--panel); border-bottom: 1px solid var(--line);
+    margin: -20px -10px 16px -20px; background: var(--panel);
   }
   /* room below the last Appearance group so every jump link can land its group at the top */
   .glp-sec--theme { padding-bottom: 70vh; }
-  .glp-jump { display: flex; justify-content: space-between; gap: 4px; padding: 0 14px 8px; }
+  /* the tab row's divider stays put on every tab; the Appearance jump links sit below it */
+  .glp-navtabs { border-bottom: 1px solid var(--line); }
+  .glp-jump { display: flex; justify-content: space-between; gap: 4px; padding: 7px 14px; border-bottom: 1px solid var(--line); }
   .glp-jump button {
     border: 0; background: transparent; cursor: pointer; font-family: inherit; white-space: nowrap;
     font-size: 12.5px; font-weight: 500; color: var(--ink-3); padding: 5px 6px; border-radius: 6px;
