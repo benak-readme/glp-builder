@@ -1669,6 +1669,14 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
       radial-gradient(60% 90% at 15% 0%, color-mix(in srgb, var(--bnk-accent) 22%, transparent), transparent 70%),
       radial-gradient(50% 80% at 90% 100%, color-mix(in srgb, var(--bnk-accent) 16%, transparent), transparent 70%),
       var(--card-bg); }
+  /* translucent surfaces blur what sits behind them (a pattern or glow shows
+     through otherwise); --card-blur is only set in dark mode */
+  .bnk-panel, .bnk-quick__link, .bnk-codesec__lang, .bnk-banner, .bnk-btn--secondary, .bnk-banner__btn--ghost,
+  .bnk-sec--bg-subtle, .bnk-sec--bg-accent, .bnk-sec--bg-dark,
+  .bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button {
+    -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
+  }
+${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  ", (pad) => `${pad}background-color: rgb(18 20 26 / 0.9) !important;`)}
   @media (max-width: 860px) {
     .bnk-herogrid, .bnk-codesec { grid-template-columns: 1fr; }
     .bnk-sec--list .bnk-card__body { flex-direction: column; gap: 6px; }
