@@ -2674,14 +2674,14 @@ const APP_CSS = `
     --brand-blue: rgb(33 58 255);
     --bg: rgb(242 242 242);                /* canvas behind the preview (dotted grid) */
     --panel: rgb(255 255 255);             /* top bar, sidebar */
-    --panel-2: rgb(248 248 248);           /* rows, cards */
+    --panel-2: rgb(245 245 246);           /* rows, cards */
     --field: rgb(255 255 255);             /* inputs */
-    --line: rgb(5 5 5 / 0.07);
-    --line-2: rgb(5 5 5 / 0.12);
-    --hairline: inset 0 0 0 1px rgb(5 5 5 / 0.08);
-    --ink: rgb(31 31 31);
-    --ink-2: rgb(74 74 74);
-    --ink-3: rgb(107 107 107);
+    --line: rgb(5 5 5 / 0.1);
+    --line-2: rgb(5 5 5 / 0.18);
+    --hairline: inset 0 0 0 1px rgb(5 5 5 / 0.12);
+    --ink: rgb(26 26 26);
+    --ink-2: rgb(64 64 64);
+    --ink-3: rgb(92 92 92);
     /* ReadMe Blue's hue, deepened and calmed for a UI people stare at all day
        (#213AFF is the marketing color; it's loud as an editor accent) */
     --accent: rgb(44 62 200);              /* text, icons, selection */
@@ -3038,22 +3038,22 @@ const APP_CSS = `
   .glp-ps { display: flex; flex-direction: column; gap: 3px; width: 100%; height: 100%; padding: 10px 12px; position: relative; overflow: hidden; text-align: left; }
   .glp-ps__l { display: block; border-radius: 2px; background: var(--ink-3); }
   .glp-ps__row { display: flex; gap: 4px; margin-top: auto; }
-  .glp-ps__card { flex: 1; border-radius: 3px; background: var(--panel); box-shadow: var(--hairline); }
+  .glp-ps__card { flex: 1; border-radius: 3px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-2); }
   .glp-ps__bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
   .glp-ps__dark { display: block; height: 8px; margin-top: 4px; border-radius: 2px; background: var(--ink); opacity: .75; }
-  .glp-ps__glow { position: absolute; inset: -20px auto auto -20px; width: 110px; height: 70px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 22%, transparent); filter: blur(12px); }
+  .glp-ps__glow { position: absolute; inset: -20px auto auto -20px; width: 110px; height: 70px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 30%, transparent); filter: blur(12px); }
   .glp-ps__split { position: relative; display: flex; gap: 8px; align-items: center; height: 100%; }
   .glp-ps__split > span { display: flex; flex-direction: column; gap: 3px; }
   .glp-ps__btns { display: flex; gap: 3px; margin-top: 3px; }
   .glp-ps__btns i { width: 16px; height: 5px; border-radius: 2px; background: var(--accent); }
   .glp-ps__btns i + i { background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); }
-  .glp-ps__panel { flex: 1; height: 80%; border-radius: 4px; background: var(--panel); box-shadow: var(--hairline); }
+  .glp-ps__panel { flex: 1; height: 80%; border-radius: 4px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-2); }
   .glp-ps__search { display: block; width: 70%; height: 9px; margin: 0 auto; border-radius: 3px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-2); }
   .glp-ps__chips { display: flex; gap: 3px; justify-content: center; margin: 3px 0 2px; }
   .glp-ps__chips i { width: 12px; height: 4px; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--line-2); }
   .glp-ps__serif { height: 6px; border-radius: 1px; background: var(--ink); }
-  .glp-ps__rows { display: flex; flex-direction: column; margin-top: auto; border-radius: 3px; background: var(--panel); box-shadow: var(--hairline); }
-  .glp-ps__rows i { height: 10px; box-shadow: inset 0 -1px 0 var(--line); }
+  .glp-ps__rows { display: flex; flex-direction: column; margin-top: auto; border-radius: 3px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .glp-ps__rows i { height: 10px; box-shadow: inset 0 -1px 0 var(--line-2); }
   .glp-ps__rows i:last-child { box-shadow: none; }
   .glp-ps__rows--mono i { background: repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--accent) 35%, transparent) 6px 16px, transparent 16px 100%) no-repeat 6px 4px / 50% 2px; }
   .glp-ps__prompt { font-family: var(--font-mono); font-size: 9px; line-height: 1; color: var(--accent); }
@@ -3897,12 +3897,12 @@ function PageSketch({ kind }) {
     <span className="glp-ps__row">{Array.from({ length: n }).map((_, i) => <i key={i} className="glp-ps__card" style={{ height: h }}></i>)}</span>
   );
   const body = {
-    blank: <>{L("55%", 5, 1, { margin: "4px auto 3px" })}{L("38%", 3, 0.4, { margin: "0 auto 7px" })}{cards(3)}</>,
-    portal: <><span className="glp-ps__bar">{L("18%", 3)}{L("30%", 2, 0.4)}</span>{L("50%", 5)}{L("34%", 3, 0.4, { marginBottom: 6 })}{cards(2, 12)}<span className="glp-ps__dark"></span></>,
-    aurora: <><i className="glp-ps__glow"></i><span className="glp-ps__split"><span style={{ flex: 1.3 }}>{L("90%", 5)}{L("70%", 5)}{L("60%", 3, 0.4)}<span className="glp-ps__btns"><i></i><i></i></span></span><i className="glp-ps__panel"></i></span></>,
+    blank: <>{L("55%", 5, 1, { margin: "4px auto 3px" })}{L("38%", 3, 0.55, { margin: "0 auto 7px" })}{cards(3)}</>,
+    portal: <><span className="glp-ps__bar">{L("18%", 3)}{L("30%", 2, 0.55)}</span>{L("50%", 5)}{L("34%", 3, 0.55, { marginBottom: 6 })}{cards(2, 12)}<span className="glp-ps__dark"></span></>,
+    aurora: <><i className="glp-ps__glow"></i><span className="glp-ps__split"><span style={{ flex: 1.3 }}>{L("90%", 5)}{L("70%", 5)}{L("60%", 3, 0.55)}<span className="glp-ps__btns"><i></i><i></i></span></span><i className="glp-ps__panel"></i></span></>,
     spotlight: <>{L("46%", 5, 1, { margin: "6px auto 5px" })}<i className="glp-ps__search"></i><span className="glp-ps__chips"><i></i><i></i><i></i><i></i></span>{cards(2, 10)}</>,
-    editorial: <>{L("30%", 2, 0.5)}<i className="glp-ps__l glp-ps__serif" style={{ width: "80%" }}></i>{L("50%", 3, 0.4, { marginBottom: 6 })}<span className="glp-ps__rows"><i></i><i></i></span></>,
-    terminal: <><span className="glp-ps__prompt">$ _</span>{L("70%", 4)}{L("46%", 3, 0.4, { marginBottom: 6 })}<span className="glp-ps__rows glp-ps__rows--mono"><i></i><i></i></span></>,
+    editorial: <>{L("30%", 2, 0.5)}<i className="glp-ps__l glp-ps__serif" style={{ width: "80%" }}></i>{L("50%", 3, 0.55, { marginBottom: 6 })}<span className="glp-ps__rows"><i></i><i></i></span></>,
+    terminal: <><span className="glp-ps__prompt">$ _</span>{L("70%", 4)}{L("46%", 3, 0.55, { marginBottom: 6 })}<span className="glp-ps__rows glp-ps__rows--mono"><i></i><i></i></span></>,
   }[kind] || cards(3);
   return <span className="glp-ps">{body}</span>;
 }
