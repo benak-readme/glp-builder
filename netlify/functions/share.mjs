@@ -6,11 +6,9 @@ import { getStore } from "@netlify/blobs";
    Designs are kept in a Netlify Blobs store, keyed by a short code, so a
    shareable link is ~30 chars instead of the whole config in the URL. */
 
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
-};
+/* The builder calls this from its own origin, so no cross-origin access is
+   granted: other sites can't script writes into the store from a browser. */
+const CORS = {};
 
 /* code alphabet excludes look-alikes (0/o/1/l/i) so codes are easy to read aloud */
 const CODE_CHARS = "23456789abcdefghijkmnpqrstuvwxyz";
@@ -47,8 +45,13 @@ export async function handle(req, store) {
     let body;
     try { body = await req.text(); } catch { return json({ error: "bad body" }, 400); }
     if (!body) return json({ error: "empty" }, 400);
-    if (body.length > MAX_BYTES) return json({ error: "too large" }, 413);
-    try { JSON.parse(body); } catch { return json({ error: "invalid json" }, 400); }
+    if (new TextEncoder().encode(body).length > MAX_BYTES) return json({ error: "too large" }, 413);
+    let parsed;
+    try { parsed = JSON.parse(body); } catch { return json({ error: "invalid json" }, 400); }
+    /* must look like a builder config: an object with a sections array */
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Array.isArray(parsed.sections)) {
+      return json({ error: "not a design" }, 400);
+    }
 
     /* find a code that isn't already taken (collisions are astronomically rare) */
     let code = makeCode();

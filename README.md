@@ -34,6 +34,18 @@ preview — then copy the generated snippet into
   left alone, the header un-flattened, and colors inheriting ReadMe's own
   accent (`--color-link-primary`) — so a fresh page matches your hub's look
   until you deliberately customize it.
+- **Brand bar** — a Header style that swaps ReadMe's header (on the landing
+  page only) for your own wordmark or logo, nav links, and an outlined
+  button like "Log in". ReadMe's real search and Ask AI move under the hero
+  or into the brand bar, so they keep working with no Custom CSS or JS.
+- **Link-list cards** — a card style that turns a card into rows of chevron
+  links (wrap a word in `*asterisks*` for italics) with an optional footnote
+  link. Great for "Customers / Partners" pick-your-path cards.
+- **Page templates** — **Developer portal** opens a complete starting page
+  (brand bar, search hero, audience link lists, icon doc tiles, dark help
+  strip) as a new page. Find it in the Pages menu or Theme Editor.
+- **Dark section panel, accent-rule dividers, background pattern** — for
+  support strips and a more branded look.
 - **Hero background image** — an optional full-bleed image (with darkening
   tint) behind the hero; pair it with the transparent header so it sits
   behind that too.

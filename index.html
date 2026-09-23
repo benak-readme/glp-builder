@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GLP Builder — Global landing pages for ReadMe Enterprise</title>
+<title>GLP Builder: Global landing pages for ReadMe Enterprise</title>
 <meta name="description" content="Visually build a Global Landing Page for your ReadMe Enterprise group, then copy the generated HTML into your dash.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%234C8DFF'/><text x='50' y='68' font-size='48' text-anchor='middle' fill='white' font-family='monospace' font-weight='bold'>GL</text></svg>">
 <style>
@@ -19,19 +19,17 @@
 <body>
 <div id="root"><div class="boot">LOADING GLP BUILDER…</div></div>
 <script type="text/babel" data-presets="react">
-const { useState, useMemo, useEffect, useRef, useCallback } = React;
+const { useState, useMemo, useEffect, useRef, useCallback, useId } = React;
 
 /* ============================================================
-   GLP Builder v4 — visual editor for ReadMe Enterprise
-   Global Landing Pages.
+   GLP Builder: visual editor for ReadMe Enterprise Global Landing Pages.
 
-   New in v4:
-   - Templates removed → fully granular per-card style switches
-   - Multiple card sections, each with its own heading, intro,
-     alignment, card style, grid, and card source
-   - Font Awesome icons on cards (alongside emoji)
-   - Three search placements: native / centered-in-header / under-hero
-   - Optional header background image (between header + subnav)
+   config ──migrateConfig/sanitizeConfig──▶ generateHTML ──▶ preview iframe / Copy HTML
+   - sections[]: card grids (manual or Liquid "auto from projects") or text columns
+   - granular card style switches (global, or per-section custom)
+   - header: native / transparent / image / custom brand bar; search can be
+     relocated to the header, under the hero, or into the brand bar
+   - PAGE_TEMPLATES seed whole pages; PRESETS only restyle cards
    ============================================================ */
 
 /* ---------------- accent presets (light / dark pairs) ---------------- */
@@ -59,7 +57,7 @@ const FONTS = {
   },
   grotesk: {
     label: "Space Grotesk + Inter",
-    hint: "Geometric, technical — the original look",
+    hint: "Geometric and technical, the original look",
     display: "'Space Grotesk', sans-serif",
     body: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     mono: "'Space Mono', ui-monospace, monospace",
@@ -103,8 +101,6 @@ const FONTS = {
    anchor  : whole card is an <a> (else <div> + CTA <a>)
    icon    : icon tile (emoji or Font Awesome)
    badge   : eyebrow pill w/ dot|lock
-   num     : auto-numbered (01, 02, …)
-   file    : File_0N label (terminal style)
    bar     : 3px accent top bar
    peek    : preview list section
    cta     : CTA button/link shown
@@ -119,8 +115,6 @@ const DEFAULT_STYLE = {
   anchor: true,
   icon: false,
   badge: false,
-  num: false,
-  file: false,
   bar: false,
   peek: false,
   cta: false,
@@ -245,6 +239,8 @@ const DEFAULT_COLUMNS = () => [
   makeColumn({ heading: "Support", body: "Talk to our team or browse community answers." }),
 ];
 
+const HERO_SUB_DEFAULT = 15;
+
 /* ---------------- default config (fresh-install starter) ---------------- */
 const DEFAULT_CONFIG = {
   fonts: "readme",
@@ -253,9 +249,9 @@ const DEFAULT_CONFIG = {
     chip: "",
     chipHref: "",
     title: "Welcome to our documentation",
-    subtitle: "Documentation for every audience — pick your entry point or search everything.",
+    subtitle: "Documentation for every audience. Pick your entry point or search everything.",
     align: "center",
-    /* null = use the alignment-based default size (38/42 title, 14.5 subtitle) */
+    /* null = use the alignment-based default size (38/42 title, HERO_SUB_DEFAULT subtitle) */
     titleSize: null,
     subtitleSize: null,
     padY: 0,
@@ -462,6 +458,7 @@ const escCssStr = (s = "") =>
   String(s)
     .replace(/\\/g, "\\\\")
     .replace(/"/g, '\\"')
+    .replace(/</g, "\\3c ")
     .replace(/[\r\n]/g, "");
 
 const cardAccent = (card) =>
@@ -498,7 +495,9 @@ const CHEVRON_SVG =
   '<svg class="bnk-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>';
 
 /* auto-prepend "/" to link paths (leaves full URLs and #anchors alone) */
-const normPath = (v) => (!v || /^[/#]/.test(v) || /^https?:/i.test(v) ? v : "/" + v);
+/* applied when generating (not while typing, which would mangle a half-typed "https://") */
+const normPath = (v) =>
+  !v ? v : /^\s*(javascript|data|vbscript):/i.test(v) ? "#" : /^([a-z][a-z0-9+.-]*:|[/#?])/i.test(v) ? v : "/" + v;
 
 /* move the item with `id` in `arr` to sit at `toIndex` — the ↑/↓ buttons remain the
    accessible/keyboard baseline; this backs drag-and-drop reordering to any position */
@@ -551,14 +550,99 @@ function useDragReorder(onReorderToIndex) {
 /* Font Awesome <i> markup (emoji falls back to the raw character) */
 const iconMarkup = (o) =>
   o && o.iconType === "fa"
-    ? `<i class="fa-${o.faStyle || "solid"} fa-${esc(String(o.icon || "").replace(/^fa-/, ""))}" aria-hidden="true"></i>`
+    ? `<i class="fa-${FA_STYLES.includes(o.faStyle) ? o.faStyle : "solid"} fa-${esc(String(o.icon || "").replace(/^fa-/, ""))}" aria-hidden="true"></i>`
     : esc(o ? o.icon : "");
 
 const encodeConfig = (cfg) => btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
 const decodeConfig = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
 
 /* ---------------- config migration / normalization ---------------- */
-const normCard = (c) => ({ ...CARD_DEFAULTS, ...c, links: Array.isArray(c.links) ? c.links : [], id: c.id || uid() });
+/* ---- untrusted-input hardening ----
+   Shared links (#c= and /g/) and saved pages are arbitrary JSON, and the preview
+   iframe runs same-origin, so every value that reaches generated CSS/markup
+   unescaped (colors, numbers, enums) is coerced here. Strings are escaped at
+   generation time by esc(). */
+const FA_STYLES = ["solid", "regular", "light", "thin", "duotone", "brands"];
+const SEARCH_MODES = ["native", "header", "hero", "brand"];
+const safeHex = (v, d) => (typeof v === "string" && /^#[0-9a-f]{3,8}$/i.test(v.trim()) ? v.trim() : d);
+const safeNum = (v, d, min, max) => {
+  const n = Number(v);
+  return v === null || v === "" || !Number.isFinite(n) ? d : Math.min(max, Math.max(min, n));
+};
+const str = (v, d = "") => (typeof v === "string" ? v : v == null ? d : String(v));
+const safeLinks = (arr) =>
+  Array.isArray(arr) ? arr.filter((l) => l && typeof l === "object").map((l) => ({ label: str(l.label), href: str(l.href) })) : [];
+
+const CARD_STR_FIELDS = ["icon", "title", "blurb", "href", "eyebrow", "peekLabel", "ctaText", "note", "noteLinkLabel", "noteHref"];
+const normCard = (c) => {
+  const o = { ...CARD_DEFAULTS, ...(c && typeof c === "object" ? c : {}) };
+  CARD_STR_FIELDS.forEach((k) => { o[k] = str(o[k], CARD_DEFAULTS[k]); });
+  return {
+    ...o,
+    faStyle: FA_STYLES.includes(o.faStyle) ? o.faStyle : "solid",
+    customLight: safeHex(o.customLight, CARD_DEFAULTS.customLight),
+    customDark: safeHex(o.customDark, CARD_DEFAULTS.customDark),
+    peekItems: Array.isArray(o.peekItems) ? o.peekItems.map((x) => str(x)) : [],
+    links: safeLinks(o.links),
+    id: o.id || uid(),
+  };
+};
+
+/* clamp every numeric / enum / color value the generator interpolates raw */
+function sanitizeConfig(c) {
+  const h = c.hero;
+  const hero = { ...h };
+  ["eyebrow", "chip", "chipHref", "title", "subtitle", "searchHint"].forEach((k) => { hero[k] = str(h[k]); });
+  hero.titleSize = h.titleSize == null ? null : safeNum(h.titleSize, null, 16, 96);
+  hero.subtitleSize = h.subtitleSize == null ? null : safeNum(h.subtitleSize, null, 10, 32);
+  hero.padY = safeNum(h.padY, 0, 0, 240);
+  hero.btnPrimary = { label: str(h.btnPrimary && h.btnPrimary.label), href: str(h.btnPrimary && h.btnPrimary.href) };
+  hero.btnSecondary = { label: str(h.btnSecondary && h.btnSecondary.label), href: str(h.btnSecondary && h.btnSecondary.href) };
+  const bb = c.brandBar;
+  return {
+    ...c,
+    hero,
+    footer: str(c.footer),
+    searchMode: SEARCH_MODES.includes(c.searchMode) ? c.searchMode : "native",
+    headerImage: {
+      ...c.headerImage,
+      url: str(c.headerImage.url),
+      height: safeNum(c.headerImage.height, 380, 80, 1200),
+      tint: safeNum(c.headerImage.tint, 0, 0, 100),
+      offset: safeNum(c.headerImage.offset, 64, 0, 400),
+    },
+    theme: {
+      ...c.theme,
+      customLight: safeHex(c.theme.customLight, DEFAULT_CONFIG.theme.customLight),
+      customDark: safeHex(c.theme.customDark, DEFAULT_CONFIG.theme.customDark),
+    },
+    cardStyle: { ...c.cardStyle, radius: safeNum(c.cardStyle.radius, 16, 0, 48) },
+    layout: { maxW: safeNum(c.layout.maxW, 1120, 640, 1920) },
+    brandBar: { ...bb, name: str(bb.name), tag: str(bb.tag), logoUrl: str(bb.logoUrl), links: safeLinks(bb.links),
+      button: { enabled: !!bb.button.enabled, label: str(bb.button.label), href: str(bb.button.href) } },
+    sections: c.sections.map((sec) => ({
+      ...sec,
+      heading: str(sec.heading),
+      intro: str(sec.intro),
+      label: str(sec.label),
+      style: { ...sec.style, radius: safeNum(sec.style.radius, 16, 0, 48) },
+      layout: {
+        ...sec.layout,
+        colMin: safeNum(sec.layout.colMin, 258, 120, 800),
+        gap: safeNum(sec.layout.gap, 20, 0, 120),
+        cardMinH: safeNum(sec.layout.cardMinH, 396, 0, 1600),
+        spaceAbove: safeNum(sec.layout.spaceAbove, 36, 0, 400),
+      },
+      liquid: {
+        ...sec.liquid,
+        faStyle: FA_STYLES.includes(sec.liquid.faStyle) ? sec.liquid.faStyle : "solid",
+        peekCount: safeNum(sec.liquid.peekCount, 3, 1, 10),
+        accents: Array.isArray(sec.liquid.accents) && sec.liquid.accents.length ? sec.liquid.accents.map((a) => str(a)) : ["green"],
+      },
+      columns: sec.columns.map((col) => ({ ...col, heading: str(col.heading), body: str(col.body), ctas: col.ctas.map((ct) => ({ ...ct, label: str(ct.label), href: str(ct.href) })) })),
+    })),
+  };
+}
 
 const normColumn = (c) => makeColumn({ ...c, id: c && c.id });
 const normSection = (s) => ({
@@ -576,8 +660,8 @@ const normSection = (s) => ({
   style: { ...DEFAULT_STYLE, ...(s.style || {}), num: false, file: false },
   layout: { ...DEFAULT_SECTION_LAYOUT, ...(s.layout || {}) },
   liquid: { ...DEFAULT_LIQUID, ...(s.liquid || {}) },
-  columns: (s.columns && s.columns.length ? s.columns.slice(0, 4) : DEFAULT_COLUMNS()).map(normColumn),
-  cards: (s.cards && s.cards.length ? s.cards : DEFAULT_CONFIG.sections[0].cards).map(normCard),
+  columns: (Array.isArray(s.columns) && s.columns.length ? s.columns.slice(0, 4) : DEFAULT_COLUMNS()).map(normColumn),
+  cards: (Array.isArray(s.cards) && s.cards.length ? s.cards : DEFAULT_CONFIG.sections[0].cards).map(normCard),
 });
 
 /* Reassign any duplicate section/card ids (legacy data saved before ids were
@@ -602,6 +686,8 @@ function dedupeIds(sections) {
 /* merge a (possibly older/partial) shared config over the defaults */
 function migrateConfig(loaded) {
   const D = DEFAULT_CONFIG;
+  if (!loaded || typeof loaded !== "object") loaded = {};
+  if (Array.isArray(loaded.sections)) loaded = { ...loaded, sections: loaded.sections.filter((x) => x && typeof x === "object") };
   const base = {
     fonts: loaded.fonts || D.fonts,
     hero: { ...D.hero, ...(loaded.hero || {}) },
@@ -624,7 +710,7 @@ function migrateConfig(loaded) {
 
   /* already v4 (has sections) */
   if (loaded.sections && loaded.sections.length) {
-    return { ...base, sections: dedupeIds(loaded.sections.map(normSection)) };
+    return sanitizeConfig({ ...base, sections: dedupeIds(loaded.sections.map(normSection)) });
   }
 
   /* migrate v3 (single template + flat cards) into one section */
@@ -645,7 +731,7 @@ function migrateConfig(loaded) {
     liquid: loaded.liquid || {},
     cards: loaded.cards || [],
   });
-  return { ...base, sections: [section] };
+  return sanitizeConfig({ ...base, sections: [section] });
 }
 
 /* ============================================================
@@ -715,7 +801,7 @@ function loadInitialState() {
    HTML GENERATOR
    ============================================================ */
 const INLINE_CARD_STYLE =
-  'style="background-color: var(--card-bg) !important; background: var(--card-bg) !important; border: 1px solid var(--card-border) !important; border-radius: var(--card-radius) !important; box-shadow: var(--card-shadow) !important; backdrop-filter: var(--card-blur) !important; -webkit-backdrop-filter: var(--card-blur) !important;"';
+  'style="background-color: var(--card-bg-now, var(--card-bg)) !important; background: var(--card-bg-now, var(--card-bg)) !important; border: 1px solid var(--card-border-now, var(--card-border)) !important; border-radius: var(--card-radius) !important; box-shadow: var(--card-shadow) !important; backdrop-filter: var(--card-blur) !important; -webkit-backdrop-filter: var(--card-blur) !important;"';
 
 /* card markup builder — used for both static cards and the Liquid loop
    (vars are either literal strings or Liquid tags) */
@@ -732,9 +818,7 @@ function buildCard(v, style) {
   /* content lives in a growing body so cards stay equal height and the CTA
      keeps a consistent gap / bottom-aligns regardless of content length */
   let body = "";
-  if (style.file) body += `\n        <span class="bnk-card__eyebrow">${v.fileLabel}</span>`;
-  else if (style.badge) body += `\n        <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
-  if (style.num) body += `\n        <span class="bnk-card__num">${v.num}</span>`;
+  if (style.badge) body += `\n        <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
   const iconHtml = `<span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
   const titleHtml = `<span class="bnk-card__title">${v.title}</span>`;
   if (style.icon && style.iconInline) body += `\n        <span class="bnk-card__head">${iconHtml}${titleHtml}</span>`;
@@ -803,19 +887,17 @@ function sectionCards(sec, palette, style) {
           {
             accentClass: `bnk-card--a${i}`,
             primary: c.primary,
-            href: esc(c.href),
+            href: esc(normPath(c.href)),
             eyebrow: esc(c.eyebrow),
             badgeHtml: c.badge === "lock" ? LOCK_SVG : '<span class="bnk-dot"></span>',
             icon: iconMarkup(c),
-            num: String(i + 1).padStart(2, "0"),
-            fileLabel: `File_${String(i + 1).padStart(2, "0")}${c.eyebrow.trim() ? " // " + esc(c.eyebrow) : ""}`,
             title: esc(c.title),
             blurb: esc(c.blurb),
             linksHtml: staticLinks(c),
             peekHtml: staticPeek(c),
             ctaText: esc(c.ctaText),
             ctaStyle: c.ctaStyle,
-            comment: `Card ${i + 1} — ${esc(c.title)}`,
+            comment: `Card ${i + 1}: ${esc(c.title)}`,
           },
           style
         )
@@ -840,8 +922,6 @@ function sectionCards(sec, palette, style) {
       eyebrow: esc(Q.eyebrow),
       badgeHtml: Q.badge === "lock" ? LOCK_SVG : '<span class="bnk-dot"></span>',
       icon: iconMarkup(Q),
-      num: "{% if forloop.index < 10 %}0{% endif %}{{ forloop.index }}",
-      fileLabel: `File_{% if forloop.index < 10 %}0{% endif %}{{ forloop.index }}${Q.eyebrow.trim() ? " // " + esc(Q.eyebrow) : ""}`,
       title: "{{ child.name }}",
       blurb: `{{ child.description | default: "${esc(Q.blurbFallback)}" }}`,
       peekHtml: liquidPeek,
@@ -894,7 +974,7 @@ function generateHTML(cfg) {
   const sections = cfg.sections;
   const heroLeft = cfg.hero.align === "left";
   const heroTitleSize = cfg.hero.titleSize != null ? cfg.hero.titleSize : heroLeft ? 42 : 38;
-  const heroSubSize = cfg.hero.subtitleSize != null ? cfg.hero.subtitleSize : 14.5;
+  const heroSubSize = cfg.hero.subtitleSize != null ? cfg.hero.subtitleSize : HERO_SUB_DEFAULT;
   const heroPadY = cfg.hero.padY || 0;
   const hasLiquid = sections.some((s) => s.type !== "columns" && s.source === "liquid");
   const sm = effSearchMode(cfg);
@@ -1253,7 +1333,8 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
     overflow: hidden; text-decoration: none;
     transition: transform 200ms ease, border-color 200ms ease, background-color 200ms ease;
   }
-  .bnk-card--primary { border-color: color-mix(in srgb, var(--accent) 38%, var(--card-border)) !important; }
+  /* the inline card style reads --card-bg-now / --card-border-now, so state rules set those */
+  .bnk-card--primary { --card-border-now: color-mix(in srgb, var(--accent) 38%, var(--card-border)); }
 
   /* content grows to fill the card so all cards in a row stay equal height and
      the CTA sits a consistent gap below the content (never cramped) */
@@ -1276,10 +1357,6 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-lock { width: 11px; height: 11px; flex: none; display: inline-block; }
   .bnk-card:hover .bnk-dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
 
-  .bnk-card__num {
-    display: block; font-family: ${F.mono}; font-size: 26px; font-weight: 700;
-    letter-spacing: 0.04em; color: color-mix(in srgb, var(--accent) 70%, transparent); margin-bottom: 12px;
-  }
   .bnk-card__icon {
     width: 46px; height: 46px; display: flex; align-items: center; justify-content: center;
     font-size: 24px; line-height: 1; border-radius: 12px; color: var(--accent);
@@ -1335,9 +1412,10 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
 
   .bnk-card__arrow { margin-top: 18px; align-self: flex-end; color: var(--accent) !important; font-size: 16px; }
 
-  .bnk-card:hover { transform: translateY(-3px); background-color: #F4F4F5 !important; border-color: color-mix(in srgb, var(--accent) 45%, #D4D4D8) !important; }
-${darkBlock(".bnk-card:hover", "  ", (pad) => `${pad}background-color: rgba(255, 255, 255, 0.06) !important;
-${pad}border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.18)) !important;`)}
+  .bnk-card:hover { transform: translateY(-3px); --card-bg-now: #F4F4F5; --card-border-now: color-mix(in srgb, var(--accent) 45%, #D4D4D8); }
+${darkBlock(".bnk-card:hover", "  ", (pad) => `${pad}--card-bg-now: rgba(255, 255, 255, 0.06);
+${pad}--card-border-now: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.18));`)}
+  .bnk-landing .bnk-sec--bg-dark .bnk-card:hover { --card-bg-now: rgba(255, 255, 255, 0.08); --card-border-now: rgba(255, 255, 255, 0.24); }
   .bnk-card:hover .rm-arrow { transform: translateX(4px); }
   .bnk-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 `;
@@ -1462,13 +1540,13 @@ ${heading}${body}
   const heroEyebrow = cfg.hero.eyebrow.trim() ? `    <p class="bnk-hero__eyebrow">${esc(cfg.hero.eyebrow)}</p>\n` : "";
   const heroChip = cfg.hero.chip.trim()
     ? cfg.hero.chipHref.trim()
-      ? `    <a class="bnk-hero__chip" href="${esc(cfg.hero.chipHref)}">${esc(cfg.hero.chip)} <span class="rm-arrow" aria-hidden="true">&#8594;</span></a>\n`
+      ? `    <a class="bnk-hero__chip" href="${esc(normPath(cfg.hero.chipHref))}">${esc(cfg.hero.chip)} <span class="rm-arrow" aria-hidden="true">&#8594;</span></a>\n`
       : `    <span class="bnk-hero__chip">${esc(cfg.hero.chip)}</span>\n`
     : "";
   const heroButtons = cfg.hero.buttons
     ? `    <div class="bnk-hero__btns">
-      <a class="bnk-btn bnk-btn--primary" href="${esc(cfg.hero.btnPrimary.href)}">${esc(cfg.hero.btnPrimary.label)}</a>
-      <a class="bnk-btn bnk-btn--secondary" href="${esc(cfg.hero.btnSecondary.href)}">${esc(cfg.hero.btnSecondary.label)}</a>
+      <a class="bnk-btn bnk-btn--primary" href="${esc(normPath(cfg.hero.btnPrimary.href))}">${esc(cfg.hero.btnPrimary.label)}</a>
+      <a class="bnk-btn bnk-btn--secondary" href="${esc(normPath(cfg.hero.btnSecondary.href))}">${esc(cfg.hero.btnSecondary.label)}</a>
     </div>\n`
     : "";
   const bannerMarkup = cfg.banner.enabled
@@ -1477,7 +1555,7 @@ ${heading}${body}
       <h2 class="bnk-banner__title">${esc(cfg.banner.title)}</h2>
       <p class="bnk-banner__text">${esc(cfg.banner.text)}</p>
     </div>
-    <a class="bnk-banner__btn" href="${esc(cfg.banner.btnHref)}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>
+    <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>
   </div>\n`
     : "";
 
@@ -1537,7 +1615,7 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}">${esc(l
     : "";
 
   return `<!--
-  Global Landing Page — generated with GLP Builder
+  Global Landing Page, generated with GLP Builder
   Fonts: ${F.label} · ${sections.length} section${sections.length === 1 ? "" : "s"}${hasLiquid ? " · Liquid cards (auto from child projects)" : ""}
   Paste into: dash.readme.io → your group → Global Landing Page
 ${
@@ -1818,7 +1896,7 @@ const APP_CSS = `
     --line-2: rgba(255,255,255,.14);
     --ink: #E8EBF1;
     --ink-2: #9BA3B2;
-    --ink-3: #6B7385;
+    --ink-3: #8A93A3;
     --accent: #4C8DFF;
     --ok: #37C98E;
     height: 100vh;
@@ -1859,13 +1937,13 @@ const APP_CSS = `
   .glp-copy {
     display: inline-flex; align-items: center; gap: 8px;
     border: 0; cursor: pointer;
-    background: var(--accent); color: #fff;
+    background: #2F6FE0; color: #fff;
     font-family: 'Space Mono', monospace; font-size: 12.5px; letter-spacing: .04em;
     padding: 9px 16px; border-radius: 8px;
     transition: background 150ms ease;
   }
-  .glp-copy:hover { background: #649dff; }
-  .glp-copy.done { background: var(--ok); }
+  .glp-copy:hover { background: #3F7DF0; }
+  .glp-copy.done { background: var(--ok); color: #0B2A1C; }
 
   .glp-main { flex: 1; display: flex; min-height: 0; }
 
@@ -1887,16 +1965,13 @@ const APP_CSS = `
   .glp-sec__label {
     display: flex; align-items: center; gap: 8px; width: 100%;
     border: 0; background: transparent; text-align: left; padding: 0;
-    font-family: 'Space Mono', monospace; font-size: 13.5px;
-    letter-spacing: .09em; text-transform: uppercase; color: var(--ink-2);
+    font-family: 'Space Mono', monospace; font-size: 12px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
     margin: 0 0 12px;
     cursor: pointer; user-select: none;
   }
-  .glp-sec__label::before {
-    content: "›"; font-size: 16px; line-height: 1; flex: none;
-    transform: rotate(90deg); transition: transform 150ms ease;
-  }
-  .glp-sec:not(.open) > .glp-sec__label::before { transform: none; }
+  .glp-sec__chev { font-size: 10px; flex: none; transform: rotate(90deg); transition: transform 150ms ease; }
+  .glp-sec:not(.open) > .glp-sec__label .glp-sec__chev { transform: none; }
   .glp-sec:not(.open) > .glp-sec__label { margin-bottom: 0; }
   .glp-sec__label:hover { color: var(--ink); }
   .glp-sec__label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
@@ -1939,10 +2014,9 @@ const APP_CSS = `
   .glp-info {
     display: inline-flex; align-items: center; justify-content: center;
     width: 14px; height: 14px; flex: none; border-radius: 50%;
-    border: 1px solid var(--ink-3); color: var(--ink-3);
-    font-family: 'Space Mono', monospace; font-size: 9px; cursor: help;
+    color: var(--ink-3); font-size: 12px; cursor: help;
   }
-  .glp-info:hover, .glp-info:focus-visible { border-color: var(--ink-2); color: var(--ink-2); outline: none; }
+  .glp-info:hover, .glp-info:focus-visible { color: var(--ink-2); outline: none; }
   .glp-info__bubble {
     position: fixed; transform: translate(-50%, calc(-100% - 8px));
     width: 220px; max-width: 60vw; background: var(--panel-2); border: 1px solid var(--line-2);
@@ -1966,12 +2040,13 @@ const APP_CSS = `
   .glp-check input { accent-color: var(--accent); flex: none; }
 
   /* font picker */
+  .glp-fonts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
   .glp-font {
     display: flex; align-items: center; gap: 11px;
-    width: 100%;
+    width: 100%; min-width: 0;
     border: 1px solid var(--line-2); border-radius: 10px;
     background: var(--panel-2); cursor: pointer;
-    padding: 9px 12px; margin-bottom: 8px;
+    padding: 9px 12px;
     color: var(--ink-2); font-family: inherit; text-align: left;
   }
   .glp-font.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--ink); }
@@ -2003,7 +2078,7 @@ const APP_CSS = `
   /* autosave indicator */
   .glp-save { font-size: 11px; font-family: 'Space Mono', monospace; color: var(--ink-3); white-space: nowrap; }
   .glp-save.ok { color: var(--ok); }
-  .glp-save.err { color: #D64545; cursor: help; }
+  .glp-save.err { color: #F07070; cursor: help; }
 
   .glp-slider { display: flex; align-items: center; gap: 10px; }
   .glp-slider input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
@@ -2040,6 +2115,11 @@ const APP_CSS = `
   }
   .glp-iconbtn:hover { background: var(--line); color: var(--ink); }
   .glp-iconbtn:disabled { opacity: .3; cursor: default; }
+  .glp-chev i { font-size: 10px; transition: transform 150ms ease; }
+  .glp-chev.open i { transform: rotate(90deg); }
+  .glp button:focus-visible, .glp [role=button]:focus-visible, .glp-info:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
   .glp-card__body { padding: 4px 12px 14px; border-top: 1px solid var(--line); }
 
   /* nested section container gets a subtle accent edge */
@@ -2065,7 +2145,7 @@ const APP_CSS = `
     background: var(--bg); border: 1px solid var(--line-2); border-radius: 8px; padding: 3px 6px 3px 3px; }
   .glp-hex:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
   .glp-hex--invalid { border-color: #D64545; }
-  .glp-hex__err { font-size: 10.5px; color: #D64545; line-height: 1.3; }
+  .glp-hex__err { font-size: 10.5px; color: #F07070; line-height: 1.3; }
   .glp-hex__sw { width: 24px; height: 24px; border-radius: 6px; flex: none; border: 1px solid var(--line-2); }
   .glp-hex__txt { flex: 1; min-width: 0; border: 0 !important; background: transparent !important; padding: 4px 2px !important;
     font-family: 'Space Mono', monospace; font-size: 12.5px; text-transform: uppercase; }
@@ -2125,7 +2205,9 @@ const APP_CSS = `
     border-bottom: 1px solid var(--line);
     background: var(--panel);
   }
-  .glp-view__label { font-family: 'Space Mono', monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); }
+  .glp-view__label { font-family: 'Space Mono', monospace; font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+  .glp-view__bar .glp-seg { flex-wrap: nowrap; }
+  .glp-view__note { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--ink-3); }
   .glp-view__framewrap {
     flex: 1; min-height: 0; display: flex; justify-content: center;
     padding: 16px;
@@ -2179,7 +2261,7 @@ const APP_CSS = `
     font-size: 11.5px; padding: 5px 11px; border-radius: 7px; cursor: pointer; font-family: inherit;
   }
   .glp-smallbtn:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-3); }
-  .glp-smallbtn:disabled { opacity: .35; cursor: default; }
+  .glp-smallbtn:disabled { opacity: .5; cursor: default; }
   .glp-smallbtn.done { color: var(--ok); border-color: var(--ok); }
 
   .glp-banner {
@@ -2215,6 +2297,18 @@ const APP_CSS = `
   .glp-pages__empty { padding: 12px 8px; color: var(--ink-3); font-size: 12px; text-align: center; }
   .glp-pages__actions { display: flex; gap: 6px; padding: 8px 2px 2px; margin-top: 4px; border-top: 1px solid var(--line); }
   .glp-pages__actions .glp-smallbtn { flex: 1; text-align: center; padding: 6px 4px; }
+  .glp-smallbtn--danger { color: #F07070; border-color: rgba(214,69,69,.4); }
+  .glp-pages__tpl { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+  .glp-pages__tplhead { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); padding: 0 4px 6px; }
+  .glp-pages__item {
+    display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left;
+    border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer;
+    padding: 8px; border-radius: 8px; font-family: inherit;
+  }
+  .glp-pages__item:hover { background: var(--panel-2); border-color: var(--line-2); }
+  .glp-pages__item i { color: var(--accent); margin-top: 2px; }
+  .glp-pages__item b { display: block; font-size: 12.5px; font-weight: 600; }
+  .glp-pages__item small { display: block; font-size: 11px; color: var(--ink-3); line-height: 1.4; margin-top: 2px; }
   .glp-pages__rename { display: flex; gap: 6px; padding: 8px 2px 2px; margin-top: 4px; border-top: 1px solid var(--line); }
   .glp-pages__rename .glp-input { flex: 1; }
 
@@ -2228,10 +2322,13 @@ const APP_CSS = `
 
 /* ---------- small reusable inputs ---------- */
 function Field({ label, children, style }) {
+  /* link the label to a lone input/textarea child so clicking it focuses the field */
+  const id = useId();
+  const linkable = React.isValidElement(children) && (children.type === "input" || children.type === "textarea" || children.type === "select");
   return (
     <div className="glp-field" style={style}>
-      <label>{label}</label>
-      {children}
+      <label htmlFor={linkable ? id : undefined}>{label}</label>
+      {linkable ? React.cloneElement(children, { id: children.props.id || id }) : children}
     </div>
   );
 }
@@ -2355,7 +2452,7 @@ function InfoTip({ text }) {
       onFocus={show}
       onBlur={hide}
     >
-      i
+      <i className="fa-solid fa-circle-info" aria-hidden="true"></i>
       {pos && (
         <span className="glp-info__bubble" style={{ left: pos.left, top: pos.top }}>
           {text}
@@ -2446,7 +2543,7 @@ function HexColor({ value, onChange }) {
         />
         <input type="color" className="glp-hex__pick" value={normHex(value) || "#000000"} onChange={(e) => onChange(e.target.value)} title="Pick a color" />
       </div>
-      {invalid && <span className="glp-hex__err">Not a valid hex color — try #RRGGBB</span>}
+      {invalid && <span className="glp-hex__err">Not a valid hex color. Try #RRGGBB</span>}
     </div>
   );
 }
@@ -2565,7 +2662,7 @@ function AccentSwatches({ selected, onSelect, multi = false, customCard = null, 
             <ContrastNote label="Light" color={customCard.customLight} surface={CARD_SURFACE.light} />
             <ContrastNote label="Dark" color={customCard.customDark} surface={CARD_SURFACE.dark} />
           </div>
-          <div style={{ fontSize: 11, color: "var(--ink-3)", lineHeight: 1.4 }}>Contrast vs the card background — aim for 3:1+ so text and buttons stay legible. Use a brighter shade for dark mode.</div>
+          <div style={{ fontSize: 11, color: "var(--ink-3)", lineHeight: 1.4 }}>Contrast against the card background. Aim for 3:1 or higher so text and buttons stay legible. Use a brighter shade for dark mode.</div>
         </div>
       )}
     </>
@@ -2622,6 +2719,42 @@ function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain
   );
 }
 
+/* ---------- shared collapsible row header (card / column / section) ---------- */
+function RowHead({ noun, max, index, count, open, onToggle, onMove, onDuplicate, onRemove, dragHandleProps, dropRowProps, dragOver, children }) {
+  const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
+  const btn = (title, icon, disabled, fn) => (
+    <button className="glp-iconbtn" title={title} aria-label={title} disabled={disabled} onClick={stop(fn)} type="button">
+      <i className={"fa-solid " + icon} aria-hidden="true"></i>
+    </button>
+  );
+  return (
+    <div
+      className={"glp-card__head" + (dragOver ? " glp-drop-over" : "")}
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
+      onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); }
+      }}
+      {...dropRowProps}
+    >
+      <span className="glp-drag-handle" title="Drag to reorder" onClick={(e) => e.stopPropagation()} {...dragHandleProps}>
+        <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+      </span>
+      {children}
+      {count > 1 && btn("Move up", "fa-arrow-up", index === 0, () => onMove(-1))}
+      {count > 1 && btn("Move down", "fa-arrow-down", index === count - 1, () => onMove(1))}
+      {btn("Duplicate " + noun, "fa-clone", count >= max, onDuplicate)}
+      {count > 1 && btn("Delete " + noun, "fa-xmark", false, onRemove)}
+      <span className={"glp-iconbtn glp-chev" + (open ? " open" : "")} aria-hidden="true">
+        <i className="fa-solid fa-chevron-right"></i>
+      </span>
+    </div>
+  );
+}
+
 /* ---------- shared: editable list of { label, href } rows ---------- */
 function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefPh = "/path", addLabel = "+ Add link" }) {
   const list = links || [];
@@ -2638,9 +2771,9 @@ function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefP
       {list.map((l, i) => (
         <div className="glp-peekitem glp-linkrow" key={i}>
           <input className="glp-input" value={l.label} placeholder={labelPh} onChange={(e) => setRow(i, { label: e.target.value })} />
-          <input className="glp-input" value={l.href} placeholder={hrefPh} onChange={(e) => setRow(i, { href: normPath(e.target.value) })} />
-          <button className="glp-iconbtn" type="button" title="Move up" disabled={i === 0} onClick={() => move(i, -1)}>&#8593;</button>
-          <button className="glp-iconbtn" type="button" title="Remove" onClick={() => onChange(list.filter((_, j) => j !== i))}>&#10005;</button>
+          <input className="glp-input" value={l.href} placeholder={hrefPh} onChange={(e) => setRow(i, { href: e.target.value })} />
+          <button className="glp-iconbtn" type="button" title="Move up" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}><i className="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
+          <button className="glp-iconbtn" type="button" title="Remove" aria-label="Remove" onClick={() => onChange(list.filter((_, j) => j !== i))}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
       ))}
       {list.length < max && (
@@ -2662,23 +2795,12 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
   };
   return (
     <div className="glp-card">
-      <div className={"glp-card__head" + (dragOver ? " glp-drop-over" : "")} onClick={onToggle} {...dropRowProps}>
-        <span className="glp-drag-handle" title="Drag to reorder" onClick={(e) => e.stopPropagation()} {...dragHandleProps}>
-          <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
-        </span>
+      <RowHead noun="card" max={12} index={index} count={count} open={open} onToggle={onToggle}
+        onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <span className="glp-card__swatch" style={{ background: acc.light }} />
         <span className="glp-card__name">{card.title || "Untitled card"}</span>
         <span className="glp-card__meta">{card.href}</span>
-        <button className="glp-iconbtn" title="Move up" disabled={index === 0}
-          onClick={(e) => { e.stopPropagation(); onMove(-1); }} type="button">&#8593;</button>
-        <button className="glp-iconbtn" title="Move down" disabled={index === count - 1}
-          onClick={(e) => { e.stopPropagation(); onMove(1); }} type="button">&#8595;</button>
-        <button className="glp-iconbtn" title="Duplicate card" disabled={count >= 12}
-          onClick={(e) => { e.stopPropagation(); onDuplicate(); }} type="button">&#10697;</button>
-        <button className="glp-iconbtn" title="Delete card" disabled={count === 1}
-          onClick={(e) => { e.stopPropagation(); onRemove(); }} type="button">&#10005;</button>
-        <span className="glp-iconbtn" style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
-      </div>
+      </RowHead>
       {open && (
         <div className="glp-card__body">
           <div className="glp-row2">
@@ -2686,7 +2808,7 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
               <input className="glp-input" value={card.title} onChange={(e) => set({ title: e.target.value })} />
             </Field>
             <Field label="Links to (path)">
-              <input className="glp-input" value={card.href} onChange={(e) => set({ href: normPath(e.target.value) })} placeholder="my-project" />
+              <input className="glp-input" value={card.href} onChange={(e) => set({ href: e.target.value })} placeholder="my-project" />
             </Field>
           </div>
           <Field label={style.links ? "Description (blank to hide)" : "Description"}>
@@ -2706,7 +2828,7 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
                   <input className="glp-input" value={card.noteLinkLabel} onChange={(e) => set({ noteLinkLabel: e.target.value })} placeholder="Apply here" />
                 </Field>
                 <Field label="Footnote link">
-                  <input className="glp-input" value={card.noteHref} onChange={(e) => set({ noteHref: normPath(e.target.value) })} placeholder="https://…" />
+                  <input className="glp-input" value={card.noteHref} onChange={(e) => set({ noteHref: e.target.value })} placeholder="https://…" />
                 </Field>
               </div>
             </>
@@ -2763,7 +2885,7 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
                       title="Remove item"
                       onClick={() => set({ peekItems: card.peekItems.filter((_, j) => j !== i) })}
                     >
-                      &#10005;
+                      <i className="fa-solid fa-xmark" aria-hidden="true"></i>
                     </button>
                   </div>
                 ))}
@@ -2794,7 +2916,7 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
   return (
     <>
       <div className="glp-note">
-        One card renders per child project in your group, using ReadMe's Liquid templating — add or remove a project and the page updates
+        One card renders per child project in your group, using ReadMe's Liquid templating, so adding or removing a project updates the page
         itself. Titles come from <code>child.name</code>, links from <code>/child.subdomain</code>, and the list can show each project's top
         guide categories.
       </div>
@@ -2851,7 +2973,7 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
 
 /* ---------- reusable card-style switches (used by a section in "custom"
    mode and by the global card style in the Theme Editor) ---------- */
-function CardStyleControls({ style: st, setStyle }) {
+function CardStyleControls({ style: st, setStyle, liquid = false }) {
   return (
     <>
       <div className="glp-checks">
@@ -2861,7 +2983,7 @@ function CardStyleControls({ style: st, setStyle }) {
         <StyleCheck checked={!!st.peek} label="Preview list" onChange={(v) => setStyle({ peek: v })} />
         <StyleCheck checked={!!st.anchor} label="Whole card links" onChange={(v) => setStyle({ anchor: v })} />
         <StyleCheck checked={!!st.mono} label="Mono / uppercase" onChange={(v) => setStyle({ mono: v })} />
-        <StyleCheck checked={!!st.links} label="Link list" onChange={(v) => setStyle({ links: v })} />
+        {!liquid && <StyleCheck checked={!!st.links} label="Link list" onChange={(v) => setStyle({ links: v })} />}
         <StyleCheck checked={!!st.iconInline} label="Icon beside title" onChange={(v) => setStyle(v ? { iconInline: true, icon: true } : { iconInline: false })} />
       </div>
       {/* NB: this "button" value means "a styled CTA is shown" (filled or ghost, chosen
@@ -2903,21 +3025,10 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
   const removeCta = (i) => set({ ctas: ctas.filter((_, j) => j !== i) });
   return (
     <div className="glp-card">
-      <div className={"glp-card__head" + (dragOver ? " glp-drop-over" : "")} onClick={onToggle} {...dropRowProps}>
-        <span className="glp-drag-handle" title="Drag to reorder" onClick={(e) => e.stopPropagation()} {...dragHandleProps}>
-          <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
-        </span>
+      <RowHead noun="column" max={4} index={index} count={count} open={open} onToggle={onToggle}
+        onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <span className="glp-card__name">{column.heading || `Column ${index + 1}`}</span>
-        <button className="glp-iconbtn" title="Move up" disabled={index === 0}
-          onClick={(e) => { e.stopPropagation(); onMove(-1); }} type="button">&#8593;</button>
-        <button className="glp-iconbtn" title="Move down" disabled={index === count - 1}
-          onClick={(e) => { e.stopPropagation(); onMove(1); }} type="button">&#8595;</button>
-        <button className="glp-iconbtn" title="Duplicate column" disabled={count >= 4}
-          onClick={(e) => { e.stopPropagation(); onDuplicate(); }} type="button">&#10697;</button>
-        <button className="glp-iconbtn" title="Delete column" disabled={count === 1}
-          onClick={(e) => { e.stopPropagation(); onRemove(); }} type="button">&#10005;</button>
-        <span className="glp-iconbtn" style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
-      </div>
+      </RowHead>
       {open && (
         <div className="glp-card__body">
           <Field label="Heading (blank to hide)">
@@ -2937,7 +3048,7 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
                     <input className="glp-input" value={cta.label} onChange={(e) => setCta(i, { label: e.target.value })} />
                   </Field>
                   <Field label="CTA link">
-                    <input className="glp-input" value={cta.href} onChange={(e) => setCta(i, { href: normPath(e.target.value) })} placeholder="/guides" />
+                    <input className="glp-input" value={cta.href} onChange={(e) => setCta(i, { href: e.target.value })} placeholder="/guides" />
                   </Field>
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
@@ -2952,7 +3063,7 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
                       ]}
                     />
                   </Field>
-                  <button className="glp-iconbtn" title="Remove CTA" type="button" onClick={() => removeCta(i)}>&#10005;</button>
+                  <button className="glp-iconbtn" title="Remove CTA" aria-label="Remove CTA" type="button" onClick={() => removeCta(i)}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
                 </div>
               </div>
             ))}
@@ -3016,25 +3127,14 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
 
   return (
     <div className="glp-card glp-section">
-      <div className={"glp-card__head" + (dragOver ? " glp-drop-over" : "")} onClick={onToggle} {...dropRowProps}>
-        <span className="glp-drag-handle" title="Drag to reorder" onClick={(e) => e.stopPropagation()} {...dragHandleProps}>
-          <i className="fa-solid fa-grip-vertical" aria-hidden="true"></i>
-        </span>
+      <RowHead noun="section" max={6} index={index} count={count} open={open} onToggle={onToggle}
+        onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <span className="glp-card__name">{section.label || section.heading || `Section ${index + 1}`}</span>
-        <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "auto" : section.cards.length + " cards"}</span>
-        <button className="glp-iconbtn" title="Move up" disabled={index === 0}
-          onClick={(e) => { e.stopPropagation(); onMove(-1); }} type="button">&#8593;</button>
-        <button className="glp-iconbtn" title="Move down" disabled={index === count - 1}
-          onClick={(e) => { e.stopPropagation(); onMove(1); }} type="button">&#8595;</button>
-        <button className="glp-iconbtn" title="Duplicate section" disabled={count >= 6}
-          onClick={(e) => { e.stopPropagation(); onDuplicate(); }} type="button">&#10697;</button>
-        <button className="glp-iconbtn" title="Delete section" disabled={count === 1}
-          onClick={(e) => { e.stopPropagation(); onRemove(); }} type="button">&#10005;</button>
-        <span className="glp-iconbtn" style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform 150ms" }}>&#8250;</span>
-      </div>
+        <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "from projects" : section.cards.length + " cards"}</span>
+      </RowHead>
       {open && (
         <div className="glp-card__body">
-          <Field label="Builder label (sidebar only — not shown on the page)">
+          <Field label="Builder label (sidebar only)">
             <input
               className="glp-input"
               value={section.label}
@@ -3048,7 +3148,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
           <Field label="Intro text (blank to hide)">
             <textarea className="glp-textarea" value={section.intro} onChange={(e) => set({ intro: e.target.value })} />
           </Field>
-          <Field label="Text alignment (independent of the hero)">
+          <Field label="Text alignment">
             <Seg
               value={section.align}
               onChange={(v) => set({ align: v })}
@@ -3142,10 +3242,10 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                 />
               </Field>
               {section.styleMode === "custom" ? (
-                <CardStyleControls style={section.style} setStyle={setStyle} />
+                <CardStyleControls style={section.style} setStyle={setStyle} liquid={liquidOn} />
               ) : (
                 <div className="glp-note">
-                  Using the <b>global card style</b> — edit it in <b>Theme&nbsp;Editor → Global card style</b> to restyle every global section at once. Switch to <b>Custom</b> to override just this section.
+                  Using the <b>global card style</b>. Edit it in <b>Theme&nbsp;Editor → Global card style</b> to restyle every global section at once. Switch to <b>Custom</b> to override just this section.
                 </div>
               )}
 
@@ -3312,9 +3412,10 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
             { value: "mobile", label: "Mobile" },
           ]}
         />
-        <span style={{ marginLeft: "auto", fontSize: 11.5, color: "var(--ink-3)" }}>
-          {liquidNote ? "Liquid preview uses 3 sample projects — ReadMe renders your real ones" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome"}
-        </span>
+        {(() => {
+          const note = liquidNote ? "Liquid preview shows 3 sample projects; ReadMe renders your real ones" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome";
+          return <span className="glp-view__note" title={note}>{note}</span>;
+        })()}
       </div>
       <div className="glp-view__framewrap">
         <div className="glp-framestack">
@@ -3341,6 +3442,7 @@ function NavSection({ id, label, openNav, setOpenNav, children }) {
   return (
     <div className={"glp-sec" + (open ? " open" : "")}>
       <button type="button" className="glp-sec__label" aria-expanded={open} onClick={() => setOpenNav(open ? null : id)}>
+        <i className="fa-solid fa-chevron-right glp-sec__chev" aria-hidden="true"></i>
         {label}
       </button>
       {open && <div className="glp-sec__body">{children}</div>}
@@ -3373,6 +3475,7 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [loadingShare, setLoadingShare] = useState(!!boot.current.pendingShare);
+  const [shareError, setShareError] = useState(false);
   const [saveState, setSaveState] = useState("saved");
   const firstAutosave = useRef(true);
   const [histVer, setHistVer] = useState(0);
@@ -3581,6 +3684,31 @@ function App() {
     return `${base} ${n}`;
   };
 
+  const designsRef = useRef(designs);
+  designsRef.current = designs;
+
+  /* write the working page into its slot right now (used before switching pages so a
+     pending debounced autosave can't be lost). Only bumps updatedAt on a real change. */
+  const flushCurrent = () => {
+    if (sharedView || !currentId) return designs;
+    return designs.map((d) =>
+      d.id === currentId && (JSON.stringify(d.config) !== JSON.stringify(config) || (d.override || "") !== (override ?? ""))
+        ? { ...d, config, override: override ?? "", updatedAt: nowMs() }
+        : d
+    );
+  };
+
+  /* a different page is now in the editor: its undo stack starts empty, and the
+     autosave that fires for the swap itself is skipped (nothing was edited) */
+  const resetForPage = (cfg) => {
+    past.current = [];
+    future.current = [];
+    skipHist.current = true;
+    snapRef.current = cfg;
+    firstAutosave.current = true;
+    setHistVer((v) => v + 1);
+  };
+
   /* autosave the working design into its slot (debounced); skipped while viewing a shared link */
   useEffect(() => {
     if (sharedView || !currentId) return;
@@ -3588,12 +3716,9 @@ function App() {
     if (firstAutosave.current) { firstAutosave.current = false; return; }
     setSaveState("saving");
     const t = setTimeout(() => {
-      let ok = true;
-      setDesigns((ds) => {
-        const next = ds.map((d) => (d.id === currentId ? { ...d, config, override: override ?? "", updatedAt: nowMs() } : d));
-        ok = persistDesigns(next, currentId);
-        return next;
-      });
+      const next = designsRef.current.map((d) => (d.id === currentId ? { ...d, config, override: override ?? "", updatedAt: nowMs() } : d));
+      const ok = persistDesigns(next, currentId);
+      setDesigns(next);
       setSaveState(ok ? "saved" : "error");
     }, 500);
     return () => clearTimeout(t);
@@ -3602,7 +3727,11 @@ function App() {
   const switchTo = (id) => {
     const d = designs.find((x) => x.id === id);
     if (!d) return;
+    if (id === currentId && !sharedView) { setPagesOpen(false); return; }
+    const ds = flushCurrent();
+    if (ds !== designs) { setDesigns(ds); persistDesigns(ds, id); }
     const cfg = migrateConfig(d.config);
+    resetForPage(cfg);
     setConfig(cfg);
     setOverride(d.override || null);
     setCurrentId(id);
@@ -3618,9 +3747,10 @@ function App() {
   const newPage = (template) => {
     const cfg = template ? template.build() : DEFAULT_CONFIG;
     const d = makeDesign(uniqueName(template ? template.label : "Untitled page"), cfg, "");
-    const ds = [...designs, d];
+    const ds = [...flushCurrent(), d];
     setDesigns(ds);
     setSaveState(persistDesigns(ds, d.id) ? "saved" : "error");
+    resetForPage(cfg);
     setConfig(cfg);
     setOverride(null);
     setCurrentId(d.id);
@@ -3635,7 +3765,7 @@ function App() {
   const duplicateCurrent = () => {
     const src = designs.find((d) => d.id === currentId);
     const d = makeDesign(uniqueName((src ? src.name : "Page") + " copy"), config, override ?? "");
-    const ds = [...designs, d];
+    const ds = [...flushCurrent(), d];
     setDesigns(ds);
     setSaveState(persistDesigns(ds, d.id) ? "saved" : "error");
     setCurrentId(d.id);
@@ -3676,6 +3806,7 @@ function App() {
     const cfg = migrateConfig(target.config);
     setDesigns(ds);
     setSaveState(persistDesigns(ds, target.id) ? "saved" : "error");
+    resetForPage(cfg);
     setConfig(cfg);
     setOverride(target.override || null);
     setCurrentId(target.id);
@@ -3736,6 +3867,11 @@ function App() {
   }, [exportHtml]);
 
   const share = useCallback(async () => {
+    if (override !== null) {
+      try {
+        if (!window.confirm("Share links carry the builder settings only, not your manual code edits. Share anyway?")) return;
+      } catch (e) {}
+    }
     const encoded = encodeConfig(config);
     let payload = encoded;
     const onWeb = (() => { try { return /^https?:/.test(window.location.protocol); } catch (e) { return false; } })();
@@ -3765,7 +3901,7 @@ function App() {
     } else {
       setShared(false);
     }
-  }, [config]);
+  }, [config, override]);
 
   /* a /g/<code> link: fetch the stored design and load it after boot */
   useEffect(() => {
@@ -3777,10 +3913,10 @@ function App() {
         const res = await fetch("/.netlify/functions/share?id=" + encodeURIComponent(code));
         if (res.ok) {
           const cfg = migrateConfig(await res.json());
-          if (!cancelled) { setConfig(cfg); setOpenSection(cfg.sections[0].id); }
-        }
+          if (!cancelled) { resetForPage(cfg); setConfig(cfg); setOpenSection(cfg.sections[0].id); }
+        } else if (!cancelled) setShareError(true);
       } catch (e) {
-        /* leave the default page in place if the fetch fails */
+        if (!cancelled) setShareError(true);
       }
       if (!cancelled) setLoadingShare(false);
     })();
@@ -3816,12 +3952,12 @@ function App() {
           </button>
         </div>
         <div className="glp-bar__right">
-          <button className="glp-smallbtn" type="button" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo} style={{ padding: "8px 11px" }}>↶</button>
-          <button className="glp-smallbtn" type="button" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo} style={{ padding: "8px 11px" }}>↷</button>
+          <button className="glp-smallbtn" type="button" title="Undo (⌘Z)" disabled={!canUndo} onClick={undo} aria-label="Undo" style={{ padding: "8px 11px" }}><i className="fa-solid fa-rotate-left" aria-hidden="true"></i></button>
+          <button className="glp-smallbtn" type="button" title="Redo (⇧⌘Z)" disabled={!canRedo} onClick={redo} aria-label="Redo" style={{ padding: "8px 11px", marginRight: 8 }}><i className="fa-solid fa-rotate-right" aria-hidden="true"></i></button>
           {!sharedView && currentId && (
             <span
               className={"glp-save" + (saveState === "saved" ? " ok" : saveState === "error" ? " err" : "")}
-              title={saveState === "error" ? "Browser storage is unavailable or full — this page only exists in memory. Use Share link or Download .html to keep it." : undefined}
+              title={saveState === "error" ? "Browser storage is unavailable or full. This page only exists in memory. Use Share link or Download to keep it." : undefined}
             >
               {saveState === "saving" ? (
                 "Saving…"
@@ -3835,7 +3971,7 @@ function App() {
           <div className="glp-pages">
             <button className="glp-smallbtn glp-pages__btn" type="button" onClick={() => { setPagesOpen((o) => !o); setRenaming(false); }} title="Saved pages" style={{ padding: "8px 13px" }}>
               <span className="glp-pages__label">{sharedView ? "Shared design (unsaved)" : currentName}</span>
-              <span aria-hidden="true">▾</span>
+              <i className="fa-solid fa-chevron-down" style={{ fontSize: 10 }} aria-hidden="true"></i>
             </button>
             {pagesOpen && (
               <>
@@ -3878,12 +4014,17 @@ function App() {
                       <button className="glp-smallbtn" type="button" onClick={() => newPage()}>+ New</button>
                       <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={() => setRenaming(true)}>Rename</button>
                       <button className="glp-smallbtn" type="button" onClick={duplicateCurrent}>Duplicate</button>
-                      <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>Delete</button>
+                      <button className="glp-smallbtn glp-smallbtn--danger" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>Delete</button>
                     </div>
-                    <div className="glp-pages__actions">
+                    <div className="glp-pages__tpl">
+                      <div className="glp-pages__tplhead">New from template</div>
                       {PAGE_TEMPLATES.map((t) => (
-                        <button key={t.key} className="glp-smallbtn" type="button" title={t.hint} onClick={() => newPage(t)}>
-                          + New from template: {t.label}
+                        <button key={t.key} className="glp-pages__item" type="button" onClick={() => newPage(t)}>
+                          <i className="fa-solid fa-file-lines" aria-hidden="true"></i>
+                          <span>
+                            <b>{t.label}</b>
+                            <small>{t.hint}</small>
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -3899,21 +4040,21 @@ function App() {
             ) : shared === true ? (
               <><i className="fa-solid fa-check" aria-hidden="true"></i> Link copied</>
             ) : (
-              "Share link"
+              <><i className="fa-solid fa-link" aria-hidden="true"></i> Share link</>
             )}
           </button>
           <button className="glp-smallbtn" onClick={download} type="button" style={{ padding: "8px 13px" }}>
-            Download .html
+            <i className="fa-solid fa-download" aria-hidden="true"></i> Download
           </button>
           <button className={"glp-copy" + (copied ? " done" : "")} onClick={copy} type="button">
-            {copied ? <><i className="fa-solid fa-check" aria-hidden="true"></i> Copied</> : "Copy HTML"}
+            {copied ? <><i className="fa-solid fa-check" aria-hidden="true"></i> Copied</> : <><i className="fa-solid fa-copy" aria-hidden="true"></i> Copy HTML</>}
           </button>
         </div>
       </div>
 
       {sharedView && (
         <div className="glp-banner">
-          <span>You're viewing a shared design — it won't be kept until you add it to your pages.</span>
+          <span>{shareError ? "Couldn't load that shared design. It may have been removed, so you're seeing a blank starter page." : "You're viewing a shared design. It won't be kept until you add it to your pages."}</span>
           <button className="glp-smallbtn" type="button" onClick={saveSharedAsPage}>Save as a page</button>
         </div>
       )}
@@ -3924,7 +4065,7 @@ function App() {
             <div className="glp-side">
               {override !== null && (
                 <div className="glp-banner" style={{ borderRadius: 10, border: "1px solid rgba(227,177,104,.3)", marginBottom: 16 }}>
-                  <span>Manual code edits are active — "Copy HTML" exports your edited code, not these settings.</span>
+                  <span>Manual code edits are active. Copy HTML exports your edited code, not these settings.</span>
                   <button className="glp-smallbtn" type="button" onClick={discardOverride}>
                     Discard edits
                   </button>
@@ -3942,16 +4083,6 @@ function App() {
                   ))}
                 </div>
 
-                <div className="glp-sub">Page templates</div>
-                <div className="glp-presets">
-                  {PAGE_TEMPLATES.map((t) => (
-                    <button key={t.key} type="button" className="glp-preset" title={t.hint} onClick={() => newPage(t)}>
-                      <b>{t.label}</b>
-                      <span>{t.hint}. Opens as a new page.</span>
-                    </button>
-                  ))}
-                </div>
-
                 <div className="glp-sub">Global card style</div>
                 <div className="glp-note" style={{ marginBottom: 12 }}>
                   The default look for every card section set to <b>Global</b>. Individual sections can override it by switching to <b>Custom</b>.
@@ -3959,23 +4090,22 @@ function App() {
                 <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
 
                 <div className="glp-sub">Typography</div>
-                {Object.entries(FONTS).map(([key, f]) => (
-                  <button key={key} type="button" className={"glp-font" + (config.fonts === key ? " on" : "")} onClick={() => patch({ fonts: key })}>
-                    <span className="glp-font__aa" style={{ fontFamily: f.display }}>
-                      Aa
-                    </span>
-                    <span>
+                <div className="glp-fonts">
+                  {Object.entries(FONTS).map(([key, f]) => (
+                    <button key={key} type="button" title={f.hint} className={"glp-font" + (config.fonts === key ? " on" : "")} onClick={() => patch({ fonts: key })}>
+                      <span className="glp-font__aa" style={{ fontFamily: f.display }}>
+                        Aa
+                      </span>
                       <span className="glp-font__name">{f.label}</span>
-                      <span className="glp-font__hint">{f.hint}</span>
-                    </span>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
 
                 <div className="glp-sub">Colors</div>
                 <Toggle
                   checked={!!config.theme.matchReadme}
                   onChange={(v) => setTheme({ matchReadme: v })}
-                  label="Match the colors from your ReadMe dash"
+                  label="Use my ReadMe brand color"
                   hint="Every accent inherits your hub's brand color (ReadMe's --color-link-primary) so it matches your Appearance settings and adapts to light/dark automatically."
                   style={{ paddingTop: 0 }}
                 />
@@ -4030,13 +4160,10 @@ function App() {
                     onChange={(v) =>
                       setConfig((c) => {
                         const brand = v === "brand";
-                        /* the brand bar hides ReadMe's header, so search must move out of it */
-                        const searchMode = brand
-                          ? c.searchMode === "brand" || c.searchMode === "hero" ? c.searchMode : "hero"
-                          : c.searchMode === "brand" ? "native" : c.searchMode;
+                        /* searchMode is left as chosen; effSearchMode maps it to a placement
+                           that works with this header, and restores it if the brand bar goes */
                         return {
                           ...c,
-                          searchMode,
                           flattenHeader: v === "transparent" || v === "image",
                           headerImage: { ...c.headerImage, enabled: v === "image" },
                           brandBar: { ...c.brandBar, enabled: brand },
@@ -4051,7 +4178,7 @@ function App() {
                     ]}
                   />
                 </Field>
-                <Field label="Search &amp; Ask AI placement (Ask AI always sits beside search)">
+                <Field label="Search & Ask AI placement">
                   <Seg
                     value={effSearchMode(config)}
                     onChange={(v) => patch({ searchMode: v })}
@@ -4101,7 +4228,7 @@ function App() {
                           <input className="glp-input" value={config.brandBar.button.label} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, label: e.target.value } })} />
                         </Field>
                         <Field label="Button link">
-                          <input className="glp-input" value={config.brandBar.button.href} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, href: normPath(e.target.value) } })} />
+                          <input className="glp-input" value={config.brandBar.button.href} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, href: e.target.value } })} />
                         </Field>
                       </div>
                     )}
@@ -4138,7 +4265,7 @@ function App() {
                         <input className="glp-input" value={config.banner.btnLabel} onChange={(e) => setBanner({ btnLabel: e.target.value })} />
                       </Field>
                       <Field label="Button link">
-                        <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: normPath(e.target.value) })} />
+                        <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
                       </Field>
                     </div>
                   </>
@@ -4151,7 +4278,7 @@ function App() {
               </NavSection>
 
               <NavSection id="hero" label="Hero" openNav={openNav} setOpenNav={setOpenNav}>
-                <Field label="Eyebrow (small caps line above the title — blank to hide)">
+                <Field label="Eyebrow (blank to hide)">
                   <input
                     className="glp-input"
                     value={config.hero.eyebrow}
@@ -4169,7 +4296,7 @@ function App() {
                     />
                   </Field>
                   <Field label="Chip link (optional)">
-                    <input className="glp-input" value={config.hero.chipHref} onChange={(e) => setHero({ chipHref: normPath(e.target.value) })} placeholder="/changelog" />
+                    <input className="glp-input" value={config.hero.chipHref} onChange={(e) => setHero({ chipHref: e.target.value })} placeholder="/changelog" />
                   </Field>
                 </div>
                 <Field label="Page title">
@@ -4189,7 +4316,7 @@ function App() {
                     <textarea className="glp-textarea" value={config.hero.subtitle} onChange={(e) => setHero({ subtitle: e.target.value })} />
                     <InlineNum
                       title="Subtitle size"
-                      value={config.hero.subtitleSize != null ? config.hero.subtitleSize : 15}
+                      value={config.hero.subtitleSize != null ? config.hero.subtitleSize : HERO_SUB_DEFAULT}
                       min={12}
                       max={26}
                       onChange={(v) => setHero({ subtitleSize: v })}
@@ -4216,7 +4343,7 @@ function App() {
                     />
                   </Field>
                 )}
-                <NumberField label="Vertical padding (space above &amp; below the hero text)" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
+                <NumberField label="Vertical padding" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
                 <Toggle
                   checked={config.hero.buttons}
                   onChange={(v) => setHero({ buttons: v })}
@@ -4237,7 +4364,7 @@ function App() {
                         <input
                           className="glp-input"
                           value={config.hero.btnPrimary.href}
-                          onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, href: normPath(e.target.value) } })}
+                          onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, href: e.target.value } })}
                         />
                       </Field>
                     </div>
@@ -4253,7 +4380,7 @@ function App() {
                         <input
                           className="glp-input"
                           value={config.hero.btnSecondary.href}
-                          onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, href: normPath(e.target.value) } })}
+                          onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, href: e.target.value } })}
                         />
                       </Field>
                     </div>
@@ -4307,7 +4434,7 @@ function App() {
             <div className="glp-code">
               {override !== null && (
                 <div className="glp-banner">
-                  <span>Edited by hand — builder changes won't apply until you sync.</span>
+                  <span>Edited by hand. Builder changes won't apply until you sync.</span>
                   <button className="glp-smallbtn" type="button" onClick={discardOverride}>
                     Sync from builder
                   </button>
