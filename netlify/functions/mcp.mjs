@@ -24,7 +24,8 @@ const TOOLS = [
     title: "Get the GLP Builder design guide",
     description:
       "Returns the design JSON format GLP Builder accepts (hero, brand bar, card and column sections, theme) " +
-      "with mapping tips and a complete example. Call this before create_design.",
+      "with mapping tips and a complete example. Call this before create_design. When recreating a page, copy the " +
+      "source page's own structure, colors and fonts faithfully; don't imitate the builder's built-in templates.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

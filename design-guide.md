@@ -5,15 +5,31 @@ ReadMe Enterprise Global Landing Pages (the home page of a ReadMe docs hub that 
 The builder turns this JSON into the final HTML, so describe the page's **content and structure**; never write HTML or CSS.
 
 ## How to recreate an existing page
-1. Read the source page (fetch the URL). Note: brand name/logo, top nav links, hero text, search/Ask AI
-   placement, each content block, every link, the brand color, light vs dark look.
-2. Map each block to the closest builder feature below. Keep the real copy and the real link URLs
-   (absolute URLs are fine; site-relative paths start with "/").
-3. Output ONE JSON object. Omit anything you'd leave at its default; the builder fills defaults in.
+The goal is a **faithful copy of the source page**, used as the starting point for this hub's landing page.
+The builder has built-in templates (Grandview, Aurora, Spotlight, Editorial, Terminal); **do not imitate any of
+them**. Every choice below should come from what the source page actually shows.
+
+1. Read the source page (fetch the URL). Note, top to bottom: brand name/logo, top nav links, hero text and
+   alignment, search/Ask AI placement, each content block (how many cards per row, list vs grid, icons or not,
+   numbered or not), every link, the brand color, text and background colors, fonts, light vs dark look,
+   any background pattern.
+2. Map each block to the closest builder feature below, **in the same order and with the same number of items**.
+   Keep the real copy and the real link URLs (absolute URLs are fine; site-relative paths start with "/").
+3. Match the look, not just the content:
+   - **Colors:** use `theme.colorMode: "custom"` with the source's brand, heading, body and background colors
+     (see `theme`). Only use "readme" if the user asks to keep the hub's own colors.
+   - **Fonts:** set `typeface.custom: true` with the closest supported heading/body fonts and a `headingWeight`
+     that matches how bold the source headings look.
+   - **Only add optional flourishes the source actually has:** hero `bg: "glow"`, `searchSize: "large"`,
+     `quickLinks`, the hero `panel`, section `eyebrow`s, `pattern`, `banner.glow`, a code window. If the source
+     doesn't show it, leave it out.
+   - Match the hero's alignment, the card density and corner radius, section backgrounds and dividers.
+4. Before replying, walk the source page block by block and check each one is in your JSON, in order.
+5. Output ONE JSON object. Omit anything you'd leave at its default; the builder fills defaults in.
 
 ## Top-level fields
-- `typeface`: `{ custom: true, heading, body, mono }` (omit it, or `custom: false`, to Match Settings in ReadMe). Use "readme" (Match Settings in ReadMe: inherit whatever the hub uses, the best default)
-  or one of ReadMe's supported fonts. Headings: "Fraunces" | "Syne" | "Space Mono" | "DM Mono" | "DM Sans" | "Geist" |
+- `typeface`: `{ custom: true, heading, body, mono }` (`custom: false` means Match Settings in ReadMe: inherit
+  whatever fonts the hub uses; when recreating a page, prefer the closest supported fonts instead). Headings: "Fraunces" | "Syne" | "Space Mono" | "DM Mono" | "DM Sans" | "Geist" |
   "Geist Mono" | "IBM Plex Mono" | "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans".
   Body: "Literata" | "Lora" | "Merriweather" | "DM Mono" | "DM Sans" | "Geist" | "Geist Mono" | "IBM Plex Mono" |
   "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans". Optional `mono` (labels, small buttons):
@@ -34,7 +50,7 @@ The builder turns this JSON into the final HTML, so describe the page's **conten
   `panel: { enabled, title, links: [{label, href, meta}] }` (a card beside a left-aligned hero listing sections with a
   small count; the search box moves into it when searchMode is "hero").
 - `theme`: `{ colorMode: "readme" | "custom", colors: { light: {...}, dark: {...} }, pattern (bool) }`.
-  "readme" inherits the hub's brand color (best default). To use the source page's colors, set `colorMode: "custom"` and fill
+  "readme" inherits the hub's brand color. When recreating a page, use the source page's colors: set `colorMode: "custom"` and fill
   any of these roles in `colors.light` (hex "#RRGGBB"; leave out what you don't need): `brand` (buttons, links, icons,
   card accents), `heading`, `body`, `muted`, `cardBg`, `cardBorder`, `pageBg`. Add `colors.dark.brand` as a lighter tint
   that reads on dark backgrounds; other dark roles are optional. `pattern`: "none" | "dots" | "grid" | "lines" |
@@ -83,9 +99,10 @@ rows, title | description | count), autoH: true }`.
 - Can't reproduce something exactly (video, carousel, custom illustration)? Use the closest block and keep the copy.
 
 ## Complete example
+A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dotted background carried over.
 ```json
 {
- "typeface": { "heading": "readme", "body": "readme" },
+ "typeface": { "custom": true, "heading": "Inter", "body": "Inter", "headingWeight": 700 },
  "hero": {
   "eyebrow": "Platform docs",
   "chip": "",
@@ -150,7 +167,11 @@ rows, title | description | count), autoH: true }`.
   "offset": 64
  },
  "theme": {
-  "colorMode": "readme",
+  "colorMode": "custom",
+  "colors": {
+   "light": { "brand": "#5B3DF5", "heading": "#111827", "body": "#4B5563", "pageBg": "#FFFFFF" },
+   "dark": { "brand": "#A898FF" }
+  },
   "pattern": "dots"
  },
  "cardStyle": {
