@@ -41,7 +41,9 @@ preview — then copy the generated snippet into
   links (wrap a word in `*asterisks*` for italics) with an optional footnote
   link. Great for "Customers / Partners" pick-your-path cards.
 - **Page templates** — the **Templates** tab switches a page to Grandview, Aurora,
-  Spotlight, Editorial or Terminal. **Grandview** opens a complete starting page
+  Spotlight, Editorial or Terminal. **Keep my content** (the default) applies just
+  the template's look to your existing text, links, cards and colors; **Start
+  fresh** loads the template's sample content. **Grandview** opens a complete starting page
   (brand bar, search hero, audience link lists, icon doc tiles, dark help
   strip).
 - **Edit text right in the preview** — click any heading, card title, link
