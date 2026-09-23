@@ -499,7 +499,7 @@ const BLANK_TEMPLATE = { key: "blank", label: "Blank", hint: "A hero and one car
 const PAGE_TEMPLATES = [
   {
     key: "portal",
-    label: "Developer portal",
+    label: "Stella",
     hint: "Brand bar, search hero, audience link lists, doc tiles, dark help strip",
     build: () => {
       const L = (label, href) => ({ label, href });
@@ -3187,8 +3187,16 @@ const APP_CSS = `
     position: absolute; top: calc(100% + 6px); right: 0; z-index: 41; width: 300px;
     background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px;
     box-shadow: var(--shadow-lg); padding: 6px;
+    max-height: calc(100vh - 72px); overflow-y: auto;
   }
-  .glp-pages__list { max-height: 260px; overflow-y: auto; }
+  .glp-pages__list { max-height: min(260px, 40vh); overflow-y: auto; }
+  .glp-pages__backup { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; padding: 8px 4px 2px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2); }
+  .glp-pages__bstate { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glp-pages__bstate.ok i.fa-hard-drive { color: var(--ok); }
+  .glp-pages__bio { display: inline-flex; gap: 2px; flex: none; }
+  .glp-linkbtn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 3px 4px; border-radius: 6px; font-family: inherit; font-size: 12.5px; color: var(--accent); cursor: pointer; }
+  .glp-linkbtn:hover { background: var(--accent-soft); }
+  .glp-linkbtn.warn { color: var(--warn); }
   .glp-pages__item {
     display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
     border: 0; background: transparent; color: var(--ink-2); font-family: inherit;
@@ -5487,67 +5495,42 @@ function App() {
                   ) : (
                     <>
                     <div className="glp-pages__actions">
+                      <button className="glp-smallbtn" type="button" title="Start a blank page, then pick a template if you like"
+                        onClick={() => { newPage(); setOpenNav("templates"); }}>
+                        <i className="fa-solid fa-plus" aria-hidden="true"></i> New
+                      </button>
                       <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={() => setRenaming(true)}>Rename</button>
                       <button className="glp-smallbtn" type="button" onClick={duplicateCurrent}>Duplicate</button>
                       <button className="glp-smallbtn glp-smallbtn--danger" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>Delete</button>
                     </div>
-                    <div className="glp-pages__tpl">
-                      <div className="glp-pages__tplhead">New page</div>
-                      <button className="glp-pages__item" type="button" onClick={() => newPage()}>
-                        <i className="fa-regular fa-file" aria-hidden="true"></i>
-                        <span><b>Blank page</b><small>The default starter: a hero and one card section.</small></span>
-                      </button>
-                      {PAGE_TEMPLATES.map((t) => (
-                        <button key={t.key} className="glp-pages__item" type="button" onClick={() => newPage(t)}>
-                          <i className="fa-solid fa-file-lines" aria-hidden="true"></i>
-                          <span>
-                            <b>{t.label}</b>
-                            <small>{t.hint}</small>
-                          </span>
+                    <div className="glp-pages__backup">
+                      {fileState === "on" ? (
+                        <span className="glp-pages__bstate ok" title={"Every change also saves to " + fileName}>
+                          <i className="fa-solid fa-hard-drive" aria-hidden="true"></i> Backing up to <b>{fileName}</b>
+                          <button className="glp-iconbtn" type="button" title="Stop backing up to this file" aria-label="Stop backing up" onClick={disconnectFile}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                        </span>
+                      ) : fileState === "reconnect" ? (
+                        <button className="glp-linkbtn warn" type="button" onClick={reconnectFile} title="Your browser needs one click to allow saving to the file again">
+                          <i className="fa-solid fa-plug-circle-exclamation" aria-hidden="true"></i> Reconnect backup
                         </button>
-                      ))}
-                    </div>
-                    <div className="glp-pages__tpl">
-                      <button className="glp-pages__item" type="button" onClick={() => { setImportOpen(true); setPagesOpen(false); }}>
-                        <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
-                        <span><b>Import with Claude</b><small>Bring any docs landing page in as an editable design.</small></span>
-                      </button>
-                    </div>
-                    <div className="glp-pages__tpl">
-                      <div className="glp-pages__tplhead">Backup on this computer</div>
-                      {fileState === "on" && (
-                        <div className="glp-filestate ok">
-                          <i className="fa-solid fa-hard-drive" aria-hidden="true"></i>
-                          <span>Saving every change to <b>{fileName}</b></span>
-                          <button className="glp-iconbtn" type="button" title="Stop syncing to this file" aria-label="Stop syncing" onClick={disconnectFile}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                        </div>
-                      )}
-                      {fileState === "reconnect" && (
-                        <button className="glp-pages__item" type="button" onClick={reconnectFile}>
-                          <i className="fa-solid fa-plug-circle-exclamation" aria-hidden="true" style={{ color: "var(--warn)" }}></i>
-                          <span><b>Reconnect {fileName}</b><small>Your browser needs one click to allow saving to the file again.</small></span>
-                        </button>
-                      )}
-                      {(fileState === "off" || fileState === "error") && (
-                        <>
-                          <button className="glp-pages__item" type="button" onClick={connectNewFile}>
-                            <i className="fa-solid fa-hard-drive" aria-hidden="true"></i>
-                            <span><b>Keep a backup file</b><small>Every change also saves to a .json file you choose, so clearing your browser never loses pages.</small></span>
+                      ) : fileState === "unsupported" ? (
+                        <span className="glp-pages__bstate">Backup:</span>
+                      ) : (
+                        <span className="glp-pages__bstate">
+                          <button className="glp-linkbtn" type="button" onClick={connectNewFile} title="Every change also saves to a .json file you choose, so clearing your browser never loses pages">
+                            <i className="fa-solid fa-hard-drive" aria-hidden="true"></i> Keep a backup file
                           </button>
-                          <button className="glp-pages__item" type="button" onClick={openExistingFile}>
-                            <i className="fa-solid fa-folder-open" aria-hidden="true"></i>
-                            <span><b>Open a backup file</b><small>Restore pages from a file and keep it in sync.</small></span>
-                          </button>
-                        </>
+                          <button className="glp-linkbtn" type="button" onClick={openExistingFile} title="Restore pages from a backup file and keep it in sync">Open one</button>
+                        </span>
                       )}
-                      <div className="glp-pages__actions" style={{ borderTop: 0, marginTop: 0 }}>
-                        <button className="glp-smallbtn" type="button" onClick={exportDesigns}><i className="fa-solid fa-download" aria-hidden="true"></i> Export all</button>
-                        <button className="glp-smallbtn" type="button" onClick={() => importInput.current && importInput.current.click()}><i className="fa-solid fa-upload" aria-hidden="true"></i> Import</button>
+                      <span className="glp-pages__bio">
+                        <button className="glp-iconbtn" type="button" title="Export all pages to a .json file" aria-label="Export all pages" onClick={exportDesigns}><i className="fa-solid fa-download" aria-hidden="true"></i></button>
+                        <button className="glp-iconbtn" type="button" title="Import pages from a .json file" aria-label="Import pages" onClick={() => importInput.current && importInput.current.click()}><i className="fa-solid fa-upload" aria-hidden="true"></i></button>
                         <input ref={importInput} type="file" accept=".json,application/json" style={{ display: "none" }}
                           onChange={(e) => { importDesigns(e.target.files[0]); e.target.value = ""; }} />
-                      </div>
-                      {fileMsg && <div className="glp-filemsg">{fileMsg}</div>}
+                      </span>
                     </div>
+                    {fileMsg && <div className="glp-filemsg">{fileMsg}</div>}
                     </>
                   )}
                 </div>
