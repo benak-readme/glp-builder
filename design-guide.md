@@ -147,9 +147,7 @@ dividerStyle: "hairline"|"accent", bg: "none"|"subtle"|"accent"|"dark", bento (b
   "links": false,
   "iconInline": false,
   "radius": 16,
-  "density": "comfortable",
-  "num": false,
-  "file": false
+  "density": "comfortable"
  },
  "layout": {
   "maxW": 1120
@@ -183,9 +181,7 @@ dividerStyle: "hairline"|"accent", bg: "none"|"subtle"|"accent"|"dark", bento (b
     "links": true,
     "iconInline": false,
     "radius": 8,
-    "density": "comfortable",
-    "num": false,
-    "file": false
+    "density": "comfortable"
    },
    "layout": {
     "colMin": 380,
@@ -261,9 +257,7 @@ dividerStyle: "hairline"|"accent", bg: "none"|"subtle"|"accent"|"dark", bento (b
     "links": false,
     "iconInline": true,
     "radius": 8,
-    "density": "comfortable",
-    "num": false,
-    "file": false
+    "density": "comfortable"
    },
    "layout": {
     "colMin": 300,
