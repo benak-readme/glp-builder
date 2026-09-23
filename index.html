@@ -2697,7 +2697,7 @@ const APP_CSS = `
   .glp-navtabs {
     position: sticky; top: -20px; z-index: 6;
     margin: -20px -20px 16px; padding: 8px 10px;
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.4fr); gap: 4px;
     background: var(--panel); border-bottom: 1px solid var(--line);
   }
   .glp-navtabs button {
@@ -2708,8 +2708,7 @@ const APP_CSS = `
   /* each area has its own hue (--tc): colored icon at rest, tinted pill when active */
   .glp-navtabs [data-tab="templates"] { --tc: var(--hue-templates); }
   .glp-navtabs [data-tab="theme"] { --tc: var(--hue-theme); }
-  .glp-navtabs [data-tab="headerFooter"] { --tc: var(--hue-header); }
-  .glp-navtabs [data-tab="hero"] { --tc: var(--hue-hero); }
+  .glp-navtabs [data-tab="page"] { --tc: var(--hue-header); }
   .glp-navtabs [data-tab="sections"] { --tc: var(--hue-sections); }
   .glp-navtabs button { color: var(--ink-2); font-size: 12px; font-weight: 500; border-radius: 10px; padding-left: 2px; padding-right: 2px; }
   .glp-navtabs button i { font-size: 15px; color: var(--tc); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
@@ -4561,8 +4560,7 @@ const NAV_TABS = [
   { id: "templates", label: "Templates", icon: "fa-shapes" },
   { id: "theme", label: "Appearance", icon: "fa-palette" },
   { id: "sections", label: "Sections", icon: "fa-layer-group" },
-  { id: "hero", label: "Hero", icon: "fa-image" },
-  { id: "headerFooter", label: "Header & Footer", icon: "fa-window-maximize" },
+  { id: "page", label: "Header, Hero & Footer", icon: "fa-window-maximize" },
 ];
 
 function NavTabs({ openNav, setOpenNav }) {
@@ -4736,8 +4734,13 @@ function App() {
     try { v === "system" ? localStorage.removeItem("glp-builder:ui") : localStorage.setItem("glp-builder:ui", v); } catch (e) {}
   };
   const [colorEdit, setColorEdit] = useState("light");
+  const [pageTab, setPageTab] = useState("hero");
   const [openNav, setOpenNavRaw] = useState(() => {
-    try { const v = localStorage.getItem("glp-builder:nav"); if (NAV_TABS.some((t) => t.id === v)) return v; } catch (e) {}
+    try {
+      let v = localStorage.getItem("glp-builder:nav");
+      if (v === "hero" || v === "headerFooter") v = "page"; /* merged into Page */
+      if (NAV_TABS.some((t) => t.id === v)) return v;
+    } catch (e) {}
     return "sections";
   });
   const sideRef = useRef(null);
@@ -5699,7 +5702,7 @@ function App() {
                 <p className="glp-hint" style={{ margin: "0 0 10px" }}>Used by every section set to <b>Global</b>. A section can switch to <b>Custom</b> in its Card style tab.</p>
                 <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
 
-                <div className="glp-sub">Page</div>
+                <div className="glp-sub">Background &amp; width</div>
                 <SettingsGroup>
                   <SettingsRow label="Background pattern" hint="Full width, behind everything">
                     <select className="glp-select glp-select--sm" value={config.theme.pattern} onChange={(e) => setTheme({ pattern: e.target.value })} aria-label="Background pattern">
@@ -5725,8 +5728,42 @@ function App() {
                 </SettingsGroup>
               </NavSection>
 
-              <NavSection id="headerFooter" label="Header & Footer" openNav={openNav} setOpenNav={setOpenNav}>
-                <div className="glp-sub" style={{ marginTop: 4 }}>Header</div>
+              <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
+                {config.sections.map((section, i) => (
+                  <SectionEditor
+                    key={section.id}
+                    section={section}
+                    index={i}
+                    count={config.sections.length}
+                    hideAccents={config.theme.colorMode !== "custom" || !!(config.theme.colors.light.brand || config.theme.colors.dark.brand)}
+                    globalStyle={config.cardStyle || DEFAULT_STYLE}
+                    open={openSection === section.id}
+                    onToggle={() => setOpenSection(openSection === section.id ? null : section.id)}
+                    onMove={(dir) => moveSection(section.id, dir)}
+                    onRemove={() => removeSection(section.id)}
+                    onDuplicate={() => duplicateSection(section.id)}
+                    onChange={(next) => updateSection(section.id, next)}
+                    cardOps={cardOpsFor(section.id)}
+                    openCard={openCard}
+                    setOpenCard={setOpenCard}
+                    dragHandleProps={sectionDrag.dragHandleProps(section.id)}
+                    dropRowProps={sectionDrag.dropRowProps(i)}
+                    dragOver={sectionDrag.overIndex === i}
+                  />
+                ))}
+                <button className="glp-add" type="button" onClick={addSection} disabled={config.sections.length >= 6}>
+                  + Add section ({config.sections.length}/6)
+                </button>
+              </NavSection>
+
+              <NavSection id="page" label="Header, Hero & Footer" openNav={openNav} setOpenNav={setOpenNav}>
+                <div className="glp-subtabs" role="tablist" aria-label="Page parts">
+                  {[["header", "Header"], ["hero", "Hero"], ["footer", "Footer"]].map(([k, l]) => (
+                    <button key={k} type="button" role="tab" aria-selected={pageTab === k} className={pageTab === k ? "on" : ""} onClick={() => setPageTab(k)}>{l}</button>
+                  ))}
+                </div>
+                {pageTab === "header" && (
+                  <>
                 <Field label="Header style">
                   <Seg
                     value={config.brandBar.enabled ? "brand" : config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native"}
@@ -5818,55 +5855,10 @@ function App() {
                   </>
                 )}
 
-                <div className="glp-sub">Contact banner</div>
-                <Toggle
-                  checked={config.banner.enabled}
-                  onChange={(v) => setBanner({ enabled: v })}
-                  label="Show a banner at the bottom of the page"
-                  hint='Full-width call-to-action, e.g. "Need help building your integration?"'
-                />
-                {config.banner.enabled && (
-                  <>
-                    <Field label="Banner title">
-                      <input className="glp-input" value={config.banner.title} onChange={(e) => setBanner({ title: e.target.value })} />
-                    </Field>
-                    <Field label="Banner text">
-                      <textarea className="glp-textarea" value={config.banner.text} onChange={(e) => setBanner({ text: e.target.value })} />
-                    </Field>
-                    <div className="glp-row2">
-                      <Field label="Button label">
-                        <input className="glp-input" value={config.banner.btnLabel} onChange={(e) => setBanner({ btnLabel: e.target.value })} />
-                      </Field>
-                      <Field label="Button link">
-                        <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
-                      </Field>
-                    </div>
-                    <Field label="Layout" inline>
-                      <Seg value={config.banner.align} onChange={(v) => setBanner({ align: v })} options={[{ value: "left", label: "Side by side" }, { value: "center", label: "Centered" }]} />
-                    </Field>
-                    {config.banner.align === "center" && (
-                      <>
-                        <div className="glp-row2">
-                          <Field label="Second button (optional)">
-                            <input className="glp-input" value={config.banner.btn2Label} onChange={(e) => setBanner({ btn2Label: e.target.value })} placeholder="Read the API" />
-                          </Field>
-                          <Field label="Second button link">
-                            <input className="glp-input" value={config.banner.btn2Href} onChange={(e) => setBanner({ btn2Href: e.target.value })} placeholder="/reference" />
-                          </Field>
-                        </div>
-                        <Toggle checked={config.banner.glow} onChange={(v) => setBanner({ glow: v })} label="Glow background" hint="Soft brand-color glow behind the banner." style={{ paddingTop: 0 }} />
-                      </>
-                    )}
                   </>
                 )}
-
-                <div className="glp-sub">Footer</div>
-                <Field label="Footer line (blank to hide)">
-                  <input className="glp-input" value={config.footer} onChange={(e) => patch({ footer: e.target.value })} />
-                </Field>
-              </NavSection>
-
-              <NavSection id="hero" label="Hero" openNav={openNav} setOpenNav={setOpenNav}>
+                {pageTab === "hero" && (
+                  <>
                 <Field label="Eyebrow (blank to hide)">
                   <input
                     className="glp-input"
@@ -6013,34 +6005,58 @@ function App() {
                     <input className="glp-input" value={config.ticker.text} onChange={(e) => setTicker({ text: e.target.value })} />
                   </Field>
                 )}
-              </NavSection>
+                  </>
+                )}
+                {pageTab === "footer" && (
+                  <>
+                <div className="glp-sub" style={{ marginTop: 4 }}>Contact banner</div>
+                <Toggle
+                  checked={config.banner.enabled}
+                  onChange={(v) => setBanner({ enabled: v })}
+                  label="Show a banner at the bottom of the page"
+                  hint='Full-width call-to-action, e.g. "Need help building your integration?"'
+                />
+                {config.banner.enabled && (
+                  <>
+                    <Field label="Banner title">
+                      <input className="glp-input" value={config.banner.title} onChange={(e) => setBanner({ title: e.target.value })} />
+                    </Field>
+                    <Field label="Banner text">
+                      <textarea className="glp-textarea" value={config.banner.text} onChange={(e) => setBanner({ text: e.target.value })} />
+                    </Field>
+                    <div className="glp-row2">
+                      <Field label="Button label">
+                        <input className="glp-input" value={config.banner.btnLabel} onChange={(e) => setBanner({ btnLabel: e.target.value })} />
+                      </Field>
+                      <Field label="Button link">
+                        <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
+                      </Field>
+                    </div>
+                    <Field label="Layout" inline>
+                      <Seg value={config.banner.align} onChange={(v) => setBanner({ align: v })} options={[{ value: "left", label: "Side by side" }, { value: "center", label: "Centered" }]} />
+                    </Field>
+                    {config.banner.align === "center" && (
+                      <>
+                        <div className="glp-row2">
+                          <Field label="Second button (optional)">
+                            <input className="glp-input" value={config.banner.btn2Label} onChange={(e) => setBanner({ btn2Label: e.target.value })} placeholder="Read the API" />
+                          </Field>
+                          <Field label="Second button link">
+                            <input className="glp-input" value={config.banner.btn2Href} onChange={(e) => setBanner({ btn2Href: e.target.value })} placeholder="/reference" />
+                          </Field>
+                        </div>
+                        <Toggle checked={config.banner.glow} onChange={(v) => setBanner({ glow: v })} label="Glow background" hint="Soft brand-color glow behind the banner." style={{ paddingTop: 0 }} />
+                      </>
+                    )}
+                  </>
+                )}
 
-              <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
-                {config.sections.map((section, i) => (
-                  <SectionEditor
-                    key={section.id}
-                    section={section}
-                    index={i}
-                    count={config.sections.length}
-                    hideAccents={config.theme.colorMode !== "custom" || !!(config.theme.colors.light.brand || config.theme.colors.dark.brand)}
-                    globalStyle={config.cardStyle || DEFAULT_STYLE}
-                    open={openSection === section.id}
-                    onToggle={() => setOpenSection(openSection === section.id ? null : section.id)}
-                    onMove={(dir) => moveSection(section.id, dir)}
-                    onRemove={() => removeSection(section.id)}
-                    onDuplicate={() => duplicateSection(section.id)}
-                    onChange={(next) => updateSection(section.id, next)}
-                    cardOps={cardOpsFor(section.id)}
-                    openCard={openCard}
-                    setOpenCard={setOpenCard}
-                    dragHandleProps={sectionDrag.dragHandleProps(section.id)}
-                    dropRowProps={sectionDrag.dropRowProps(i)}
-                    dragOver={sectionDrag.overIndex === i}
-                  />
-                ))}
-                <button className="glp-add" type="button" onClick={addSection} disabled={config.sections.length >= 6}>
-                  + Add section ({config.sections.length}/6)
-                </button>
+                <div className="glp-sub">Footer</div>
+                <Field label="Footer line (blank to hide)">
+                  <input className="glp-input" value={config.footer} onChange={(e) => patch({ footer: e.target.value })} />
+                </Field>
+                  </>
+                )}
               </NavSection>
             </div>
             <Preview html={override !== null ? generated : previewHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
