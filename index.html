@@ -4075,7 +4075,7 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
 }
 
 /* ---------- reusable card-style switches (used by a section in "custom"
-   mode and by the global card style in Theme → Card style) ---------- */
+   mode and by the global card style in Appearance → Card style) ---------- */
 function CardStyleControls({ style: st, setStyle, liquid = false }) {
   return (
     <>
@@ -4426,7 +4426,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                 <CardStyleControls style={section.style} setStyle={setStyle} liquid={liquidOn} />
               ) : (
                 <div className="glp-note">
-                  Using the <b>global card style</b>, shared by every Global section. Change it in <b>Theme → Card style</b>, or pick a look in <b>Templates → Card templates</b>. Switch to <b>Custom</b> to change just this section.
+                  Using the <b>global card style</b>, shared by every Global section. Change it in <b>Appearance → Card style</b>, or pick a look in <b>Appearance → Card templates</b>. Switch to <b>Custom</b> to change just this section.
                 </div>
               )}
             </>
@@ -4559,7 +4559,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
 /* the four editor areas, switched by the tab bar pinned to the top of the sidebar */
 const NAV_TABS = [
   { id: "templates", label: "Templates", icon: "fa-shapes" },
-  { id: "theme", label: "Theme", icon: "fa-palette" },
+  { id: "theme", label: "Appearance", icon: "fa-palette" },
   { id: "sections", label: "Sections", icon: "fa-layer-group" },
   { id: "hero", label: "Hero", icon: "fa-image" },
   { id: "headerFooter", label: "Header & Footer", icon: "fa-window-maximize" },
@@ -5609,24 +5609,9 @@ function App() {
                   ))}
                 </div>
 
-                <div className="glp-sub">Card templates</div>
-                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Restyles every card section set to <b>Global</b>. Content stays as it is.</p>
-                <div className="glp-choices glp-choices--4">
-                  {PRESETS.map((p) => {
-                    const cur = config.cardStyle || DEFAULT_STYLE;
-                    const on = Object.keys(p.style).every((k) => cur[k] === p.style[k]);
-                    return (
-                      <button key={p.key} type="button" className={"glp-choice" + (on ? " on" : "")} aria-pressed={on} title={p.hint} onClick={() => applyPreset(p)}>
-                        <span className="glp-choice__preview"><CardSketch kind={p.key} /></span>
-                        <span className="glp-choice__label">{p.label}</span>
-                        <span className="glp-choice__sub">{p.hint}</span>
-                      </button>
-                    );
-                  })}
-                </div>
               </NavSection>
 
-              <NavSection id="theme" label="Theme" openNav={openNav} setOpenNav={setOpenNav}>
+              <NavSection id="theme" label="Appearance" openNav={openNav} setOpenNav={setOpenNav}>
                 <div className="glp-sub" style={{ marginTop: 4 }}>Typography</div>
                 <ChoiceCards
                   value={config.typeface.custom ? "custom" : "readme"}
@@ -5694,8 +5679,24 @@ function App() {
                   </>
                 )}
 
+                <div className="glp-sub">Card templates</div>
+                <p className="glp-hint" style={{ margin: "0 0 10px" }}>One-click looks for every card section set to <b>Global</b>. Fine-tune them in Card style below.</p>
+                <div className="glp-choices glp-choices--4">
+                  {PRESETS.map((p) => {
+                    const cur = config.cardStyle || DEFAULT_STYLE;
+                    const on = Object.keys(p.style).every((k) => cur[k] === p.style[k]);
+                    return (
+                      <button key={p.key} type="button" className={"glp-choice" + (on ? " on" : "")} aria-pressed={on} title={p.hint} onClick={() => applyPreset(p)}>
+                        <span className="glp-choice__preview"><CardSketch kind={p.key} /></span>
+                        <span className="glp-choice__label">{p.label}</span>
+                        <span className="glp-choice__sub">{p.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="glp-sub">Card style</div>
-                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Used by every section set to <b>Global</b>. A section can switch to <b>Custom</b> in its Card style tab. Start from a look in <b>Templates</b>.</p>
+                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Used by every section set to <b>Global</b>. A section can switch to <b>Custom</b> in its Card style tab.</p>
                 <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
 
                 <div className="glp-sub">Page</div>
