@@ -5178,13 +5178,16 @@ function App() {
     if (sideRef.current) sideRef.current.scrollTop = 0;
   };
   const [openSection, setOpenSection] = useState(boot.current.config.sections[0].id);
-  /* preview light/dark: starts on the machine's setting and follows it until
-     the user picks one in the preview toolbar (or via the Colors mode switch) */
+  /* preview light/dark: the user's last pick in the preview (remembered across
+     reloads); until they've picked one, it follows the machine's setting */
+  const PREVIEW_KEY = "glp-builder:preview";
+  const storedPreview = (() => { try { const v = localStorage.getItem(PREVIEW_KEY); return v === "light" || v === "dark" ? v : null; } catch (e) { return null; } })();
   const [mode, setModeRaw] = useState(() => {
+    if (storedPreview) return storedPreview;
     try { return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; } catch (e) { return "light"; }
   });
-  const previewModeTouched = useRef(false);
-  const setMode = (m) => { previewModeTouched.current = true; setModeRaw(m); };
+  const previewModeTouched = useRef(!!storedPreview);
+  const setMode = (m) => { previewModeTouched.current = true; setModeRaw(m); try { localStorage.setItem(PREVIEW_KEY, m); } catch (e) {} };
   const [device, setDevice] = useState("desktop");
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
