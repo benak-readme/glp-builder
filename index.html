@@ -2807,7 +2807,7 @@ const APP_CSS = `
 
   .glp-navhead {
     position: sticky; top: -20px; z-index: 6;
-    margin: -20px -20px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+    margin: -20px -10px 16px -20px; background: var(--panel); border-bottom: 1px solid var(--line);
   }
   /* room below the last Appearance group so every jump link can land its group at the top */
   .glp-sec--theme { padding-bottom: 70vh; }
@@ -2843,8 +2843,10 @@ const APP_CSS = `
     border-right: 1px solid var(--line);
     background: var(--panel);
     overflow-y: auto;
+    scrollbar-gutter: stable;
     overscroll-behavior: contain;
-    padding: 20px 20px 64px;
+    /* the gutter (10px) is always reserved, so right padding + gutter = left padding */
+    padding: 20px 10px 64px 20px;
   }
   .glp-side::-webkit-scrollbar { width: 10px; }
   .glp-side::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 5px; }
@@ -5834,7 +5836,7 @@ function App() {
                     { value: "custom", label: "Custom", sub: "Pick fonts", preview: <span className="glp-choice__aa" style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}>Aa</span> },
                   ]}
                 />
-                <Field label="Heading weight" inline>
+                <Field label="Global heading weight" inline>
                   <Seg
                     value={config.typeface.headingWeight || 600}
                     onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, headingWeight: v } }))}
