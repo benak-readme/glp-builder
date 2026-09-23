@@ -286,6 +286,15 @@ const COLOR_ROLES = [
   { key: "cardBorder", label: "Card border" },
   { key: "pageBg", label: "Page background", hint: "Full-width, behind everything" },
 ];
+/* full-width background patterns; "shapes" is the original line art (older pages' "on") */
+const PATTERNS = [
+  { value: "none", label: "None" },
+  { value: "dots", label: "Dots" },
+  { value: "grid", label: "Grid" },
+  { value: "lines", label: "Diagonal" },
+  { value: "shapes", label: "Shapes" },
+];
+const normPattern = (v) => (v === true ? "shapes" : typeof v === "string" && PATTERNS.some((x) => x.value === v) ? v : "none");
 const EMPTY_COLORS = () => ({
   light: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, ""])),
   dark: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, ""])),
@@ -342,7 +351,7 @@ const DEFAULT_CONFIG = {
   /* matchReadme = inherit the hub's own accent color instead of picking one */
   /* colorMode "readme" inherits the hub's brand color; "custom" uses `colors`
      (per role, per appearance; "" = keep the default) */
-  theme: { colorMode: "readme", colors: EMPTY_COLORS(), pattern: false },
+  theme: { colorMode: "readme", colors: EMPTY_COLORS(), pattern: "none", patternStrength: "subtle" },
   /* global card style — sections in "global" style mode inherit this look */
   cardStyle: { ...DEFAULT_STYLE },
   layout: { maxW: 1120 },
@@ -481,7 +490,7 @@ const tplBase = (over) =>
     ...DEFAULT_CONFIG,
     searchMode: "hero",
     flattenHeader: false,
-    theme: { colorMode: "readme", pattern: false },
+    theme: { colorMode: "readme", pattern: "none" },
     footer: "",
     ...over,
   });
@@ -508,7 +517,7 @@ const PAGE_TEMPLATES = [
           links: [L("Guides", "/guides"), L("API reference", "/reference"), L("Platform guide", "/platform"), L("Release notes", "/changelog")],
           button: { enabled: true, label: "Log in", href: "/login" },
         },
-        theme: { ...DEFAULT_CONFIG.theme, pattern: true },
+        theme: { ...DEFAULT_CONFIG.theme, pattern: "dots" },
         layout: { maxW: 1120 },
         hero: {
           ...DEFAULT_CONFIG.hero,
@@ -834,7 +843,8 @@ function sanitizeConfig(c) {
     },
     theme: {
       colorMode: c.theme.colorMode === "custom" ? "custom" : "readme",
-      pattern: !!c.theme.pattern,
+      pattern: PATTERNS.some((x) => x.value === c.theme.pattern) ? c.theme.pattern : "none",
+      patternStrength: c.theme.patternStrength === "medium" ? "medium" : "subtle",
       colors: {
         light: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, safeHex(c.theme.colors.light[r.key], "")])),
         dark: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, safeHex(c.theme.colors.dark[r.key], "")])),
@@ -940,7 +950,7 @@ function migrateConfig(loaded) {
       const colors = EMPTY_COLORS();
       if (t.colors && typeof t.colors === "object") {
         ["light", "dark"].forEach((m) => COLOR_ROLES.forEach((r) => { colors[m][r.key] = str(t.colors[m] && t.colors[m][r.key]); }));
-        return { colorMode: t.colorMode === "custom" ? "custom" : "readme", colors, pattern: !!t.pattern };
+        return { colorMode: t.colorMode === "custom" ? "custom" : "readme", colors, pattern: normPattern(t.pattern), patternStrength: t.patternStrength };
       }
       /* older configs: matchReadme / uniform + accent|custom pair */
       if (t.matchReadme === false && t.uniform) {
@@ -948,7 +958,7 @@ function migrateConfig(loaded) {
         colors.light.brand = str(a.light);
         colors.dark.brand = str(a.dark);
       }
-      return { colorMode: t.matchReadme === false ? "custom" : "readme", colors, pattern: !!t.pattern };
+      return { colorMode: t.matchReadme === false ? "custom" : "readme", colors, pattern: normPattern(t.pattern), patternStrength: t.patternStrength };
     })(),
     cardStyle: { ...DEFAULT_STYLE, ...(loaded.cardStyle || {}), file: false },
     layout: { maxW: (loaded.layout && loaded.layout.maxW) || 1120 },
@@ -1551,10 +1561,17 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
 `
     : "";
 
-  /* ===== Subtle full-bleed background pattern ===== */
-  const patternSvg = (stroke) =>
-    `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23${stroke}' stroke-opacity='0.045' stroke-width='1.2'%3E%3Ccircle cx='24' cy='24' r='9'/%3E%3Crect x='70' y='14' width='24' height='18' rx='3'/%3E%3Cpath d='M18 84h22M29 73v22'/%3E%3Cpath d='M78 96l12-14 12 14z'/%3E%3Cpath d='M60 52l6 6-6 6-6-6z'/%3E%3C/g%3E%3C/svg%3E")`;
-  const patternCSS = theme.pattern
+  /* ===== Full-width background pattern (dots / grid / diagonal / shapes) ===== */
+  const patternKind = normPattern(theme.pattern);
+  const pk = theme.patternStrength === "medium" ? 2 : 1;
+  const svgUrl = (svg) => `url("data:image/svg+xml,${svg.replace(/</g, "%3C").replace(/>/g, "%3E").replace(/#/g, "%23").replace(/"/g, "'")}")`;
+  const patternSvg = (c) => {
+    if (patternKind === "dots") return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="1.5" cy="1.5" r="1.2" fill="#${c}" fill-opacity="${0.16 * pk}"/></svg>`);
+    if (patternKind === "grid") return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M32 0V32M0 32H32" fill="none" stroke="#${c}" stroke-opacity="${0.06 * pk}"/></svg>`);
+    if (patternKind === "lines") return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path d="M-1 15L15 -1M-1 1L1 -1M13 15L15 13" fill="none" stroke="#${c}" stroke-opacity="${0.06 * pk}"/></svg>`);
+    return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><g fill="none" stroke="#${c}" stroke-opacity="${0.045 * pk}" stroke-width="1.2"><circle cx="24" cy="24" r="9"/><rect x="70" y="14" width="24" height="18" rx="3"/><path d="M18 84h22M29 73v22"/><path d="M78 96l12-14 12 14z"/><path d="M60 52l6 6-6 6-6-6z"/></g></svg>`);
+  };
+  const patternCSS = patternKind !== "none"
     ? `
   .bnk-landing { isolation: isolate; }
   .bnk-landing::before {
@@ -2509,13 +2526,15 @@ const APP_CSS = `
     --ink: rgb(31 31 31);
     --ink-2: rgb(74 74 74);
     --ink-3: rgb(107 107 107);
-    --accent: var(--brand-blue);           /* text, icons, selection */
-    --accent-fill: var(--brand-blue);      /* primary button fill */
-    --accent-hover: rgb(20 42 214);
+    /* ReadMe Blue's hue, deepened and calmed for a UI people stare at all day
+       (#213AFF is the marketing color; it's loud as an editor accent) */
+    --accent: rgb(44 62 200);              /* text, icons, selection */
+    --accent-fill: rgb(44 62 200);         /* primary button fill */
+    --accent-hover: rgb(34 50 170);
     --accent-ink: rgb(255 255 255);
-    --accent-soft: rgb(236 238 255);
-    --focus: 0 0 0 3px rgb(14 42 245);
-    --focus-soft: 0 0 0 3px rgb(14 42 245 / 0.25);
+    --accent-soft: rgb(239 241 251);
+    --focus: 0 0 0 3px rgb(44 62 200 / 0.55);
+    --focus-soft: 0 0 0 3px rgb(44 62 200 / 0.18);
     --ok: rgb(31 134 48);
     --ok-dot: rgb(74 198 89);              /* ReadMe's annotation green */
     --ok-soft: rgb(232 247 234);
@@ -2534,7 +2553,7 @@ const APP_CSS = `
     --hue-theme: rgb(125 60 220);
     --hue-header: rgb(31 140 60);
     --hue-hero: rgb(214 100 0);
-    --hue-sections: var(--brand-blue);
+    --hue-sections: var(--accent);
 
     height: 100vh;
     display: flex;
@@ -2558,13 +2577,13 @@ const APP_CSS = `
     --ink: rgb(255 255 255);
     --ink-2: rgb(255 255 255 / 0.8);
     --ink-3: rgb(255 255 255 / 0.64);
-    --accent: rgb(140 156 255);
-    --accent-fill: var(--brand-blue);
-    --accent-hover: rgb(58 82 255);
+    --accent: rgb(152 164 232);
+    --accent-fill: rgb(50 68 190);
+    --accent-hover: rgb(62 82 210);
     --accent-ink: rgb(255 255 255);
-    --accent-soft: rgb(14 26 108);
-    --focus: 0 0 0 3px rgb(120 140 255);
-    --focus-soft: 0 0 0 3px rgb(120 140 255 / 0.35);
+    --accent-soft: rgb(18 28 88);
+    --focus: 0 0 0 3px rgb(140 154 230 / 0.6);
+    --focus-soft: 0 0 0 3px rgb(140 154 230 / 0.25);
     --ok: rgb(110 220 125);
     --ok-dot: rgb(74 198 89);
     --ok-soft: rgb(12 60 40);
@@ -2582,7 +2601,7 @@ const APP_CSS = `
     --hue-theme: rgb(190 150 255);
     --hue-header: rgb(110 220 125);
     --hue-hero: rgb(255 170 90);
-    --hue-sections: rgb(140 156 255);
+    --hue-sections: var(--accent);
   }
   .glp-bar {
     display: flex; align-items: center; gap: 16px;
@@ -2663,8 +2682,8 @@ const APP_CSS = `
   .glp-navtabs button i { font-size: 15px; color: var(--tc); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
   .glp-navtabs button:hover { color: var(--ink); background: color-mix(in oklch, var(--tc) 8%, var(--panel)); }
   .glp-navtabs button.on {
-    color: var(--ink); background: color-mix(in oklch, var(--tc) 13%, var(--panel));
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tc) 40%, transparent);
+    color: var(--ink); background: color-mix(in oklch, var(--tc) 9%, var(--panel));
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tc) 28%, transparent);
   }
   .glp-side {
     width: 452px; flex: none;
@@ -2787,6 +2806,7 @@ const APP_CSS = `
   .glp-grow__control { flex: none; display: flex; justify-content: flex-end; max-width: 60%; }
   .glp-grow__control .glp-fontsel { width: 190px; }
   .glp-check__box { width: 16px; height: 16px; accent-color: var(--accent); }
+  .glp-select--sm { width: 150px; }
   .glp-cval { display: flex; align-items: center; gap: 8px; width: 150px; padding: 3px 8px 3px 3px; border-radius: 6px; background: var(--field); border: 1px solid var(--line-2); }
   .glp-cval:focus-within { border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-cval.bad { border-color: var(--danger); }
@@ -2924,7 +2944,7 @@ const APP_CSS = `
   .glp-card__body { padding: 4px 12px 14px; border-top: 1px solid var(--line); }
 
   /* nested section container gets a subtle accent edge */
-  .glp-section > .glp-card__head { --rowbg: color-mix(in oklch, var(--accent) 6%, var(--panel-2)); background: var(--rowbg); }
+  .glp-section > .glp-card__head { --rowbg: color-mix(in oklch, var(--accent) 4%, var(--panel-2)); background: var(--rowbg); }
   .glp-section > .glp-card__body { padding: 8px 12px 14px; }
 
   .glp-swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
@@ -5578,9 +5598,16 @@ function App() {
 
                 <div className="glp-sub">Page</div>
                 <SettingsGroup>
-                  <SettingsRow label="Background pattern" hint="Faint full-width line art">
-                    <input type="checkbox" className="glp-check__box" checked={!!config.theme.pattern} onChange={(e) => setTheme({ pattern: e.target.checked })} aria-label="Background pattern" />
+                  <SettingsRow label="Background pattern" hint="Full width, behind everything">
+                    <select className="glp-select glp-select--sm" value={config.theme.pattern} onChange={(e) => setTheme({ pattern: e.target.value })} aria-label="Background pattern">
+                      {PATTERNS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                    </select>
                   </SettingsRow>
+                  {config.theme.pattern !== "none" && (
+                    <SettingsRow label="Pattern strength">
+                      <Seg value={config.theme.patternStrength || "subtle"} onChange={(v) => setTheme({ patternStrength: v })} options={[{ value: "subtle", label: "Subtle" }, { value: "medium", label: "Medium" }]} />
+                    </SettingsRow>
+                  )}
                   <SettingsRow label="Page width">
                     <Seg
                       value={config.layout.maxW}

@@ -34,7 +34,8 @@ The builder turns this JSON into the final HTML, so describe the page's **conten
   "readme" inherits the hub's brand color (best default). To use the source page's colors, set `colorMode: "custom"` and fill
   any of these roles in `colors.light` (hex "#RRGGBB"; leave out what you don't need): `brand` (buttons, links, icons,
   card accents), `heading`, `body`, `muted`, `cardBg`, `cardBorder`, `pageBg`. Add `colors.dark.brand` as a lighter tint
-  that reads on dark backgrounds; other dark roles are optional. `pattern` = faint line-art background.
+  that reads on dark backgrounds; other dark roles are optional. `pattern`: "none" | "dots" | "grid" | "lines" |
+  "shapes" (faint full-width background), `patternStrength`: "subtle" | "medium".
 - `layout`: `{ maxW: 960 | 1120 | 1280 }` content width.
 - `banner`: call-to-action box below everything: `{ enabled, title, text, btnLabel, btnHref, align: "left"|"center",
   btn2Label, btn2Href, glow }`. Centered + two buttons + glow suits a closing "Can't find it?" block.
@@ -147,7 +148,7 @@ rows, title | description | count), autoH: true }`.
  },
  "theme": {
   "colorMode": "readme",
-  "pattern": true
+  "pattern": "dots"
  },
  "cardStyle": {
   "anchor": true,
