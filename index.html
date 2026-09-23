@@ -2444,30 +2444,35 @@ function buildPreviewDoc(userHtml, mode) {
     position: relative; z-index: 10; /* ReadMe's header stacks above page content */
   }
   .rm-Header-top {
-    display: flex; align-items: center; gap: 16px;
-    padding: 10px 24px;
-    border-bottom: 1px solid var(--color-border-muted);
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px;
+    height: 56px; padding: 0 24px;
   }
+  .rm-Header-center { display: flex; align-items: center; gap: 8px; }
+  .rm-Header-right { justify-self: end; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--color-text-muted); }
+  .rm-Header-right .fa-chevron-down { font-size: 10px; }
+  .rm-Header-theme { margin-left: 14px; font-size: 15px; }
   .rm-Header-brand {
     display: flex; align-items: center; gap: 9px;
     font-weight: 600; font-size: 15px;
     color: var(--color-text-default);
-    margin-right: auto;
+    justify-self: start;
   }
   .rm-Header-brand .brand-mark {
-    width: 26px; height: 26px; border-radius: 7px;
-    background: #018EF5;
     display: inline-flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 13px; font-weight: 700;
+    color: #1B87F5; font-size: 24px;
   }
   .rm-Header-bottom {
-    display: flex; gap: 20px; padding: 9px 24px;
-    font-size: 13.5px; color: var(--color-text-minimum);
+    display: flex; justify-content: center; gap: 30px; height: 48px; padding: 0 24px;
+    font-size: 14.5px; color: var(--color-text-minimum);
   }
+  .rm-Header-link { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+  .rm-Header-link i { font-size: 13px; opacity: .85; }
+  .rm-Header-link_active { color: var(--color-text-default); font-weight: 600; }
+  .rm-Header-link_active::after { content: ""; position: absolute; left: -4px; right: -4px; bottom: 0; height: 2px; border-radius: 2px; background: #1B87F5; }
   .rm-Header-search { display: flex; }
   .rm-SearchToggle {
     display: flex; align-items: center; gap: 8px;
-    min-width: 210px;
+    min-width: 330px;
     border: 1px solid var(--color-border-default);
     background: var(--color-bg-page);
     color: var(--color-text-minimum);
@@ -2502,12 +2507,25 @@ function buildPreviewDoc(userHtml, mode) {
 </head>
 <body>
   <div class="rm-Header">
+    <!-- stand-in for ReadMe's current default header: logo left, search + Ask AI
+         centered, account + theme toggle right; icon tabs centered below -->
     <div class="rm-Header-top">
-      <span class="rm-Header-brand"><span class="brand-mark">Y</span>Your Group</span>
-      <div class="rm-Header-search"><button class="rm-SearchToggle"><span>&#128269;</span> Search docs&hellip; <kbd>&#8984;K</kbd></button></div>
-      <div class="rm-AskAi"><button class="rm-AskAi-button">&#10022; Ask AI</button></div>
+      <span class="rm-Header-brand"><span class="brand-mark"><i class="fa-solid fa-book-open"></i></span></span>
+      <div class="rm-Header-center">
+        <div class="rm-Header-search"><button class="rm-SearchToggle"><i class="fa-solid fa-magnifying-glass"></i><span>Search</span><kbd>&#8984;K</kbd></button></div>
+        <div class="rm-AskAi"><button class="rm-AskAi-button"><i class="fa-solid fa-wand-magic-sparkles"></i> Ask AI</button></div>
+      </div>
+      <div class="rm-Header-right"><span>Your Name</span><i class="fa-solid fa-chevron-down"></i><i class="fa-solid fa-circle-half-stroke rm-Header-theme"></i></div>
     </div>
-    <div class="rm-Header-bottom"><span>Guides</span><span>API Reference</span><span>Changelog</span></div>
+    <div class="rm-Header-bottom">
+      <span class="rm-Header-link">v1.0</span>
+      <span class="rm-Header-link"><i class="fa-solid fa-house"></i>Home</span>
+      <span class="rm-Header-link rm-Header-link_active"><i class="fa-solid fa-book-open"></i>Guides</span>
+      <span class="rm-Header-link"><i class="fa-solid fa-flask"></i>Recipes</span>
+      <span class="rm-Header-link"><i class="fa-solid fa-code"></i>API Reference</span>
+      <span class="rm-Header-link"><i class="fa-solid fa-bullhorn"></i>Changelog</span>
+      <span class="rm-Header-link"><i class="fa-regular fa-comment"></i>Discussions</span>
+    </div>
   </div>
   ${userHtml}
 ${userHtml.includes("data-glp=") ? PREVIEW_EDIT_SCRIPT : ""}
@@ -2991,7 +3009,6 @@ const APP_CSS = `
   .glp-card__head { position: relative; }
   .glp-fixedrow > .glp-card__head { --rowbg: var(--panel-2); background: var(--rowbg); }
   .glp-fixedrow__icon { width: 14px; font-size: 12px; color: var(--ink-3); flex: none; }
-  .glp-add + .glp-fixedrow { margin-top: 18px; }
   .glp-outline-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); margin: 14px 2px 8px; }
   .glp-rowacts {
     position: absolute; right: 34px; top: 50%; transform: translateY(-50%);
@@ -4759,7 +4776,8 @@ function App() {
   const [openNav, setOpenNavRaw] = useState(() => {
     try {
       let v = localStorage.getItem("glp-builder:nav");
-      if (v === "hero" || v === "headerFooter" || v === "page") v = "sections"; /* header, hero, banner and footer now live in the Sections outline */
+      if (v === "hero" || v === "page") v = "sections"; /* hero lives at the top of the Sections outline */
+      if (v === "headerFooter") v = "theme"; /* header + footer settings live in Appearance */
       if (NAV_TABS.some((t) => t.id === v)) return v;
     } catch (e) {}
     return "sections";
@@ -5753,10 +5771,8 @@ function App() {
                     />
                   </SettingsRow>
                 </SettingsGroup>
-              </NavSection>
 
-              <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
-                <FixedRow title="Header" icon="fa-window-maximize" meta={config.brandBar.enabled ? "brand bar" : config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native"} open={openSection === "__header"} onToggle={() => setOpenSection(openSection === "__header" ? null : "__header")}>
+                <div className="glp-sub">Header</div>
                 <Field label="Header style">
                   <Seg
                     value={config.brandBar.enabled ? "brand" : config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native"}
@@ -5848,7 +5864,55 @@ function App() {
                   </>
                 )}
 
-                </FixedRow>
+
+                <div className="glp-sub">Footer</div>
+                <Toggle
+                  checked={config.banner.enabled}
+                  onChange={(v) => setBanner({ enabled: v })}
+                  label="Contact banner at the bottom of the page"
+                  hint='Full-width call-to-action, e.g. "Need help building your integration?"'
+                />
+                {config.banner.enabled && (
+                  <>
+                    <Field label="Banner title">
+                      <input className="glp-input" value={config.banner.title} onChange={(e) => setBanner({ title: e.target.value })} />
+                    </Field>
+                    <Field label="Banner text">
+                      <textarea className="glp-textarea" value={config.banner.text} onChange={(e) => setBanner({ text: e.target.value })} />
+                    </Field>
+                    <div className="glp-row2">
+                      <Field label="Button label">
+                        <input className="glp-input" value={config.banner.btnLabel} onChange={(e) => setBanner({ btnLabel: e.target.value })} />
+                      </Field>
+                      <Field label="Button link">
+                        <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
+                      </Field>
+                    </div>
+                    <Field label="Layout" inline>
+                      <Seg value={config.banner.align} onChange={(v) => setBanner({ align: v })} options={[{ value: "left", label: "Side by side" }, { value: "center", label: "Centered" }]} />
+                    </Field>
+                    {config.banner.align === "center" && (
+                      <>
+                        <div className="glp-row2">
+                          <Field label="Second button (optional)">
+                            <input className="glp-input" value={config.banner.btn2Label} onChange={(e) => setBanner({ btn2Label: e.target.value })} placeholder="Read the API" />
+                          </Field>
+                          <Field label="Second button link">
+                            <input className="glp-input" value={config.banner.btn2Href} onChange={(e) => setBanner({ btn2Href: e.target.value })} placeholder="/reference" />
+                          </Field>
+                        </div>
+                        <Toggle checked={config.banner.glow} onChange={(v) => setBanner({ glow: v })} label="Glow background" hint="Soft brand-color glow behind the banner." style={{ paddingTop: 0 }} />
+                      </>
+                    )}
+                  </>
+                )}
+
+                <Field label="Footer line (blank to hide)">
+                  <input className="glp-input" value={config.footer} onChange={(e) => patch({ footer: e.target.value })} />
+                </Field>
+              </NavSection>
+
+              <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
                 <FixedRow title="Hero" icon="fa-image" meta={config.hero.bg === "glow" ? "glow" : ""} open={openSection === "__hero"} onToggle={() => setOpenSection(openSection === "__hero" ? null : "__hero")}>
                 <Field label="Eyebrow (blank to hide)">
                   <input
@@ -6023,54 +6087,6 @@ function App() {
                 <button className="glp-add" type="button" onClick={addSection} disabled={config.sections.length >= 6}>
                   + Add section ({config.sections.length}/6)
                 </button>
-                <FixedRow title="Contact banner" icon="fa-bullhorn" meta={config.banner.enabled ? "on" : "off"} open={openSection === "__banner"} onToggle={() => setOpenSection(openSection === "__banner" ? null : "__banner")}>
-                <Toggle
-                  checked={config.banner.enabled}
-                  onChange={(v) => setBanner({ enabled: v })}
-                  label="Show a banner at the bottom of the page"
-                  hint='Full-width call-to-action, e.g. "Need help building your integration?"'
-                />
-                {config.banner.enabled && (
-                  <>
-                    <Field label="Banner title">
-                      <input className="glp-input" value={config.banner.title} onChange={(e) => setBanner({ title: e.target.value })} />
-                    </Field>
-                    <Field label="Banner text">
-                      <textarea className="glp-textarea" value={config.banner.text} onChange={(e) => setBanner({ text: e.target.value })} />
-                    </Field>
-                    <div className="glp-row2">
-                      <Field label="Button label">
-                        <input className="glp-input" value={config.banner.btnLabel} onChange={(e) => setBanner({ btnLabel: e.target.value })} />
-                      </Field>
-                      <Field label="Button link">
-                        <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
-                      </Field>
-                    </div>
-                    <Field label="Layout" inline>
-                      <Seg value={config.banner.align} onChange={(v) => setBanner({ align: v })} options={[{ value: "left", label: "Side by side" }, { value: "center", label: "Centered" }]} />
-                    </Field>
-                    {config.banner.align === "center" && (
-                      <>
-                        <div className="glp-row2">
-                          <Field label="Second button (optional)">
-                            <input className="glp-input" value={config.banner.btn2Label} onChange={(e) => setBanner({ btn2Label: e.target.value })} placeholder="Read the API" />
-                          </Field>
-                          <Field label="Second button link">
-                            <input className="glp-input" value={config.banner.btn2Href} onChange={(e) => setBanner({ btn2Href: e.target.value })} placeholder="/reference" />
-                          </Field>
-                        </div>
-                        <Toggle checked={config.banner.glow} onChange={(v) => setBanner({ glow: v })} label="Glow background" hint="Soft brand-color glow behind the banner." style={{ paddingTop: 0 }} />
-                      </>
-                    )}
-                  </>
-                )}
-
-                </FixedRow>
-                <FixedRow title="Footer" icon="fa-grip-lines" meta={config.footer.trim() ? "on" : "off"} open={openSection === "__footer"} onToggle={() => setOpenSection(openSection === "__footer" ? null : "__footer")}>
-                <Field label="Footer line (blank to hide)">
-                  <input className="glp-input" value={config.footer} onChange={(e) => patch({ footer: e.target.value })} />
-                </Field>
-                </FixedRow>
               </NavSection>
 
             </div>
