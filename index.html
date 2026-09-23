@@ -2523,8 +2523,8 @@ function buildPreviewDoc(userHtml, mode) {
     </div>
     <div class="rm-Header-bottom">
       <span class="rm-Header-link">v1.0</span>
-      <span class="rm-Header-link"><i class="fa-solid fa-house"></i>Home</span>
-      <span class="rm-Header-link rm-Header-link_active"><i class="fa-solid fa-book-open"></i>Guides</span>
+      <span class="rm-Header-link rm-Header-link_active"><i class="fa-solid fa-house"></i>Home</span>
+      <span class="rm-Header-link"><i class="fa-solid fa-book-open"></i>Guides</span>
       <span class="rm-Header-link"><i class="fa-solid fa-flask"></i>Recipes</span>
       <span class="rm-Header-link"><i class="fa-solid fa-code"></i>API Reference</span>
       <span class="rm-Header-link"><i class="fa-solid fa-bullhorn"></i>Changelog</span>
@@ -2718,11 +2718,22 @@ const APP_CSS = `
 
   .glp-main { flex: 1; display: flex; min-height: 0; }
 
-  .glp-navtabs {
+  .glp-navhead {
     position: sticky; top: -20px; z-index: 6;
-    margin: -20px -20px 16px; padding: 8px 10px;
+    margin: -20px -20px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  /* room below the last Appearance group so every jump link can land its group at the top */
+  .glp-sec--theme { padding-bottom: 70vh; }
+  .glp-jump { display: flex; justify-content: space-between; gap: 4px; padding: 0 14px 8px; }
+  .glp-jump button {
+    border: 0; background: transparent; cursor: pointer; font-family: inherit; white-space: nowrap;
+    font-size: 12.5px; font-weight: 500; color: var(--ink-3); padding: 5px 6px; border-radius: 6px;
+  }
+  .glp-jump button:hover { color: var(--ink); background: var(--panel-2); }
+  .glp-jump button.on { color: var(--ink); background: color-mix(in oklch, var(--hue-theme) 11%, var(--panel)); }
+  .glp-navtabs {
+    padding: 8px 10px;
     display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
-    background: var(--panel); border-bottom: 1px solid var(--line);
   }
   .glp-navtabs button {
     display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -4606,15 +4617,34 @@ const NAV_TABS = [
   { id: "sections", label: "Sections", icon: "fa-layer-group" },
 ];
 
-function NavTabs({ openNav, setOpenNav }) {
+/* jump links for the long Appearance panel (scroll-spied) */
+const APPEARANCE_GROUPS = [
+  { id: "ap-typography", label: "Typography" },
+  { id: "ap-colors", label: "Colors" },
+  { id: "ap-cards", label: "Cards" },
+  { id: "ap-background", label: "Background" },
+  { id: "ap-header", label: "Header" },
+  { id: "ap-footer", label: "Footer" },
+];
+
+function NavTabs({ openNav, setOpenNav, jump }) {
   return (
-    <div className="glp-navtabs" role="tablist" aria-label="Editor">
-      {NAV_TABS.map((t) => (
-        <button key={t.id} type="button" role="tab" aria-selected={openNav === t.id} className={openNav === t.id ? "on" : ""} data-tab={t.id} onClick={() => setOpenNav(t.id)}>
-          <i className={"fa-solid " + t.icon} aria-hidden="true"></i>
-          <span>{t.label}</span>
-        </button>
-      ))}
+    <div className="glp-navhead">
+      <div className="glp-navtabs" role="tablist" aria-label="Editor">
+        {NAV_TABS.map((t) => (
+          <button key={t.id} type="button" role="tab" aria-selected={openNav === t.id} className={openNav === t.id ? "on" : ""} data-tab={t.id} onClick={() => setOpenNav(t.id)}>
+            <i className={"fa-solid " + t.icon} aria-hidden="true"></i>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+      {jump && (
+        <nav className="glp-jump" aria-label="Appearance settings">
+          {jump.groups.map((g) => (
+            <button key={g.id} type="button" className={jump.active === g.id ? "on" : ""} aria-current={jump.active === g.id ? "true" : undefined} onClick={() => jump.go(g.id)}>{g.label}</button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
@@ -4622,7 +4652,7 @@ function NavTabs({ openNav, setOpenNav }) {
 function NavSection({ id, label, openNav, children }) {
   if (openNav !== id) return null;
   return (
-    <div className="glp-sec open" role="tabpanel" aria-label={label}>
+    <div className={"glp-sec open glp-sec--" + id} role="tabpanel" aria-label={label}>
       <div className="glp-sec__body">{children}</div>
     </div>
   );
@@ -4778,6 +4808,29 @@ function App() {
     try { v === "system" ? localStorage.removeItem("glp-builder:ui") : localStorage.setItem("glp-builder:ui", v); } catch (e) {}
   };
   const [colorEdit, setColorEdit] = useState("light");
+  /* Appearance jump links: scroll to a group below the sticky bar; highlight follows scrolling */
+  const [apActive, setApActive] = useState(APPEARANCE_GROUPS[0].id);
+  const jumpLock = useRef(0);
+  const groupTop = (el) => {
+    const side = sideRef.current;
+    return el.getBoundingClientRect().top - side.getBoundingClientRect().top + side.scrollTop;
+  };
+  const stickyH = () => { const h = sideRef.current && sideRef.current.querySelector(".glp-navhead"); return h ? h.offsetHeight : 0; };
+  const jumpTo = (id) => {
+    const side = sideRef.current, el = document.getElementById(id);
+    if (!side || !el) return;
+    setApActive(id);
+    jumpLock.current = Date.now() + 900; /* keep the clicked link lit while the smooth scroll runs */
+    side.scrollTo({ top: Math.max(0, groupTop(el) - stickyH() - 4), behavior: "smooth" });
+  };
+  const onSideScroll = () => {
+    const side = sideRef.current;
+    if (!side || Date.now() < jumpLock.current) return;
+    const line = side.scrollTop + stickyH() + 24;
+    let cur = APPEARANCE_GROUPS[0].id;
+    for (const g of APPEARANCE_GROUPS) { const el = document.getElementById(g.id); if (el && groupTop(el) <= line) cur = g.id; }
+    setApActive((a) => (a === cur ? a : cur));
+  };
   const [openNav, setOpenNavRaw] = useState(() => {
     try {
       let v = localStorage.getItem("glp-builder:nav");
@@ -5639,8 +5692,9 @@ function App() {
       <div className="glp-main">
         {tab === "build" ? (
           <>
-            <div className="glp-side" ref={sideRef}>
-              <NavTabs openNav={openNav} setOpenNav={setOpenNav} />
+            <div className="glp-side" ref={sideRef} onScroll={openNav === "theme" ? onSideScroll : undefined}>
+              <NavTabs openNav={openNav} setOpenNav={setOpenNav}
+                jump={openNav === "theme" ? { groups: APPEARANCE_GROUPS, active: apActive, go: jumpTo } : null} />
               {override !== null && (
                 <div className="glp-banner" style={{ borderRadius: 10, border: "1px solid var(--warn-line)", marginBottom: 16 }}>
                   <span>Manual code edits are active. Copy HTML exports your edited code, not these settings.</span>
@@ -5666,7 +5720,7 @@ function App() {
               </NavSection>
 
               <NavSection id="theme" label="Appearance" openNav={openNav} setOpenNav={setOpenNav}>
-                <div className="glp-sub" style={{ marginTop: 4 }}>Typography</div>
+                <div className="glp-sub" id="ap-typography" style={{ marginTop: 4 }}>Typography</div>
                 <ChoiceCards
                   value={config.typeface.custom ? "custom" : "readme"}
                   onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, custom: v === "custom" } }))}
@@ -5692,7 +5746,7 @@ function App() {
                   </SettingsGroup>
                 )}
 
-                <div className="glp-sub glp-sub--row">
+                <div className="glp-sub glp-sub--row" id="ap-colors">
                   <span>Colors</span>
                   {config.theme.colorMode === "custom" && (
                     <span className="glp-modeswitch" role="group" aria-label="Edit colors for">
@@ -5733,7 +5787,7 @@ function App() {
                   </>
                 )}
 
-                <div className="glp-sub">Card templates</div>
+                <div className="glp-sub" id="ap-cards">Card templates</div>
                 <p className="glp-hint" style={{ margin: "0 0 10px" }}>One-click looks for every card section set to <b>Global</b>. Fine-tune them in Card style below.</p>
                 <div className="glp-choices glp-choices--4">
                   {PRESETS.map((p) => {
@@ -5753,7 +5807,7 @@ function App() {
                 <p className="glp-hint" style={{ margin: "0 0 10px" }}>Used by every section set to <b>Global</b>. A section can switch to <b>Custom</b> in its Card style tab.</p>
                 <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
 
-                <div className="glp-sub">Background &amp; width</div>
+                <div className="glp-sub" id="ap-background">Background &amp; width</div>
                 <SettingsGroup>
                   <SettingsRow label="Background pattern" hint="Full width, behind everything">
                     <select className="glp-select glp-select--sm" value={config.theme.pattern} onChange={(e) => setTheme({ pattern: e.target.value })} aria-label="Background pattern">
@@ -5778,7 +5832,7 @@ function App() {
                   </SettingsRow>
                 </SettingsGroup>
 
-                <div className="glp-sub">Header</div>
+                <div className="glp-sub" id="ap-header">Header</div>
                 <Field label="Header style">
                   <Seg
                     value={config.brandBar.enabled ? "brand" : config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native"}
@@ -5871,7 +5925,7 @@ function App() {
                 )}
 
 
-                <div className="glp-sub">Footer</div>
+                <div className="glp-sub" id="ap-footer">Footer</div>
                 <Toggle
                   checked={config.banner.enabled}
                   onChange={(v) => setBanner({ enabled: v })}
