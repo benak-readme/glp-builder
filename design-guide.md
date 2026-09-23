@@ -12,11 +12,12 @@ The builder turns this JSON into the final HTML, so describe the page's **conten
 3. Output ONE JSON object. Omit anything you'd leave at its default; the builder fills defaults in.
 
 ## Top-level fields
-- `typeface`: `{ heading, body }`. Use "readme" (Match ReadMe: inherit whatever the hub uses, the best default)
+- `typeface`: `{ custom: true, heading, body, mono }` (omit it, or `custom: false`, to Match ReadMe). Use "readme" (Match ReadMe: inherit whatever the hub uses, the best default)
   or one of ReadMe's supported fonts. Headings: "Fraunces" | "Syne" | "Space Mono" | "DM Mono" | "DM Sans" | "Geist" |
   "Geist Mono" | "IBM Plex Mono" | "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans".
   Body: "Literata" | "Lora" | "Merriweather" | "DM Mono" | "DM Sans" | "Geist" | "Geist Mono" | "IBM Plex Mono" |
-  "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans". Pick the closest match to the source page.
+  "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans". Optional `mono` (labels, small buttons):
+  "DM Mono" | "Geist Mono" | "IBM Plex Mono" | "Space Mono". Pick the closest match to the source page.
 - `brandBar`: custom header that replaces ReadMe's header on the landing page.
   `{ enabled, name, tag, logoUrl, links: [{label, href}], button: {enabled, label, href} }`.
   Use it when the page has its own logo row / top nav. `logoUrl` (an absolute image URL) replaces the wordmark.
@@ -25,9 +26,11 @@ The builder turns this JSON into the final HTML, so describe the page's **conten
 - `hero`: `{ eyebrow, title, subtitle, align: "center"|"left", titleSize (px|null), subtitleSize (px|null),
   chip, chipHref, buttons (bool), btnPrimary: {label, href}, btnSecondary: {label, href}, searchHint }`.
   `searchHint` is a small line under the search row (only shown when searchMode is "hero").
-- `theme`: `{ matchReadme (bool), uniform (bool), accent: "custom", customLight: "#RRGGBB", customDark: "#RRGGBB", pattern (bool) }`.
-  To use the source page's brand color: `matchReadme: false, uniform: true, accent: "custom"`, customLight = the brand color,
-  customDark = a lighter tint of it that reads on a dark background. `pattern` = faint line-art background.
+- `theme`: `{ colorMode: "readme" | "custom", colors: { light: {...}, dark: {...} }, pattern (bool) }`.
+  "readme" inherits the hub's brand color (best default). To use the source page's colors, set `colorMode: "custom"` and fill
+  any of these roles in `colors.light` (hex "#RRGGBB"; leave out what you don't need): `brand` (buttons, links, icons,
+  card accents), `heading`, `body`, `muted`, `cardBg`, `cardBorder`, `pageBg`. Add `colors.dark.brand` as a lighter tint
+  that reads on dark backgrounds; other dark roles are optional. `pattern` = faint line-art background.
 - `layout`: `{ maxW: 960 | 1120 | 1280 }` content width.
 - `banner`: call-to-action box below everything: `{ enabled, title, text, btnLabel, btnHref }`.
 - `footer`: one line of small text at the bottom ("" to hide).
@@ -132,11 +135,7 @@ dividerStyle: "hairline"|"accent", bg: "none"|"subtle"|"accent"|"dark", bento (b
   "offset": 64
  },
  "theme": {
-  "uniform": false,
-  "matchReadme": true,
-  "accent": "blue",
-  "customLight": "#0B63C5",
-  "customDark": "#6FB4F5",
+  "colorMode": "readme",
   "pattern": true
  },
  "cardStyle": {

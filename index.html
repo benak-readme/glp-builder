@@ -76,6 +76,7 @@ const FONT_FAMILIES = {
 const BODY_FONTS = ["Literata", "Lora", "Merriweather", "DM Mono", "DM Sans", "Geist", "Geist Mono", "IBM Plex Mono", "IBM Plex Sans", "IBM Plex Serif", "Inter", "Space Grotesk", "Work Sans"];
 const HEADING_FONTS = ["Fraunces", "Syne", "Space Mono", "DM Mono", "DM Sans", "Geist", "Geist Mono", "IBM Plex Mono", "IBM Plex Sans", "IBM Plex Serif", "Inter", "Space Grotesk", "Work Sans"];
 /* the old one-click pairings, mapped for saved/shared pages */
+const CODE_FONTS = ["DM Mono", "Geist Mono", "IBM Plex Mono", "Space Mono"];
 const LEGACY_FONT_PRESETS = {
   readme: { heading: "readme", body: "readme" },
   grotesk: { heading: "Space Grotesk", body: "Inter", mono: "Space Mono" },
@@ -92,7 +93,8 @@ const fontStack = (name) => (FONT_FAMILIES[name] ? `'${name}', ${FONT_FALLBACK[F
 /* the page's small labels/buttons use a mono; pick the family's own sibling when it has one */
 const MONO_SIBLING = { "Geist": "Geist Mono", "IBM Plex Sans": "IBM Plex Mono", "IBM Plex Serif": "IBM Plex Mono", "DM Sans": "DM Mono", "Space Grotesk": "Space Mono" };
 function resolveFonts(cfg) {
-  const t = cfg.typeface || { heading: "readme", body: "readme" };
+  const t0 = cfg.typeface || { heading: "readme", body: "readme" };
+  const t = t0.custom === false ? { heading: "readme", body: "readme" } : t0;
   const heading = FONT_FAMILIES[t.heading] ? t.heading : "readme";
   const body = FONT_FAMILIES[t.body] ? t.body : "readme";
   let mono = FONT_FAMILIES[t.mono] && FONT_FAMILIES[t.mono].kind === "mono" ? t.mono : null;
@@ -260,6 +262,21 @@ const DEFAULT_COLUMNS = () => [
 
 const HERO_SUB_DEFAULT = 15;
 
+/* customizable color roles on the generated page (ReadMe-style Appearance list) */
+const COLOR_ROLES = [
+  { key: "brand", label: "Brand color", hint: "Buttons, links, icons and card accents" },
+  { key: "heading", label: "Headings" },
+  { key: "body", label: "Body text" },
+  { key: "muted", label: "Muted text", hint: "Eyebrows, intros, captions" },
+  { key: "cardBg", label: "Card background" },
+  { key: "cardBorder", label: "Card border" },
+  { key: "pageBg", label: "Page background", hint: "Full-width, behind everything" },
+];
+const EMPTY_COLORS = () => ({
+  light: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, ""])),
+  dark: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, ""])),
+});
+
 /* ---------------- default config (fresh-install starter) ---------------- */
 const DEFAULT_CONFIG = {
   typeface: { heading: "readme", body: "readme" },
@@ -301,7 +318,9 @@ const DEFAULT_CONFIG = {
   flattenHeader: false,
   headerImage: { enabled: false, url: "", height: 380, tint: 0, offset: 64 },
   /* matchReadme = inherit the hub's own accent color instead of picking one */
-  theme: { uniform: false, matchReadme: true, accent: "blue", customLight: "#0B63C5", customDark: "#6FB4F5", pattern: false },
+  /* colorMode "readme" inherits the hub's brand color; "custom" uses `colors`
+     (per role, per appearance; "" = keep the default) */
+  theme: { colorMode: "readme", colors: EMPTY_COLORS(), pattern: false },
   /* global card style — sections in "global" style mode inherit this look */
   cardStyle: { ...DEFAULT_STYLE },
   layout: { maxW: 1120 },
@@ -621,7 +640,7 @@ function sanitizeConfig(c) {
   const okFont = (n) => (n === "readme" || FONT_FAMILIES[n] ? n : "readme");
   return {
     ...c,
-    typeface: { heading: okFont(c.typeface.heading), body: okFont(c.typeface.body), ...(FONT_FAMILIES[c.typeface.mono] ? { mono: c.typeface.mono } : {}) },
+    typeface: { custom: !!c.typeface.custom, heading: okFont(c.typeface.heading), body: okFont(c.typeface.body), ...(FONT_FAMILIES[c.typeface.mono] ? { mono: c.typeface.mono } : {}) },
     hero,
     footer: str(c.footer),
     searchMode: SEARCH_MODES.includes(c.searchMode) ? c.searchMode : "native",
@@ -633,9 +652,12 @@ function sanitizeConfig(c) {
       offset: safeNum(c.headerImage.offset, 64, 0, 400),
     },
     theme: {
-      ...c.theme,
-      customLight: safeHex(c.theme.customLight, DEFAULT_CONFIG.theme.customLight),
-      customDark: safeHex(c.theme.customDark, DEFAULT_CONFIG.theme.customDark),
+      colorMode: c.theme.colorMode === "custom" ? "custom" : "readme",
+      pattern: !!c.theme.pattern,
+      colors: {
+        light: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, safeHex(c.theme.colors.light[r.key], "")])),
+        dark: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, safeHex(c.theme.colors.dark[r.key], "")])),
+      },
     },
     cardStyle: { ...c.cardStyle, radius: safeNum(c.cardStyle.radius, 16, 0, 48) },
     layout: { maxW: safeNum(c.layout.maxW, 1120, 640, 1920) },
@@ -712,8 +734,9 @@ function migrateConfig(loaded) {
   const base = {
     typeface: (() => {
       const t = loaded.typeface;
-      if (t && typeof t === "object") return { heading: str(t.heading, "readme"), body: str(t.body, "readme"), ...(t.mono ? { mono: str(t.mono) } : {}) };
-      return { ...(LEGACY_FONT_PRESETS[loaded.fonts] || LEGACY_FONT_PRESETS.readme) };
+      if (t && typeof t === "object") return { custom: !!t.custom || t.heading !== "readme" || t.body !== "readme", heading: str(t.heading, "readme"), body: str(t.body, "readme"), ...(t.mono ? { mono: str(t.mono) } : {}) };
+      const lp = LEGACY_FONT_PRESETS[loaded.fonts] || LEGACY_FONT_PRESETS.readme;
+      return { custom: lp.heading !== "readme", ...lp };
     })(),
     hero: { ...D.hero, ...(loaded.hero || {}) },
     ticker: { ...D.ticker, ...(loaded.ticker || {}) },
@@ -726,7 +749,21 @@ function migrateConfig(loaded) {
     searchMode: loaded.searchMode || (loaded.moveSearch === false ? "native" : "hero"),
     flattenHeader: loaded.flattenHeader !== false,
     headerImage: { ...D.headerImage, ...(loaded.headerImage || {}) },
-    theme: { ...D.theme, ...(loaded.theme || {}) },
+    theme: (() => {
+      const t = loaded.theme || {};
+      const colors = EMPTY_COLORS();
+      if (t.colors && typeof t.colors === "object") {
+        ["light", "dark"].forEach((m) => COLOR_ROLES.forEach((r) => { colors[m][r.key] = str(t.colors[m] && t.colors[m][r.key]); }));
+        return { colorMode: t.colorMode === "custom" ? "custom" : "readme", colors, pattern: !!t.pattern };
+      }
+      /* older configs: matchReadme / uniform + accent|custom pair */
+      if (t.matchReadme === false && t.uniform) {
+        const a = t.accent === "custom" ? { light: t.customLight, dark: t.customDark } : ACCENTS[t.accent] || ACCENTS.blue;
+        colors.light.brand = str(a.light);
+        colors.dark.brand = str(a.dark);
+      }
+      return { colorMode: t.matchReadme === false ? "custom" : "readme", colors, pattern: !!t.pattern };
+    })(),
     cardStyle: { ...DEFAULT_STYLE, ...(loaded.cardStyle || {}), num: false, file: false },
     layout: { maxW: (loaded.layout && loaded.layout.maxW) || 1120 },
     banner: { ...D.banner, ...(loaded.banner || {}) },
@@ -1097,13 +1134,30 @@ function generateHTMLInner(cfg) {
      brand/link color via ReadMe's CSS variable (adapts to light & dark on its
      own), falling back to our blue if the variable isn't present. */
   const theme = cfg.theme || {};
-  const themeAccent = theme.matchReadme
+  const custom = theme.colorMode === "custom";
+  const CL = (custom && theme.colors && theme.colors.light) || {};
+  const CD = (custom && theme.colors && theme.colors.dark) || {};
+  const themeAccent = !custom
     ? { light: "var(--color-link-primary, #0B63C5)", dark: "var(--color-link-primary, #6FB4F5)" }
-    : theme.uniform
-    ? theme.accent === "custom"
-      ? { light: theme.customLight, dark: theme.customDark }
-      : ACCENTS[theme.accent] || ACCENTS.blue
-    : null;
+    : CL.brand || CD.brand
+    ? { light: CL.brand || CD.brand, dark: CD.brand || CL.brand }
+    : null; /* custom with no brand color: each card keeps its own accent */
+  /* custom role overrides; a dark value only applies in dark mode (light text
+     colors would be unreadable there), except brand which falls back above */
+  const roleVars = (C) =>
+    [
+      C.heading && `--bnk-heading: ${C.heading}; --card-title: ${C.heading};`,
+      C.body && `--bnk-ink-1: ${C.body};`,
+      C.muted && `--bnk-ink-2: ${C.muted};`,
+      C.cardBg && `--card-bg: ${C.cardBg};`,
+      C.cardBorder && `--card-border: ${C.cardBorder};`,
+      C.pageBg && `--page-bg: ${C.pageBg};`,
+    ].filter(Boolean);
+  const lightRoles = roleVars(CL);
+  /* page background has no built-in dark default, so a light-only value must
+     not leak into dark mode */
+  const darkRoles = roleVars({ ...CD, pageBg: "" }).concat(CL.pageBg || CD.pageBg ? [`--page-bg: ${CD.pageBg || "transparent"};`] : []);
+  const hasPageBg = !!(CL.pageBg || CD.pageBg);
 
   /* per-section accent palettes */
   const palettes = sections.map((sec) => {
@@ -1765,7 +1819,7 @@ ${lightAccents}
     --card-divider: #EEEEF0;
     --card-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(0,0,0,.07);
     --card-blur: none;
-
+${lightRoles.length ? "\n    /* custom colors */\n" + lightRoles.map((v) => "    " + v).join("\n") + "\n" : ""}
     box-sizing: border-box;
     position: relative;
     max-width: ${L.maxW}px;
@@ -1791,7 +1845,9 @@ ${pad}--card-border: rgba(255, 255, 255, 0.09);
 ${pad}--card-title: #ECEFF4;
 ${pad}--card-divider: rgba(255, 255, 255, 0.08);
 ${pad}--card-shadow: none;
-${pad}--card-blur: blur(9px) saturate(118%);`)}
+${pad}--card-blur: blur(9px) saturate(118%);${darkRoles.length ? "\n" + darkRoles.map((v) => pad + v).join("\n") : ""}`)}${hasPageBg ? `
+  /* full-width page background (extends past the content column) */
+  .bnk-landing { background: var(--page-bg, transparent); box-shadow: 0 0 0 100vmax var(--page-bg, transparent); clip-path: inset(0 -100vmax); }` : ""}
 
   .bnk-landing *,
   .bnk-landing *::before { box-sizing: border-box; }
@@ -2225,16 +2281,9 @@ const APP_CSS = `
   .glp-bar__right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   .glp-uitoggle { font-size: 14px; width: 34px; height: 34px; border-radius: 8px; margin-right: 4px; }
   .glp-uitoggle.on { background: var(--panel-2); color: var(--ink); }
-  /* the Claude import is a headline feature: a tinted pill beside Build/Code */
-  .glp-claudebtn {
-    display: inline-flex; align-items: center; gap: 8px; flex: none;
-    border: 0; border-radius: 999px; padding: 8px 16px; cursor: pointer; font-family: inherit;
-    font-size: 14px; font-weight: 500; color: var(--accent); background: var(--accent-soft);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
-    transition: background 150ms cubic-bezier(.25,1,.5,1), color 150ms cubic-bezier(.25,1,.5,1);
-  }
-  .glp-claudebtn:hover { background: var(--accent-fill); color: var(--accent-ink); }
-  .glp-claudebtn i { font-size: 14px; }
+  /* Import with Claude: standard button, kept prominent by placement + blue icon */
+  .glp-smallbtn.glp-claudebtn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; font-size: 13.5px; color: var(--ink); flex: none; }
+  .glp-claudebtn i { color: var(--accent); }
   @media (max-width: 1439px) { .glp-logo__tag { display: none; } }
   @media (max-width: 1180px) { .glp-claudebtn span { display: none; } }
   .glp-section > .glp-card__head .glp-card__meta { max-width: 120px; }
@@ -2380,6 +2429,46 @@ const APP_CSS = `
   .glp-checks { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 2px 0 12px; }
   .glp-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
   .glp-check input { accent-color: var(--accent); flex: none; }
+
+  /* Appearance-style choice cards + grouped rows */
+  .glp-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .glp-choice {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; border: 0; background: transparent;
+    cursor: pointer; text-align: left; font-family: inherit; color: var(--ink);
+  }
+  .glp-choice__preview {
+    display: flex; align-items: center; justify-content: center; width: 100%; height: 56px; margin-bottom: 6px;
+    border-radius: 10px; background: var(--panel-2); box-shadow: var(--hairline); transition: box-shadow 150ms ease;
+  }
+  .glp-choice:hover .glp-choice__preview { box-shadow: inset 0 0 0 1px var(--line-2); }
+  .glp-choice.on .glp-choice__preview { box-shadow: inset 0 0 0 2px var(--accent); }
+  .glp-choice__label { font-size: 13.5px; font-weight: 500; }
+  .glp-choice__sub { font-size: 12px; color: var(--ink-3); }
+  .glp-choice__aa { font-size: 24px; line-height: 1; }
+  .glp-choice__dots { display: flex; gap: 6px; }
+  .glp-choice__dots i { width: 16px; height: 16px; border-radius: 50%; background: var(--line-2); box-shadow: var(--hairline); }
+  .glp-group { border-radius: 12px; background: var(--panel-2); box-shadow: var(--hairline); margin-bottom: 8px; }
+  .glp-grow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; min-height: 48px; }
+  .glp-grow + .glp-grow { box-shadow: inset 0 1px 0 var(--line); }
+  .glp-grow__label { display: flex; flex-direction: column; min-width: 0; font-size: 13.5px; font-weight: 500; color: var(--ink); }
+  .glp-grow__label > span { display: inline-flex; align-items: center; gap: 4px; }
+  .glp-grow__label small { font-size: 12px; font-weight: 400; color: var(--ink-3); line-height: 16px; }
+  .glp-grow__reset { font-size: 11px; padding: 2px 4px; }
+  .glp-grow__control { flex: none; display: flex; justify-content: flex-end; max-width: 60%; }
+  .glp-grow__control .glp-fontsel { width: 190px; }
+  .glp-check__box { width: 16px; height: 16px; accent-color: var(--accent); }
+  .glp-cval { display: flex; align-items: center; gap: 8px; width: 150px; padding: 3px 8px 3px 3px; border-radius: 6px; background: var(--field); border: 1px solid var(--line-2); }
+  .glp-cval:focus-within { border-color: var(--accent); box-shadow: var(--focus-soft); }
+  .glp-cval.bad { border-color: var(--danger); }
+  .glp-cval__sw { position: relative; flex: none; width: 22px; height: 22px; border-radius: 5px; cursor: pointer; box-shadow: var(--hairline); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .glp-cval__sw.empty { background: var(--panel-2); color: var(--ink-3); font-size: 10px; }
+  .glp-cval__sw input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .glp-cval__hex { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; padding: 4px 0; outline: none; }
+  .glp-cval__hex::placeholder { color: var(--ink-3); font-family: var(--font-ui); }
+  .glp-sub--row { display: flex; align-items: center; justify-content: space-between; }
+  .glp-modeswitch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--bg); box-shadow: var(--hairline); text-transform: none; letter-spacing: 0; }
+  .glp-modeswitch button { border: 0; background: transparent; color: var(--ink-3); width: 26px; height: 22px; border-radius: 999px; cursor: pointer; font-size: 11px; }
+  .glp-modeswitch button.on { background: var(--panel); color: var(--accent); box-shadow: var(--hairline); }
 
   /* font picker (ReadMe's list) */
   .glp-fontsel { position: relative; min-width: 0; }
@@ -3124,14 +3213,68 @@ function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain
   );
 }
 
+/* ---------- ReadMe Appearance-style building blocks ----------
+   ChoiceCards: "Default vs Custom" picker cards with a small preview.
+   SettingsGroup / SettingsRow: the rounded list of label-left rows. */
+function ChoiceCards({ value, onChange, options }) {
+  return (
+    <div className="glp-choices" role="radiogroup">
+      {options.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} className={"glp-choice" + (value === o.value ? " on" : "")} onClick={() => onChange(o.value)}>
+          <span className="glp-choice__preview">{o.preview}</span>
+          <span className="glp-choice__label">{o.label}</span>
+          {o.sub && <span className="glp-choice__sub">{o.sub}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+function SettingsGroup({ children }) {
+  return <div className="glp-group">{children}</div>;
+}
+function SettingsRow({ label, hint, onReset, children }) {
+  return (
+    <div className="glp-grow">
+      <div className="glp-grow__label">
+        <span>
+          {label}
+          {onReset && (
+            <button type="button" className="glp-iconbtn glp-grow__reset" title="Reset to default" aria-label={"Reset " + label} onClick={onReset}>
+              <i className="fa-solid fa-rotate-left" aria-hidden="true"></i>
+            </button>
+          )}
+        </span>
+        {hint && <small>{hint}</small>}
+      </div>
+      <div className="glp-grow__control">{children}</div>
+    </div>
+  );
+}
+/* swatch + hex; empty = "use the default" (slashed swatch), like ReadMe's */
+function ColorValue({ value, onChange, label }) {
+  const [txt, setTxt] = useState(value || "");
+  useEffect(() => { setTxt(value || ""); }, [value]);
+  const valid = normHex(txt);
+  return (
+    <div className={"glp-cval" + (txt && !valid ? " bad" : "")}>
+      <label className={"glp-cval__sw" + (value ? "" : " empty")} style={value ? { background: value } : undefined} title={"Pick " + label}>
+        {!value && <i className="fa-solid fa-slash" aria-hidden="true"></i>}
+        <input type="color" value={normHex(value) || "#213aff"} onChange={(e) => onChange(e.target.value)} aria-label={"Pick " + label} />
+      </label>
+      <input className="glp-cval__hex" value={txt} placeholder="Default" spellCheck={false} aria-label={label + " hex"}
+        onChange={(e) => { setTxt(e.target.value); const h = normHex(e.target.value); if (h) onChange(h); if (!e.target.value.trim()) onChange(""); }}
+        onBlur={() => { if (txt && !normHex(txt)) setTxt(value || ""); }} />
+    </div>
+  );
+}
+
 /* ---------- font picker: ReadMe's font list, each option shown in its own face ---------- */
-function FontSelect({ label, value, options, onChange }) {
+function FontSelect({ label, value, options, onChange, bare, firstLabel = "Match ReadMe", firstSub = "Whatever your hub uses" }) {
   const [open, setOpen] = useState(false);
   const list = FONT_FAMILIES[value] && !options.includes(value) ? [...options, value] : options; /* keep a legacy pick visible */
   const face = (n) => (n === "readme" ? "var(--font-ui)" : `'${n}', ${FONT_FALLBACK[FONT_FAMILIES[n].kind]}`);
-  const name = (n) => (n === "readme" ? "Match ReadMe" : n + (FONT_FAMILIES[n] && FONT_FAMILIES[n].legacy ? " (older preset)" : ""));
-  return (
-    <Field label={label} inline>
+  const name = (n) => (n === "readme" ? firstLabel : n + (FONT_FAMILIES[n] && FONT_FAMILIES[n].legacy ? " (older preset)" : ""));
+  const body = (
       <div className="glp-fontsel">
         <button type="button" className={"glp-fontsel__btn" + (open ? " on" : "")} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span style={{ fontFamily: face(value) }}>{name(value)}</span>
@@ -3146,7 +3289,7 @@ function FontSelect({ label, value, options, onChange }) {
                   className={(value === n ? "on" : "") + (i === 0 ? " glp-fontsel__first" : "")}
                   onClick={() => { onChange(n); setOpen(false); }}>
                   <span style={{ fontFamily: face(n) }}>{name(n)}</span>
-                  {n === "readme" && <small>Whatever your hub uses</small>}
+                  {n === "readme" && <small>{firstSub}</small>}
                   {value === n && <i className="fa-solid fa-check" aria-hidden="true"></i>}
                 </button>
               ))}
@@ -3154,8 +3297,8 @@ function FontSelect({ label, value, options, onChange }) {
           </>
         )}
       </div>
-    </Field>
   );
+  return bare ? body : <Field label={label} inline>{body}</Field>;
 }
 
 /* ---------- inline-renamable row name (builder-only label, never on the page).
@@ -3998,12 +4141,12 @@ function ImportDialog({ onClose, onCreate }) {
   };
   return (
     <div className="glp-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="glp-modal__box" role="dialog" aria-modal="true" aria-label="Import a page with Claude">
+      <div className="glp-modal__box" role="dialog" aria-modal="true" aria-label="Import with Claude">
         <div className="glp-modal__head">
-          <b><i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Recreate a page with Claude</b>
+          <b><i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Import with Claude</b>
           <button className="glp-iconbtn" type="button" aria-label="Close" onClick={onClose}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
-        <p className="glp-modal__lede">Claude reads any docs landing page and rebuilds it here as an editable design. It runs on your normal Claude login, no API key.</p>
+        <p className="glp-modal__lede">Give Claude any docs landing page and it rebuilds it here as a design you can edit. Uses your normal Claude login.</p>
         <Seg value={tab} onChange={setTab} options={[{ value: "connector", label: "Connector (recommended)" }, { value: "prompt", label: "Copy a prompt" }]} />
 
         {tab === "connector" ? (
@@ -4088,6 +4231,7 @@ function App() {
     setUiMenu(false);
     try { v === "system" ? localStorage.removeItem("glp-builder:ui") : localStorage.setItem("glp-builder:ui", v); } catch (e) {}
   };
+  const [colorEdit, setColorEdit] = useState("light");
   const [openNav, setOpenNavRaw] = useState(() => {
     try { const v = localStorage.getItem("glp-builder:nav"); if (NAV_TABS.some((t) => t.id === v)) return v; } catch (e) {}
     return "sections";
@@ -4751,10 +4895,10 @@ function App() {
             Code
           </button>
         </div>
-        <button className="glp-claudebtn" type="button" onClick={() => setImportOpen(true)}
-          title="Point Claude at any docs landing page and get an editable design back. No API key needed.">
+        <button className="glp-smallbtn glp-claudebtn" type="button" onClick={() => setImportOpen(true)}
+          title="Bring any docs landing page into the builder as an editable design, using Claude">
           <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
-          <span>Recreate a page with Claude</span>
+          <span>Import with Claude</span>
         </button>
         <div className="glp-bar__right">
           <div className="glp-uimenu">
@@ -4860,7 +5004,7 @@ function App() {
                     <div className="glp-pages__tpl">
                       <button className="glp-pages__item" type="button" onClick={() => { setImportOpen(true); setPagesOpen(false); }}>
                         <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
-                        <span><b>Recreate a page with Claude</b><small>Turn any docs landing page into an editable design.</small></span>
+                        <span><b>Import with Claude</b><small>Bring any docs landing page in as an editable design.</small></span>
                       </button>
                     </div>
                     <div className="glp-pages__tpl">
@@ -4961,60 +5105,89 @@ function App() {
                 <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
 
                 <div className="glp-sub">Typography</div>
-                <FontSelect label="Headings" value={config.typeface.heading} options={HEADING_FONTS}
-                  onChange={(v) => setConfig((c) => ({ ...c, typeface: { heading: v, body: c.typeface.body } }))} />
-                <FontSelect label="Body & UI" value={config.typeface.body} options={BODY_FONTS}
-                  onChange={(v) => setConfig((c) => ({ ...c, typeface: { heading: c.typeface.heading, body: v } }))} />
-                <p className="glp-hint" style={{ margin: "2px 0 0" }}>The same fonts ReadMe offers in Appearance. Match ReadMe also covers uploaded fonts.</p>
-
-                <div className="glp-sub">Colors</div>
-                <Toggle
-                  checked={!!config.theme.matchReadme}
-                  onChange={(v) => setTheme({ matchReadme: v })}
-                  label="Use my ReadMe brand color"
-                  hint="Every accent inherits your hub's brand color (ReadMe's --color-link-primary) so it matches your Appearance settings and adapts to light/dark automatically."
-                  style={{ paddingTop: 0 }}
+                <ChoiceCards
+                  value={config.typeface.custom ? "custom" : "readme"}
+                  onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, custom: v === "custom" } }))}
+                  options={[
+                    { value: "readme", label: "Match ReadMe", sub: "Default", preview: <span className="glp-choice__aa">Aa</span> },
+                    { value: "custom", label: "Custom", sub: "Pick fonts", preview: <span className="glp-choice__aa" style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}>Aa</span> },
+                  ]}
                 />
-                {!config.theme.matchReadme && (
+                {config.typeface.custom && (
+                  <SettingsGroup>
+                    <SettingsRow label="Headings">
+                      <FontSelect bare label="Headings" value={config.typeface.heading} options={HEADING_FONTS}
+                        onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, heading: v } }))} />
+                    </SettingsRow>
+                    <SettingsRow label="Body & UI">
+                      <FontSelect bare label="Body & UI" value={config.typeface.body} options={BODY_FONTS}
+                        onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, body: v } }))} />
+                    </SettingsRow>
+                    <SettingsRow label="Code" hint="Eyebrows, labels, small buttons">
+                      <FontSelect bare label="Code" value={config.typeface.mono || "readme"} options={CODE_FONTS} firstLabel="Automatic" firstSub="Matches your fonts"
+                        onChange={(v) => setConfig((c) => { const t = { ...c.typeface }; if (v === "readme") delete t.mono; else t.mono = v; return { ...c, typeface: t }; })} />
+                    </SettingsRow>
+                  </SettingsGroup>
+                )}
+
+                <div className="glp-sub glp-sub--row">
+                  <span>Colors</span>
+                  {config.theme.colorMode === "custom" && (
+                    <span className="glp-modeswitch" role="group" aria-label="Edit colors for">
+                      <button type="button" className={colorEdit === "light" ? "on" : ""} aria-pressed={colorEdit === "light"} title="Edit light-mode colors" onClick={() => { setColorEdit("light"); setMode("light"); }}>
+                        <i className="fa-solid fa-sun" aria-hidden="true"></i>
+                      </button>
+                      <button type="button" className={colorEdit === "dark" ? "on" : ""} aria-pressed={colorEdit === "dark"} title="Edit dark-mode colors" onClick={() => { setColorEdit("dark"); setMode("dark"); }}>
+                        <i className="fa-solid fa-moon" aria-hidden="true"></i>
+                      </button>
+                    </span>
+                  )}
+                </div>
+                <ChoiceCards
+                  value={config.theme.colorMode}
+                  onChange={(v) => setTheme({ colorMode: v })}
+                  options={[
+                    { value: "readme", label: "Match ReadMe", sub: "Default", preview: <span className="glp-choice__dots"><i style={{ background: "var(--accent-fill)" }}></i><i></i><i></i></span> },
+                    { value: "custom", label: "Custom", sub: "Set each color", preview: <span className="glp-choice__dots"><i style={{ background: config.theme.colors.light.brand || "#FF4C00" }}></i><i style={{ background: config.theme.colors.light.heading || "#1F1F1F" }}></i><i style={{ background: config.theme.colors.light.cardBg || "#FFFFFF" }}></i></span> },
+                  ]}
+                />
+                {config.theme.colorMode === "custom" && (
                   <>
-                    <Toggle
-                      checked={config.theme.uniform}
-                      onChange={(v) => setTheme({ uniform: v })}
-                      label="Use one accent color for every card"
-                      hint="Overrides the per-card accent choices with a single color across all sections."
-                      style={{ paddingTop: 0 }}
-                    />
-                    {config.theme.uniform && (
-                      <Field label="Accent color">
-                        <AccentSwatches
-                          selected={config.theme.accent}
-                          onSelect={(k) => setTheme({ accent: k })}
-                          customCard={{ customLight: config.theme.customLight, customDark: config.theme.customDark }}
-                          onCustom={setTheme}
-                        />
-                      </Field>
-                    )}
+                    <SettingsGroup>
+                      {COLOR_ROLES.map((r) => {
+                        const v = config.theme.colors[colorEdit][r.key];
+                        const setRole = (val) => setConfig((c) => ({ ...c, theme: { ...c.theme, colors: { ...c.theme.colors, [colorEdit]: { ...c.theme.colors[colorEdit], [r.key]: val } } } }));
+                        return (
+                          <SettingsRow key={r.key} label={r.label} hint={r.hint} onReset={v ? () => setRole("") : null}>
+                            <ColorValue value={v} onChange={setRole} label={r.label} />
+                          </SettingsRow>
+                        );
+                      })}
+                    </SettingsGroup>
+                    <p className="glp-hint" style={{ margin: "6px 0 0" }}>
+                      {colorEdit === "light" ? "Light mode. " : "Dark mode (unset colors keep the default dark look). "}
+                      {!config.theme.colors.light.brand && !config.theme.colors.dark.brand ? "With no brand color, each card keeps its own accent." : ""}
+                    </p>
                   </>
                 )}
 
-                <Toggle
-                  checked={!!config.theme.pattern}
-                  onChange={(v) => setTheme({ pattern: v })}
-                  label="Subtle background pattern"
-                  hint="A faint full-width line-art pattern behind the whole landing page (adapts to light/dark)."
-                />
-
-                                <Field label="Page width" inline>
-                  <Seg
-                    value={config.layout.maxW}
-                    onChange={(v) => setLayout({ maxW: v })}
-                    options={[
-                      { value: 960, label: "Narrow" },
-                      { value: 1120, label: "Default" },
-                      { value: 1280, label: "Wide" },
-                    ]}
-                  />
-                </Field>
+                <div className="glp-sub">Page</div>
+                <SettingsGroup>
+                  <SettingsRow label="Background pattern" hint="Faint full-width line art">
+                    <input type="checkbox" className="glp-check__box" checked={!!config.theme.pattern} onChange={(e) => setTheme({ pattern: e.target.checked })} aria-label="Background pattern" />
+                  </SettingsRow>
+                  <SettingsRow label="Page width">
+                    <Seg
+                      value={config.layout.maxW}
+                      onChange={(v) => setLayout({ maxW: v })}
+                      options={[
+                        { value: 960, label: "Narrow" },
+                        { value: 1120, label: "Default" },
+                        { value: 1280, label: "Wide" },
+                      ]}
+                    />
+                  </SettingsRow>
+                </SettingsGroup>
               </NavSection>
 
               <NavSection id="headerFooter" label="Header & Footer" openNav={openNav} setOpenNav={setOpenNav}>
@@ -5271,7 +5444,7 @@ function App() {
                     section={section}
                     index={i}
                     count={config.sections.length}
-                    hideAccents={config.theme.uniform || config.theme.matchReadme}
+                    hideAccents={config.theme.colorMode !== "custom" || !!(config.theme.colors.light.brand || config.theme.colors.dark.brand)}
                     globalStyle={config.cardStyle || DEFAULT_STYLE}
                     open={openSection === section.id}
                     onToggle={() => setOpenSection(openSection === section.id ? null : section.id)}
