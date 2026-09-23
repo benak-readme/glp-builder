@@ -44,6 +44,18 @@ preview — then copy the generated snippet into
 - **Page templates** — **Developer portal** opens a complete starting page
   (brand bar, search hero, audience link lists, icon doc tiles, dark help
   strip) as a new page. Find it in the Pages menu or Theme Editor.
+- **Edit text right in the preview** — click any heading, card title, link
+  label, or column text in the live preview and type; Enter saves it back
+  into the builder (and the code), Escape cancels.
+- **Recreate a page with Claude** (Pages menu) — no API key needed. Add the
+  builder as a custom connector in Claude (`https://glp-builder.netlify.app/mcp`)
+  and ask it to recreate any docs landing page; Claude replies with a builder
+  link. Or copy a ready-made prompt into Claude and paste its JSON reply
+  back. The format Claude follows lives in `design-guide.md`; the connector is
+  `netlify/functions/mcp.mjs`.
+- **Backups that survive clearing your browser** (Pages menu) — keep a
+  `.json` backup file on your computer that every change is saved to
+  (Chrome/Edge), or Export all / Import in any browser.
 - **Dark section panel, accent-rule dividers, background pattern** — for
   support strips and a more branded look.
 - **Hero background image** — an optional full-bleed image (with darkening

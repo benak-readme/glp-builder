@@ -26,6 +26,26 @@ function makeCode(n = 7) {
 const json = (obj, status) =>
   new Response(JSON.stringify(obj), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
+/* validate + store a design; shared by POST /share and the MCP connector.
+   Returns { code } or { error, status }. */
+export async function saveDesign(store, body) {
+  if (!body) return { error: "empty", status: 400 };
+  if (new TextEncoder().encode(body).length > MAX_BYTES) return { error: "too large", status: 413 };
+  let parsed;
+  try { parsed = JSON.parse(body); } catch { return { error: "invalid json", status: 400 }; }
+  /* must look like a builder config: an object with a sections array */
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Array.isArray(parsed.sections)) {
+    return { error: "not a design (needs an object with a sections array)", status: 400 };
+  }
+  /* find a code that isn't already taken (collisions are astronomically rare) */
+  let code = makeCode();
+  for (let i = 0; i < 5 && (await store.get(code)) != null; i++) code = makeCode();
+  await store.set(code, body);
+  return { code };
+}
+
+export const getShareStore = () => getStore({ name: "glp-shares", consistency: "strong" });
+
 /* pure request handler — the store is injected so it can be unit-tested */
 export async function handle(req, store) {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -44,20 +64,8 @@ export async function handle(req, store) {
   if (req.method === "POST") {
     let body;
     try { body = await req.text(); } catch { return json({ error: "bad body" }, 400); }
-    if (!body) return json({ error: "empty" }, 400);
-    if (new TextEncoder().encode(body).length > MAX_BYTES) return json({ error: "too large" }, 413);
-    let parsed;
-    try { parsed = JSON.parse(body); } catch { return json({ error: "invalid json" }, 400); }
-    /* must look like a builder config: an object with a sections array */
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Array.isArray(parsed.sections)) {
-      return json({ error: "not a design" }, 400);
-    }
-
-    /* find a code that isn't already taken (collisions are astronomically rare) */
-    let code = makeCode();
-    for (let i = 0; i < 5 && (await store.get(code)) != null; i++) code = makeCode();
-    await store.set(code, body);
-    return json({ code }, 200);
+    const r = await saveDesign(store, body);
+    return r.error ? json({ error: r.error }, r.status) : json({ code: r.code }, 200);
   }
 
   return json({ error: "method not allowed" }, 405);
@@ -65,7 +73,7 @@ export async function handle(req, store) {
 
 /* strong consistency so a freshly shared link is readable immediately
    (the default eventual mode can 404 for up to ~a minute after the write) */
-export default async (req) => handle(req, getStore({ name: "glp-shares", consistency: "strong" }));
+export default async (req) => handle(req, getShareStore());
 
 /* exported for tests */
 export const _internals = { makeCode, CODE_CHARS, CODE_RE };

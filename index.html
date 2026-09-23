@@ -754,6 +754,60 @@ const relTime = (t) => {
 
 const makeDesign = (name, config, override) => ({ id: uid(), name, config, override: override || "", updatedAt: nowMs() });
 
+/* ============================================================
+   FILE BACKUP — designs mirrored to a real JSON file on disk
+   localStorage is wiped by "clear browsing data", so the Pages menu can also
+   keep a file (File System Access API, Chrome/Edge) in sync on every save.
+   The file handle lives in IndexedDB; after a reload Chrome needs one click to
+   re-grant access, and after a full cache clear you just re-open the file.
+   Export/Import JSON works in every browser as the manual fallback.
+   ============================================================ */
+const FILE_FORMAT = "glp-builder-designs";
+const fsSupported = () => typeof window !== "undefined" && "showSaveFilePicker" in window && "showOpenFilePicker" in window;
+
+function idb(op, value) {
+  return new Promise((resolve) => {
+    try {
+      const req = indexedDB.open("glp-builder", 1);
+      req.onupgradeneeded = () => req.result.createObjectStore("kv");
+      req.onerror = () => resolve(null);
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction("kv", op === "get" ? "readonly" : "readwrite");
+        const store = tx.objectStore("kv");
+        const r = op === "get" ? store.get("fileHandle") : op === "set" ? store.put(value, "fileHandle") : store.delete("fileHandle");
+        r.onsuccess = () => resolve(op === "get" ? r.result || null : true);
+        r.onerror = () => resolve(null);
+      };
+    } catch (e) { resolve(null); }
+  });
+}
+
+const designsFileJson = (ds) => JSON.stringify({ format: FILE_FORMAT, version: 1, savedAt: new Date().toISOString(), designs: ds }, null, 2);
+
+/* accepts our file format (or a bare array); returns valid designs only */
+function parseDesignsFile(text) {
+  const data = JSON.parse(text);
+  const list = Array.isArray(data) ? data : data && Array.isArray(data.designs) ? data.designs : null;
+  if (!list) throw new Error("That file doesn't contain GLP Builder designs.");
+  return list
+    .filter((d) => d && typeof d === "object" && d.config && typeof d.config === "object")
+    .map((d) => ({ id: typeof d.id === "string" ? d.id : uid(), name: str(d.name, "Imported page"), config: d.config, override: str(d.override), updatedAt: Number(d.updatedAt) || nowMs() }));
+}
+
+/* union by id; the newer copy of a page wins */
+function mergeDesigns(a, b) {
+  const map = new Map(a.map((d) => [d.id, d]));
+  b.forEach((d) => { const cur = map.get(d.id); if (!cur || d.updatedAt > cur.updatedAt) map.set(d.id, d); });
+  return [...map.values()];
+}
+
+async function writeHandle(handle, ds) {
+  const w = await handle.createWritable();
+  await w.write(designsFileJson(ds));
+  await w.close();
+}
+
 function persistDesigns(ds, curId) {
   try {
     localStorage.setItem(DESIGNS_KEY, JSON.stringify(ds));
@@ -820,13 +874,14 @@ function buildCard(v, style) {
   let body = "";
   if (style.badge) body += `\n        <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
   const iconHtml = `<span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
-  const titleHtml = `<span class="bnk-card__title">${v.title}</span>`;
+  const edf = v.ed || (() => "");
+  const titleHtml = `<span class="bnk-card__title"${edf("title")}>${v.title}</span>`;
   if (style.icon && style.iconInline) body += `\n        <span class="bnk-card__head">${iconHtml}${titleHtml}</span>`;
   else {
     if (style.icon) body += `\n        ${iconHtml}`;
     body += `\n        ${titleHtml}`;
   }
-  if (v.blurb) body += `\n        <span class="bnk-card__blurb">${v.blurb}</span>`;
+  if (v.blurb) body += `\n        <span class="bnk-card__blurb"${edf("blurb")}>${v.blurb}</span>`;
   if (style.links && v.linksHtml) body += `\n${v.linksHtml}`;
   if (style.peek && v.peekHtml) body += `\n${v.peekHtml}`;
 
@@ -848,21 +903,40 @@ function buildCard(v, style) {
   return `    <!-- ${v.comment} -->\n    ${openTag}${inner}\n    ${closeTag}`;
 }
 
-function staticPeek(c) {
-  const items = c.peekItems.filter((p) => p.trim());
+/* In-preview text editing: when generating for the Build-tab preview, editable
+   text nodes carry data-glp="<config path>". The preview shim makes them
+   contenteditable and posts edits back (see PREVIEW_EDIT_SCRIPT). Exported
+   HTML never contains these attributes. */
+let _editable = false;
+const ed = (path) => (_editable ? ` data-glp="${path}"` : "");
+/* config paths the preview may write — anything else posted back is ignored */
+const EDITABLE_PATH_RE =
+  /^(hero\.(eyebrow|title|subtitle|searchHint|btnPrimary\.label|btnSecondary\.label)|footer|banner\.(title|text)|brandBar\.(links\.\d+\.label|button\.label)|sections\.\d+\.(heading|intro|cards\.\d+\.(title|blurb|peekLabel|peekItems\.\d+|links\.\d+\.label)|columns\.\d+\.(heading|body)))$/;
+
+/* immutable set of a dotted path ("sections.0.cards.2.title") */
+function setAtPath(obj, parts, value) {
+  const [k, ...rest] = parts;
+  const key = Array.isArray(obj) ? Number(k) : k;
+  const next = Array.isArray(obj) ? obj.slice() : { ...obj };
+  next[key] = rest.length ? setAtPath(obj[key], rest, value) : value;
+  return next;
+}
+
+function staticPeek(c, base) {
+  const items = c.peekItems.map((p, j) => [p, j]).filter(([p]) => p.trim());
   if (!items.length) return "";
   return `      <span class="bnk-card__peek">
-        <span class="bnk-card__peek-label">${esc(c.peekLabel)}</span>
+        <span class="bnk-card__peek-label"${ed(base + ".peekLabel")}>${esc(c.peekLabel)}</span>
 ${items
-  .map((p) => `        <span class="bnk-card__peek-item">${c.peekArrows ? '<span class="bnk-tick">&#8594;</span>' : ""}${esc(p)}</span>`)
+  .map(([p, j]) => `        <span class="bnk-card__peek-item">${c.peekArrows ? '<span class="bnk-tick">&#8594;</span>' : ""}<span${ed(base + ".peekItems." + j)}>${esc(p)}</span></span>`)
   .join("\n")}
       </span>`;
 }
 
-function staticLinks(c) {
-  const links = (c.links || []).filter((l) => (l.label || "").trim());
+function staticLinks(c, base) {
+  const links = (c.links || []).map((l, j) => [l, j]).filter(([l]) => (l.label || "").trim());
   const rows = links
-    .map((l) => `          <a class="bnk-card__link" href="${esc(normPath(l.href || "/"))}">${CHEVRON_SVG}<span>${inlineEm(l.label)}</span></a>`)
+    .map(([l, j]) => `          <a class="bnk-card__link" href="${esc(normPath(l.href || "/"))}">${CHEVRON_SVG}<span${ed(base + ".links." + j + ".label")}>${inlineEm(l.label)}</span></a>`)
     .join("\n");
   const noteText = (c.note || "").trim();
   const noteLink = (c.noteLinkLabel || "").trim();
@@ -878,7 +952,7 @@ function staticLinks(c) {
 
 /* build the cards for one section — static list or a Liquid loop.
    `style` is the section's effective card style (its own or the global one). */
-function sectionCards(sec, palette, style) {
+function sectionCards(sec, palette, style, si) {
   const N = Math.max(1, palette.length);
   if (sec.source !== "liquid") {
     return sec.cards
@@ -893,8 +967,9 @@ function sectionCards(sec, palette, style) {
             icon: iconMarkup(c),
             title: esc(c.title),
             blurb: esc(c.blurb),
-            linksHtml: staticLinks(c),
-            peekHtml: staticPeek(c),
+            linksHtml: staticLinks(c, `sections.${si}.cards.${i}`),
+            peekHtml: staticPeek(c, `sections.${si}.cards.${i}`),
+            ed: (f) => ed(`sections.${si}.cards.${i}.${f}`),
             ctaText: esc(c.ctaText),
             ctaStyle: c.ctaStyle,
             comment: `Card ${i + 1}: ${esc(c.title)}`,
@@ -938,13 +1013,13 @@ ${inner}
 }
 
 /* build a text-columns section (1–4 evenly-distributed columns) */
-function sectionColumns(sec) {
+function sectionColumns(sec, si) {
   const cols = (sec.columns || []).slice(0, 4);
   return cols
     .map((col, i) => {
       const parts = [];
-      if ((col.heading || "").trim()) parts.push(`      <h3 class="bnk-col__title">${esc(col.heading)}</h3>`);
-      if ((col.body || "").trim()) parts.push(`      <p class="bnk-col__text">${esc(col.body)}</p>`);
+      if ((col.heading || "").trim()) parts.push(`      <h3 class="bnk-col__title"${ed(`sections.${si}.columns.${i}.heading`)}>${esc(col.heading)}</h3>`);
+      if ((col.body || "").trim()) parts.push(`      <p class="bnk-col__text"${ed(`sections.${si}.columns.${i}.body`)}>${esc(col.body)}</p>`);
       const ctas = (col.ctas || []).filter((c) => (c.label || "").trim());
       if (ctas.length) {
         const links = ctas
@@ -968,7 +1043,12 @@ function sectionColumns(sec) {
 const densityPad = (d) => (d === "compact" ? "19px 20px 18px" : d === "comfortable" ? "26px 26px 24px" : "25px 25px 23px");
 const densityTitle = (d) => (d === "compact" ? "16.5px" : d === "comfortable" ? "21px" : "30px");
 
-function generateHTML(cfg) {
+function generateHTML(cfg, opts) {
+  _editable = !!(opts && opts.editable);
+  try { return generateHTMLInner(cfg); } finally { _editable = false; }
+}
+
+function generateHTMLInner(cfg) {
   const F = FONTS[cfg.fonts] || FONTS.grotesk;
   const L = cfg.layout;
   const sections = cfg.sections;
@@ -1513,16 +1593,16 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
       const heading =
         sec.heading.trim() || sec.intro.trim()
           ? `    <div class="bnk-section">
-${sec.heading.trim() ? `      <h2 class="bnk-section__title">${esc(sec.heading)}</h2>\n` : ""}${
-              sec.intro.trim() ? `      <p class="bnk-section__text">${esc(sec.intro)}</p>\n` : ""
+${sec.heading.trim() ? `      <h2 class="bnk-section__title"${ed(`sections.${i}.heading`)}>${esc(sec.heading)}</h2>\n` : ""}${
+              sec.intro.trim() ? `      <p class="bnk-section__text"${ed(`sections.${i}.intro`)}>${esc(sec.intro)}</p>\n` : ""
             }    </div>\n`
           : "";
       const body = isCols
         ? `    <div class="bnk-cols">
-${sectionColumns(sec)}
+${sectionColumns(sec, i)}
     </div>`
         : `    <div class="bnk-grid">
-${sectionCards(sec, palettes[i], st)}
+${sectionCards(sec, palettes[i], st, i)}
     </div>`;
       return `  <div class="${cls}" style="${styleVars}">
 ${heading}${body}
@@ -1537,7 +1617,7 @@ ${heading}${body}
         return `  <div class="bnk-ticker" aria-hidden="true"><span class="bnk-ticker__inner">${half}${half}</span></div>\n`;
       })()
     : "";
-  const heroEyebrow = cfg.hero.eyebrow.trim() ? `    <p class="bnk-hero__eyebrow">${esc(cfg.hero.eyebrow)}</p>\n` : "";
+  const heroEyebrow = cfg.hero.eyebrow.trim() ? `    <p class="bnk-hero__eyebrow"${ed("hero.eyebrow")}>${esc(cfg.hero.eyebrow)}</p>\n` : "";
   const heroChip = cfg.hero.chip.trim()
     ? cfg.hero.chipHref.trim()
       ? `    <a class="bnk-hero__chip" href="${esc(normPath(cfg.hero.chipHref))}">${esc(cfg.hero.chip)} <span class="rm-arrow" aria-hidden="true">&#8594;</span></a>\n`
@@ -1545,21 +1625,21 @@ ${heading}${body}
     : "";
   const heroButtons = cfg.hero.buttons
     ? `    <div class="bnk-hero__btns">
-      <a class="bnk-btn bnk-btn--primary" href="${esc(normPath(cfg.hero.btnPrimary.href))}">${esc(cfg.hero.btnPrimary.label)}</a>
-      <a class="bnk-btn bnk-btn--secondary" href="${esc(normPath(cfg.hero.btnSecondary.href))}">${esc(cfg.hero.btnSecondary.label)}</a>
+      <a class="bnk-btn bnk-btn--primary" href="${esc(normPath(cfg.hero.btnPrimary.href))}"${ed("hero.btnPrimary.label")}>${esc(cfg.hero.btnPrimary.label)}</a>
+      <a class="bnk-btn bnk-btn--secondary" href="${esc(normPath(cfg.hero.btnSecondary.href))}"${ed("hero.btnSecondary.label")}>${esc(cfg.hero.btnSecondary.label)}</a>
     </div>\n`
     : "";
   const bannerMarkup = cfg.banner.enabled
     ? `\n  <div class="bnk-banner">
     <div class="bnk-banner__copy">
-      <h2 class="bnk-banner__title">${esc(cfg.banner.title)}</h2>
-      <p class="bnk-banner__text">${esc(cfg.banner.text)}</p>
+      <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
+      <p class="bnk-banner__text"${ed("banner.text")}>${esc(cfg.banner.text)}</p>
     </div>
     <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>
   </div>\n`
     : "";
 
-  const brandLinks = (BB.links || []).filter((l) => (l.label || "").trim());
+  const brandLinks = (BB.links || []).map((l, j) => ({ ...l, j })).filter((l) => (l.label || "").trim());
   const brandMarkup = BB.enabled
     ? `  <div class="bnk-brand">
     <a class="bnk-brand__name" href="/">${
@@ -1568,9 +1648,9 @@ ${heading}${body}
         : `${esc(BB.name)}${(BB.tag || "").trim() ? ` <small>${esc(BB.tag)}</small>` : ""}`
     }</a>
 ${sm === "brand" ? '    <div class="bnk-brand__search" id="rm-brand-search"></div>\n' : ""}    <nav class="bnk-brand__nav" aria-label="Documentation">
-${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}">${esc(l.label)}</a>`).join("\n")}${
+${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`brandBar.links.${l.j}.label`)}>${esc(l.label)}</a>`).join("\n")}${
         BB.button && BB.button.enabled && (BB.button.label || "").trim()
-          ? `\n      <a class="bnk-brand__btn" href="${esc(normPath(BB.button.href || "/"))}">${esc(BB.button.label)}</a>`
+          ? `\n      <a class="bnk-brand__btn" href="${esc(normPath(BB.button.href || "/"))}"${ed("brandBar.button.label")}>${esc(BB.button.label)}</a>`
           : ""
       }
     </nav>
@@ -1731,12 +1811,12 @@ ${bannerCSS}
 
 <div class="bnk-landing" id="rm-root">
 ${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}  <div class="bnk-hero">
-${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title">${esc(cfg.hero.title)}</h1>
-    <p class="bnk-hero__sub">${esc(cfg.hero.subtitle)}</p>
+${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title"${ed("hero.title")}>${esc(cfg.hero.title)}</h1>
+    <p class="bnk-hero__sub"${ed("hero.subtitle")}>${esc(cfg.hero.subtitle)}</p>
 ${heroButtons}  </div>
-${sm === "hero" ? `\n  <div class="bnk-actions" id="rm-actions"></div>\n${cfg.hero.searchHint && cfg.hero.searchHint.trim() ? `  <p class="bnk-search-hint">${esc(cfg.hero.searchHint)}</p>\n` : ""}` : ""}
+${sm === "hero" ? `\n  <div class="bnk-actions" id="rm-actions"></div>\n${cfg.hero.searchHint && cfg.hero.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint")}>${esc(cfg.hero.searchHint)}</p>\n` : ""}` : ""}
 ${sectionsMarkup}
-${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer">${esc(cfg.footer)}</p>` : ""}
+${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer"${ed("footer")}>${esc(cfg.footer)}</p>` : ""}
 </div>
 ${script}
 `;
@@ -1791,6 +1871,47 @@ function expandLiquidForPreview(html) {
 /* ============================================================
    PREVIEW SHIM — fakes ReadMe's hub chrome in the iframe
    ============================================================ */
+/* runs inside the preview iframe: makes data-glp text editable in place and
+   posts { path, value } to the builder when an edit is committed */
+const PREVIEW_EDIT_SCRIPT = `
+<style>
+  [data-glp] { cursor: text; border-radius: 3px; outline: 1px dashed transparent; outline-offset: 3px; transition: outline-color 120ms ease; }
+  [data-glp]:hover { outline-color: rgba(76,141,255,.55); }
+  [data-glp]:focus { outline: 2px solid #4C8DFF; outline-offset: 3px; }
+</style>
+<script>
+(function () {
+  function text(el) {
+    var c = el.cloneNode(true);
+    c.querySelectorAll("em").forEach(function (m) { m.replaceWith("*" + m.textContent + "*"); });
+    return c.textContent.replace(/\\s+/g, " ").trim();
+  }
+  function arm(el) {
+    if (el.__glp) return;
+    el.__glp = true;
+    try { el.contentEditable = "plaintext-only"; } catch (e) {}
+    if (el.contentEditable !== "plaintext-only") el.contentEditable = "true";
+    el.spellcheck = false;
+    el.addEventListener("focus", function () { el.__orig = text(el); el.__origHtml = el.innerHTML; });
+    el.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") { e.preventDefault(); el.blur(); }
+      if (e.key === "Escape") { el.__cancel = true; el.blur(); }
+      e.stopPropagation();
+    });
+    el.addEventListener("blur", function () {
+      if (el.__cancel) { el.__cancel = false; el.innerHTML = el.__origHtml; return; }
+      var v = text(el);
+      if (v !== el.__orig) parent.postMessage({ type: "glp-edit", path: el.getAttribute("data-glp"), value: v }, "*");
+    });
+  }
+  function armAll() { document.querySelectorAll("[data-glp]").forEach(arm); }
+  /* links inside the preview never navigate; clicks on editable text just place the caret */
+  document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
+  armAll();
+  document.addEventListener("DOMContentLoaded", armAll);
+})();
+<\/script>`;
+
 function buildPreviewDoc(userHtml, mode) {
   const dark = mode === "dark";
   return `<!doctype html>
@@ -1877,6 +1998,7 @@ function buildPreviewDoc(userHtml, mode) {
     <div class="rm-Header-bottom"><span>Guides</span><span>API Reference</span><span>Changelog</span></div>
   </div>
   ${userHtml}
+${userHtml.includes("data-glp=") ? PREVIEW_EDIT_SCRIPT : ""}
 </body>
 </html>`;
 }
@@ -2102,6 +2224,11 @@ const APP_CSS = `
   }
   .glp-card__swatch { width: 12px; height: 12px; border-radius: 4px; flex: none; }
   .glp-card__name { font-weight: 600; font-size: 13.5px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glp-namewrap { display: flex; align-items: center; gap: 4px; }
+  .glp-namewrap__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .glp-namewrap__btn { font-size: 10.5px; opacity: 0; flex: none; }
+  .glp-card__head:hover .glp-namewrap__btn, .glp-namewrap__btn:focus-visible { opacity: 1; }
+  .glp-rename { flex: 1; min-width: 0; height: 26px; padding: 3px 8px; font-size: 13px; }
   .glp-drag-handle {
     flex: none; display: flex; align-items: center; color: var(--ink-3);
     cursor: grab; padding: 2px 2px 2px 0; font-size: 12px;
@@ -2180,6 +2307,30 @@ const APP_CSS = `
     background: color-mix(in srgb, var(--ink-2) 3%, transparent);
   }
   .glp-hint { font-size: 12px; color: var(--ink-2); }
+  .glp-modal {
+    position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
+    background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(3px);
+  }
+  .glp-modal__box {
+    width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto;
+    background: var(--panel); border: 1px solid var(--line-2); border-radius: 14px; padding: 18px 20px 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+  .glp-modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .glp-modal__head b { font-size: 15px; display: inline-flex; gap: 9px; align-items: center; }
+  .glp-modal__head b i { color: var(--accent); }
+  .glp-modal__lede { margin: 0 0 14px; color: var(--ink-2); font-size: 12.5px; line-height: 1.5; }
+  .glp-modal__body { margin-top: 16px; }
+  .glp-modal__err { color: #F07070; font-size: 12px; margin: 0 0 12px; }
+  .glp-steps { margin: 0 0 12px; padding-left: 18px; line-height: 1.55; color: var(--ink); }
+  .glp-steps li { margin-bottom: 12px; }
+  .glp-copyrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .glp-copyrow code {
+    flex: 1; min-width: 0; padding: 7px 10px; border-radius: 7px; background: var(--bg); border: 1px solid var(--line-2);
+    font-family: 'Space Mono', monospace; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .glp-copyrow a.glp-smallbtn { text-decoration: none; }
+  .glp-copy:disabled { opacity: .5; cursor: default; }
   .glp-shareload {
     position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center;
     background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(3px);
@@ -2309,6 +2460,10 @@ const APP_CSS = `
   .glp-pages__item i { color: var(--accent); margin-top: 2px; }
   .glp-pages__item b { display: block; font-size: 12.5px; font-weight: 600; }
   .glp-pages__item small { display: block; font-size: 11px; color: var(--ink-3); line-height: 1.4; margin-top: 2px; }
+  .glp-filestate { display: flex; align-items: center; gap: 9px; padding: 7px 8px; font-size: 12px; color: var(--ink-2); }
+  .glp-filestate.ok i.fa-hard-drive { color: var(--ok); }
+  .glp-filestate span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glp-filemsg { font-size: 11.5px; color: var(--ink-2); padding: 6px 4px 0; }
   .glp-pages__rename { display: flex; gap: 6px; padding: 8px 2px 2px; margin-top: 4px; border-top: 1px solid var(--line); }
   .glp-pages__rename .glp-input { flex: 1; }
 
@@ -2716,6 +2871,43 @@ function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain
         />
       </Field>
     </div>
+  );
+}
+
+/* ---------- inline-renamable row name (builder-only label, never on the page).
+   Click the pencil or double-click the name; Enter/blur saves, Escape cancels,
+   clearing it falls back to the section heading / "Section N". ---------- */
+function RenameName({ value, fallback, onChange }) {
+  const [editing, setEditing] = useState(false);
+  const done = useRef(false);
+  const stop = (e) => e.stopPropagation();
+  const commit = (v) => { onChange(v.trim()); setEditing(false); };
+  if (editing) {
+    return (
+      <input
+        className="glp-input glp-rename"
+        autoFocus
+        defaultValue={value}
+        placeholder={fallback}
+        aria-label="Section name (builder only)"
+        onClick={stop}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") { done.current = true; commit(e.target.value); }
+          if (e.key === "Escape") { done.current = true; setEditing(false); }
+        }}
+        onBlur={(e) => { if (done.current) { done.current = false; return; } commit(e.target.value); }}
+      />
+    );
+  }
+  return (
+    <span className="glp-card__name glp-namewrap" onDoubleClick={(e) => { e.stopPropagation(); setEditing(true); }} title="Double-click to rename (builder only)">
+      <span className="glp-namewrap__text">{value || fallback}</span>
+      <button type="button" className="glp-iconbtn glp-namewrap__btn" title="Rename (builder only)" aria-label="Rename section"
+        onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
+        <i className="fa-solid fa-pen" aria-hidden="true"></i>
+      </button>
+    </span>
   );
 }
 
@@ -3129,19 +3321,11 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
     <div className="glp-card glp-section">
       <RowHead noun="section" max={6} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
-        <span className="glp-card__name">{section.label || section.heading || `Section ${index + 1}`}</span>
+        <RenameName value={section.label} fallback={section.heading || `Section ${index + 1}`} onChange={(v) => set({ label: v })} />
         <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "from projects" : section.cards.length + " cards"}</span>
       </RowHead>
       {open && (
         <div className="glp-card__body">
-          <Field label="Builder label (sidebar only)">
-            <input
-              className="glp-input"
-              value={section.label}
-              onChange={(e) => set({ label: e.target.value })}
-              placeholder={section.heading || `Section ${index + 1}`}
-            />
-          </Field>
           <Field label="Section heading (blank to hide)">
             <input className="glp-input" value={section.heading} onChange={(e) => set({ heading: e.target.value })} placeholder="e.g. For developers" />
           </Field>
@@ -3321,6 +3505,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
 
 /* ---------- preview pane ---------- */
 function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex }) {
+  const editable = html.includes("data-glp=");
   /* Double-buffered preview: render the new doc into the hidden iframe and
      only reveal it once it has finished loading, so the visible frame never
      blanks (which read as a flash on every edit). */
@@ -3413,7 +3598,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
           ]}
         />
         {(() => {
-          const note = liquidNote ? "Liquid preview shows 3 sample projects; ReadMe renders your real ones" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome";
+          const note = (editable ? "Click any text to edit it. " : "") + (liquidNote ? "Liquid preview shows 3 sample projects; ReadMe renders your real ones" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
           return <span className="glp-view__note" title={note}>{note}</span>;
         })()}
       </div>
@@ -3453,6 +3638,112 @@ function NavSection({ id, label, openNav, setOpenNav, children }) {
 /* ============================================================
    APP
    ============================================================ */
+/* ============================================================
+   IMPORT WITH CLAUDE — no API key: Claude (on the user's own login) does the
+   work and hands the builder a design. Two routes:
+   1. the /mcp connector (Claude returns a /g/<code> link)
+   2. copy a prompt into Claude, paste the JSON reply back here
+   ============================================================ */
+const BUILDER_ORIGIN = (() => {
+  try { return /^https?:/.test(window.location.protocol) ? window.location.origin : "https://glp-builder.netlify.app"; }
+  catch (e) { return "https://glp-builder.netlify.app"; }
+})();
+
+/* pull the design object out of whatever Claude replied (fenced block or bare JSON) */
+function extractDesign(reply) {
+  const fence = reply.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  let txt = fence ? fence[1] : reply;
+  const a = txt.indexOf("{"), b = txt.lastIndexOf("}");
+  if (a < 0 || b <= a) throw new Error("Couldn't find any JSON in that reply.");
+  let obj;
+  try { obj = JSON.parse(txt.slice(a, b + 1)); } catch (e) { throw new Error("The JSON in that reply didn't parse. Ask Claude to resend only the JSON."); }
+  if (obj && obj.design && Array.isArray(obj.design.sections)) obj = obj.design;
+  if (!obj || !Array.isArray(obj.sections)) throw new Error("That JSON isn't a builder design (it needs a sections list).");
+  return obj;
+}
+
+function ImportDialog({ onClose, onCreate }) {
+  const [tab, setTab] = useState("connector");
+  const [url, setUrl] = useState("");
+  const [reply, setReply] = useState("");
+  const [err, setErr] = useState("");
+  const [copied, setCopied] = useState("");
+  const [guide, setGuide] = useState(null);
+  const mcpUrl = BUILDER_ORIGIN + "/mcp";
+  useEffect(() => {
+    fetch("design-guide.md").then((r) => (r.ok ? r.text() : null)).then(setGuide).catch(() => setGuide(null));
+  }, []);
+  useEffect(() => {
+    const k = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, []);
+  const copy = async (t, which) => {
+    try { await navigator.clipboard.writeText(t); setCopied(which); setTimeout(() => setCopied(""), 1600); } catch (e) {}
+  };
+  const target = url.trim() ? url.trim() : "[paste the landing page URL here]";
+  const prompt =
+    `Recreate the docs landing page at ${target} as a GLP Builder design (for a ReadMe Enterprise Global Landing Page).\n\n` +
+    `Read the page, then follow the design guide ${guide ? "below" : `at ${BUILDER_ORIGIN}/design-guide.md`} exactly. ` +
+    `Reply with ONLY the design JSON in a single \`\`\`json code block, no commentary.` +
+    (guide ? `\n\n---\n\n${guide}` : "");
+  const create = () => {
+    try { setErr(""); onCreate(extractDesign(reply)); }
+    catch (e) { setErr(e.message); }
+  };
+  return (
+    <div className="glp-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="glp-modal__box" role="dialog" aria-modal="true" aria-label="Import a page with Claude">
+        <div className="glp-modal__head">
+          <b><i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Recreate a page with Claude</b>
+          <button className="glp-iconbtn" type="button" aria-label="Close" onClick={onClose}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+        <p className="glp-modal__lede">Claude reads any docs landing page and rebuilds it here as an editable design. It runs on your normal Claude login, no API key.</p>
+        <Seg value={tab} onChange={setTab} options={[{ value: "connector", label: "Connector (recommended)" }, { value: "prompt", label: "Copy a prompt" }]} />
+
+        {tab === "connector" ? (
+          <div className="glp-modal__body">
+            <ol className="glp-steps">
+              <li>In Claude, open <b>Settings → Connectors → Add custom connector</b>, name it <b>GLP Builder</b>, and paste this URL:
+                <div className="glp-copyrow">
+                  <code>{mcpUrl}</code>
+                  <button className="glp-smallbtn" type="button" onClick={() => copy(mcpUrl, "mcp")}>
+                    <i className={"fa-solid " + (copied === "mcp" ? "fa-check" : "fa-copy")} aria-hidden="true"></i> {copied === "mcp" ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </li>
+              <li>In any chat, ask something like <i>"Recreate developer.acme.com as a GLP Builder page."</i></li>
+              <li>Claude replies with a builder link. Open it, then click <b>Save as a page</b>.</li>
+            </ol>
+            <p className="glp-note">One-time setup. On Team or Enterprise plans, an owner may need to add the connector for the organization first.</p>
+          </div>
+        ) : (
+          <div className="glp-modal__body">
+            <Field label="1. Page to recreate">
+              <input className="glp-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://developer.acme.com" />
+            </Field>
+            <div className="glp-copyrow" style={{ marginBottom: 14 }}>
+              <button className="glp-copy" type="button" onClick={() => copy(prompt, "prompt")}>
+                <i className={"fa-solid " + (copied === "prompt" ? "fa-check" : "fa-copy")} aria-hidden="true"></i> {copied === "prompt" ? "Prompt copied" : "2. Copy prompt"}
+              </button>
+              <a className="glp-smallbtn" href="https://claude.ai/new" target="_blank" rel="noopener noreferrer">
+                <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i> Open Claude
+              </a>
+            </div>
+            <Field label="3. Paste Claude's reply">
+              <textarea className="glp-textarea" style={{ minHeight: 140, fontFamily: "'Space Mono', monospace", fontSize: 11.5 }} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="```json { ... } ```" />
+            </Field>
+            {err && <div className="glp-modal__err"><i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {err}</div>}
+            <button className="glp-copy" type="button" disabled={!reply.trim()} onClick={create}>
+              <i className="fa-solid fa-file-circle-plus" aria-hidden="true"></i> Create page
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const boot = useRef(null);
   if (!boot.current) boot.current = loadInitialState();
@@ -3476,6 +3767,8 @@ function App() {
   const [shared, setShared] = useState(false);
   const [loadingShare, setLoadingShare] = useState(!!boot.current.pendingShare);
   const [shareError, setShareError] = useState(false);
+  const [sharedName, setSharedName] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
   const [saveState, setSaveState] = useState("saved");
   const firstAutosave = useRef(true);
   const [histVer, setHistVer] = useState(0);
@@ -3485,6 +3778,21 @@ function App() {
   const skipHist = useRef(false);
 
   const generated = useMemo(() => generateHTML(config), [config]);
+  /* same page with data-glp hooks so text can be edited right in the preview */
+  const previewHtml = useMemo(() => generateHTML(config, { editable: true }), [config]);
+
+  /* edits committed inside the preview iframe come back as { path, value } */
+  useEffect(() => {
+    const onMsg = (e) => {
+      const d = e.data;
+      if (!d || d.type !== "glp-edit" || typeof d.path !== "string" || typeof d.value !== "string") return;
+      const fromPreview = [...document.querySelectorAll("iframe.glp-frame")].some((f) => f.contentWindow === e.source);
+      if (!fromPreview || !EDITABLE_PATH_RE.test(d.path)) return;
+      setConfig((c) => setAtPath(c, d.path.split("."), d.value.slice(0, 2000)));
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
   const exportHtml = override ?? generated;
 
   const patch = (p) => setConfig((c) => ({ ...c, ...p }));
@@ -3775,8 +4083,133 @@ function App() {
     stripHash();
   };
 
+  /* ---- file backup ---- */
+  const fileHandle = useRef(null);
+  /* off | on | reconnect | error | unsupported */
+  const [fileState, setFileState] = useState(fsSupported() ? "off" : "unsupported");
+  const [fileName, setFileName] = useState("");
+  const [fileMsg, setFileMsg] = useState("");
+
+  /* bring pages from a file into the list (merge; the newer copy of a page wins) */
+  const adoptDesigns = (incoming) => {
+    /* after a cache clear the builder auto-creates one blank page; drop it rather than keep a stray "Untitled page" */
+    const cur0 = designsRef.current;
+    const pristine = cur0.length === 1 && !cur0[0].override && JSON.stringify(cur0[0].config) === JSON.stringify(DEFAULT_CONFIG);
+    const merged = mergeDesigns(pristine ? [] : cur0, incoming);
+    setDesigns(merged);
+    persistDesigns(merged, currentId);
+    /* if nothing real was open (fresh after a cache clear), open the newest imported page */
+    const cur = merged.find((d) => d.id === currentId);
+    if (!cur || (merged.length > 1 && designsRef.current.length === 1 && JSON.stringify(cur.config) === JSON.stringify(DEFAULT_CONFIG))) {
+      const newest = incoming.slice().sort((a, b) => b.updatedAt - a.updatedAt)[0];
+      if (newest) {
+        const cfg = migrateConfig(newest.config);
+        resetForPage(cfg);
+        setConfig(cfg);
+        setOverride(newest.override || null);
+        setCurrentId(newest.id);
+        setSharedView(false);
+        setOpenSection(cfg.sections[0].id);
+        try { localStorage.setItem(CURRENT_KEY, newest.id); } catch (e) {}
+      }
+    }
+    return merged;
+  };
+
+  const attachHandle = async (handle, readFirst) => {
+    fileHandle.current = handle;
+    setFileName(handle.name);
+    let ds = designsRef.current;
+    if (readFirst) {
+      try {
+        const text = await (await handle.getFile()).text();
+        if (text.trim()) ds = adoptDesigns(parseDesignsFile(text));
+      } catch (e) {
+        setFileMsg(e.message || "Couldn't read that file.");
+      }
+    }
+    await writeHandle(handle, ds);
+    await idb("set", handle);
+    setFileState("on");
+  };
+
+  const connectNewFile = async () => {
+    try {
+      const h = await window.showSaveFilePicker({ suggestedName: "glp-designs.json", types: [{ description: "GLP Builder designs", accept: { "application/json": [".json"] } }] });
+      setFileMsg("");
+      await attachHandle(h, false);
+    } catch (e) { if (e && e.name !== "AbortError") { setFileState("error"); setFileMsg(e.message); } }
+  };
+  const openExistingFile = async () => {
+    try {
+      const [h] = await window.showOpenFilePicker({ types: [{ description: "GLP Builder designs", accept: { "application/json": [".json"] } }] });
+      if ((await h.requestPermission({ mode: "readwrite" })) !== "granted") return;
+      setFileMsg("");
+      await attachHandle(h, true);
+    } catch (e) { if (e && e.name !== "AbortError") { setFileState("error"); setFileMsg(e.message); } }
+  };
+  const reconnectFile = async () => {
+    const h = fileHandle.current;
+    if (!h) return;
+    try {
+      if ((await h.requestPermission({ mode: "readwrite" })) === "granted") await attachHandle(h, true);
+    } catch (e) { setFileState("error"); setFileMsg(e.message); }
+  };
+  const disconnectFile = async () => {
+    fileHandle.current = null;
+    await idb("del");
+    setFileName("");
+    setFileState("off");
+  };
+
+  /* boot: ask the browser not to evict our storage, and restore a previously chosen file */
+  useEffect(() => {
+    try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+    if (!fsSupported()) return;
+    (async () => {
+      const h = await idb("get");
+      if (!h) return;
+      fileHandle.current = h;
+      setFileName(h.name);
+      try {
+        if ((await h.queryPermission({ mode: "readwrite" })) === "granted") await attachHandle(h, true);
+        else setFileState("reconnect");
+      } catch (e) { setFileState("reconnect"); }
+    })();
+  }, []);
+
+  /* mirror every change to the page list into the file (debounced) */
+  useEffect(() => {
+    if (fileState !== "on" || !fileHandle.current) return;
+    const t = setTimeout(() => {
+      writeHandle(fileHandle.current, designs).catch(() => setFileState("reconnect"));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [designs, fileState]);
+
+  const exportDesigns = () => {
+    const blob = new Blob([designsFileJson(flushCurrent())], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "glp-designs-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  };
+  const importInput = useRef(null);
+  const importDesigns = async (file) => {
+    if (!file) return;
+    try {
+      const incoming = parseDesignsFile(await file.text());
+      adoptDesigns(incoming);
+      setFileMsg(`Imported ${incoming.length} page${incoming.length === 1 ? "" : "s"}.`);
+    } catch (e) { setFileMsg(e.message || "Couldn't read that file."); }
+  };
+
   const saveSharedAsPage = () => {
-    const d = makeDesign(uniqueName("Shared page"), config, override ?? "");
+    const d = makeDesign(uniqueName(sharedName || "Shared page"), config, override ?? "");
     const ds = [...designs, d];
     setDesigns(ds);
     setSaveState(persistDesigns(ds, d.id) ? "saved" : "error");
@@ -3912,7 +4345,9 @@ function App() {
       try {
         const res = await fetch("/.netlify/functions/share?id=" + encodeURIComponent(code));
         if (res.ok) {
-          const cfg = migrateConfig(await res.json());
+          const raw = await res.json();
+          const cfg = migrateConfig(raw);
+          if (raw && raw._meta && typeof raw._meta.name === "string") setSharedName(raw._meta.name.slice(0, 80));
           if (!cancelled) { resetForPage(cfg); setConfig(cfg); setOpenSection(cfg.sections[0].id); }
         } else if (!cancelled) setShareError(true);
       } catch (e) {
@@ -3928,6 +4363,17 @@ function App() {
   return (
     <div className="glp">
       <style>{APP_CSS}</style>
+
+      {importOpen && (
+        <ImportDialog
+          onClose={() => setImportOpen(false)}
+          onCreate={(obj) => {
+            const nm = (obj._meta && obj._meta.name) || (obj.brandBar && obj.brandBar.name ? obj.brandBar.name + " (imported)" : "Imported page");
+            newPage({ label: String(nm).slice(0, 80), build: () => migrateConfig(obj) });
+            setImportOpen(false);
+          }}
+        />
+      )}
 
       {loadingShare && (
         <div className="glp-shareload">
@@ -4027,6 +4473,47 @@ function App() {
                           </span>
                         </button>
                       ))}
+                    </div>
+                    <div className="glp-pages__tpl">
+                      <button className="glp-pages__item" type="button" onClick={() => { setImportOpen(true); setPagesOpen(false); }}>
+                        <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+                        <span><b>Recreate a page with Claude</b><small>Turn any docs landing page into an editable design.</small></span>
+                      </button>
+                    </div>
+                    <div className="glp-pages__tpl">
+                      <div className="glp-pages__tplhead">Backup on this computer</div>
+                      {fileState === "on" && (
+                        <div className="glp-filestate ok">
+                          <i className="fa-solid fa-hard-drive" aria-hidden="true"></i>
+                          <span>Saving every change to <b>{fileName}</b></span>
+                          <button className="glp-iconbtn" type="button" title="Stop syncing to this file" aria-label="Stop syncing" onClick={disconnectFile}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                        </div>
+                      )}
+                      {fileState === "reconnect" && (
+                        <button className="glp-pages__item" type="button" onClick={reconnectFile}>
+                          <i className="fa-solid fa-plug-circle-exclamation" aria-hidden="true" style={{ color: "#E3B168" }}></i>
+                          <span><b>Reconnect {fileName}</b><small>Your browser needs one click to allow saving to the file again.</small></span>
+                        </button>
+                      )}
+                      {(fileState === "off" || fileState === "error") && (
+                        <>
+                          <button className="glp-pages__item" type="button" onClick={connectNewFile}>
+                            <i className="fa-solid fa-hard-drive" aria-hidden="true"></i>
+                            <span><b>Keep a backup file</b><small>Every change also saves to a .json file you choose, so clearing your browser never loses pages.</small></span>
+                          </button>
+                          <button className="glp-pages__item" type="button" onClick={openExistingFile}>
+                            <i className="fa-solid fa-folder-open" aria-hidden="true"></i>
+                            <span><b>Open a backup file</b><small>Restore pages from a file and keep it in sync.</small></span>
+                          </button>
+                        </>
+                      )}
+                      <div className="glp-pages__actions" style={{ borderTop: 0, marginTop: 0 }}>
+                        <button className="glp-smallbtn" type="button" onClick={exportDesigns}><i className="fa-solid fa-download" aria-hidden="true"></i> Export all</button>
+                        <button className="glp-smallbtn" type="button" onClick={() => importInput.current && importInput.current.click()}><i className="fa-solid fa-upload" aria-hidden="true"></i> Import</button>
+                        <input ref={importInput} type="file" accept=".json,application/json" style={{ display: "none" }}
+                          onChange={(e) => { importDesigns(e.target.files[0]); e.target.value = ""; }} />
+                      </div>
+                      {fileMsg && <div className="glp-filemsg">{fileMsg}</div>}
                     </div>
                     </>
                   )}
@@ -4427,7 +4914,7 @@ function App() {
                 </button>
               </NavSection>
             </div>
-            <Preview html={generated} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
+            <Preview html={override !== null ? generated : previewHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
           </>
         ) : (
           <>
