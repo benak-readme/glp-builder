@@ -1746,6 +1746,12 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button {
     -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
   }
+  /* outline buttons and pills sit on a solid fill (their tint, if any, layered over the page color) */
+  .bnk-btn--secondary, .bnk-col__cta--btn, .bnk-codesec__lang:not(.on) { background-color: var(--bnk-solid); }
+  .bnk-banner .bnk-banner__btn.bnk-banner__btn--ghost { background: var(--bnk-solid) !important; }
+  .bnk-quick__link { background: linear-gradient(var(--card-bg), var(--card-bg)), var(--bnk-solid); }
+  .bnk-codesec__lang.on { background: linear-gradient(color-mix(in srgb, var(--bnk-accent) 12%, transparent), color-mix(in srgb, var(--bnk-accent) 12%, transparent)), var(--bnk-solid); }
+  .bnk-sec--bg-dark .bnk-col__cta--btn, .bnk-sec--bg-accent .bnk-col__cta--btn { background-color: transparent; }
 ${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  ", (pad) => `${pad}background-color: rgba(var(--color-bg-page-rgb, 11, 12, 13), 0.92) !important;`)}
   @media (max-width: 860px) {
     .bnk-herogrid, .bnk-codesec { grid-template-columns: 1fr; }
@@ -2249,6 +2255,8 @@ ${lightAccents}
     --card-divider: var(--color-border-muted, rgba(0, 0, 0, 0.05));
     --card-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(0,0,0,.07);
     --card-blur: none;
+    /* solid page color behind outline buttons and pills, so a background pattern never shows through them */
+    --bnk-solid: ${CL.pageBg || "rgb(var(--color-bg-page-rgb, 255, 255, 255))"};
 ${lightRoles.length ? "\n    /* custom colors */\n" + lightRoles.map((v) => "    " + v).join("\n") + "\n" : ""}
     box-sizing: border-box;
     position: relative;
@@ -2276,7 +2284,8 @@ ${pad}--card-border: var(--color-border-default, rgba(255, 255, 255, 0.1));
 ${pad}--card-title: var(--color-text-default, #FFFFFF);
 ${pad}--card-divider: var(--color-border-muted, rgba(255, 255, 255, 0.05));
 ${pad}--card-shadow: none;
-${pad}--card-blur: blur(9px) saturate(118%);${darkRoles.length ? "\n" + darkRoles.map((v) => pad + v).join("\n") : ""}`)}${hasPageBg ? `
+${pad}--card-blur: blur(9px) saturate(118%);
+${pad}--bnk-solid: ${CD.pageBg || "rgb(var(--color-bg-page-rgb, 11, 12, 13))"};${darkRoles.length ? "\n" + darkRoles.map((v) => pad + v).join("\n") : ""}`)}${hasPageBg ? `
   /* full-width page background (extends past the content column) */
   .bnk-landing { background: var(--page-bg, transparent); box-shadow: 0 0 0 100vmax var(--page-bg, transparent); clip-path: inset(0 -100vmax); }` : ""}
 
