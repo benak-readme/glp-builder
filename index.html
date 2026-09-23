@@ -2093,6 +2093,26 @@ const APP_CSS = `
 
   .glp-main { flex: 1; display: flex; min-height: 0; }
 
+  .glp-navtabs {
+    position: sticky; top: -20px; z-index: 6;
+    margin: -20px -20px 16px; padding: 8px 10px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .glp-navtabs button {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    border: 0; border-radius: 8px; background: transparent; cursor: pointer; font-family: inherit;
+    padding: 7px 4px 6px; color: var(--ink-3); font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  }
+  /* each area has its own hue (--tc): colored icon at rest, tinted pill when active */
+  .glp-navtabs button i { font-size: 14px; color: color-mix(in srgb, var(--tc) 80%, var(--ink-3)); transition: transform 150ms ease; }
+  .glp-navtabs button:hover { color: var(--ink); background: color-mix(in srgb, var(--tc) 9%, transparent); }
+  .glp-navtabs button:hover i { transform: translateY(-1px); }
+  .glp-navtabs button.on {
+    color: #fff; background: color-mix(in srgb, var(--tc) 20%, var(--panel));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 45%, transparent);
+  }
+  .glp-navtabs button.on i { color: var(--tc); }
   .glp-side {
     width: 452px; flex: none;
     border-right: 1px solid var(--line);
@@ -2108,19 +2128,6 @@ const APP_CSS = `
      React open-state divergence that could collapse a panel and strand scroll) */
   .glp-sec { margin-bottom: 26px; }
   .glp-sec:not(.open) { margin-bottom: 14px; }
-  .glp-sec__label {
-    display: flex; align-items: center; gap: 8px; width: 100%;
-    border: 0; background: transparent; text-align: left; padding: 0;
-    font-family: 'Space Mono', monospace; font-size: 12px;
-    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2);
-    margin: 0 0 12px;
-    cursor: pointer; user-select: none;
-  }
-  .glp-sec__chev { font-size: 10px; flex: none; transform: rotate(90deg); transition: transform 150ms ease; }
-  .glp-sec:not(.open) > .glp-sec__label .glp-sec__chev { transform: none; }
-  .glp-sec:not(.open) > .glp-sec__label { margin-bottom: 0; }
-  .glp-sec__label:hover { color: var(--ink); }
-  .glp-sec__label::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 
   .glp-field { margin-bottom: 9px; }
   .glp-field label { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 4px; }
@@ -3672,15 +3679,32 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
 }
 
 /* ---------- React-controlled nav accordion panel ---------- */
-function NavSection({ id, label, openNav, setOpenNav, children }) {
-  const open = openNav === id;
+/* the four editor areas, switched by the tab bar pinned to the top of the sidebar */
+const NAV_TABS = [
+  { id: "theme", label: "Theme", icon: "fa-palette", color: "#B18CFF" },
+  { id: "headerFooter", label: "Header & Footer", icon: "fa-window-maximize", color: "#3FD0C9" },
+  { id: "hero", label: "Hero", icon: "fa-heading", color: "#FFB547" },
+  { id: "sections", label: "Sections", icon: "fa-layer-group", color: "#5B9BFF" },
+];
+
+function NavTabs({ openNav, setOpenNav }) {
   return (
-    <div className={"glp-sec" + (open ? " open" : "")}>
-      <button type="button" className="glp-sec__label" aria-expanded={open} onClick={() => setOpenNav(open ? null : id)}>
-        <i className="fa-solid fa-chevron-right glp-sec__chev" aria-hidden="true"></i>
-        {label}
-      </button>
-      {open && <div className="glp-sec__body">{children}</div>}
+    <div className="glp-navtabs" role="tablist" aria-label="Editor">
+      {NAV_TABS.map((t) => (
+        <button key={t.id} type="button" role="tab" aria-selected={openNav === t.id} className={openNav === t.id ? "on" : ""} style={{ "--tc": t.color }} onClick={() => setOpenNav(t.id)}>
+          <i className={"fa-solid " + t.icon} aria-hidden="true"></i>
+          <span>{t.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function NavSection({ id, label, openNav, children }) {
+  if (openNav !== id) return null;
+  return (
+    <div className="glp-sec open" role="tabpanel" aria-label={label}>
+      <div className="glp-sec__body">{children}</div>
     </div>
   );
 }
@@ -3809,7 +3833,16 @@ function App() {
      that follows (React unmounting the input) from committing or double-committing */
   const renameHandled = useRef(false);
   const [openCard, setOpenCard] = useState(null);
-  const [openNav, setOpenNav] = useState("sections");
+  const [openNav, setOpenNavRaw] = useState(() => {
+    try { const v = localStorage.getItem("glp-builder:nav"); if (NAV_TABS.some((t) => t.id === v)) return v; } catch (e) {}
+    return "sections";
+  });
+  const sideRef = useRef(null);
+  const setOpenNav = (id) => {
+    setOpenNavRaw(id);
+    try { localStorage.setItem("glp-builder:nav", id); } catch (e) {}
+    if (sideRef.current) sideRef.current.scrollTop = 0;
+  };
   const [openSection, setOpenSection] = useState(boot.current.config.sections[0].id);
   const [mode, setMode] = useState("light");
   const [device, setDevice] = useState("desktop");
@@ -4599,7 +4632,8 @@ function App() {
       <div className="glp-main">
         {tab === "build" ? (
           <>
-            <div className="glp-side">
+            <div className="glp-side" ref={sideRef}>
+              <NavTabs openNav={openNav} setOpenNav={setOpenNav} />
               {override !== null && (
                 <div className="glp-banner" style={{ borderRadius: 10, border: "1px solid rgba(227,177,104,.3)", marginBottom: 16 }}>
                   <span>Manual code edits are active. Copy HTML exports your edited code, not these settings.</span>
