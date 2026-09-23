@@ -150,13 +150,13 @@ const DEFAULT_STYLE = {
 /* one-click starter looks — each sets the GLOBAL card style (cfg.cardStyle).
    Content (cards/columns) is left untouched; only the look changes. */
 const PRESETS = [
-  { key: "audience", label: "Audience hub", hint: "Badges, icons, preview lists + CTA",
+  { key: "audience", label: "Detailed", hint: "Badges, icons, preview lists and a button",
     style: { anchor: false, icon: true, badge: true, bar: true, peek: true, cta: true, ctaPlain: false, mono: false, radius: 16, density: "comfortable" } },
-  { key: "help", label: "Help center", hint: "Compact, whole-card links",
+  { key: "help", label: "Compact", hint: "Small cards, whole card is a link",
     style: { anchor: true, icon: false, badge: false, bar: false, peek: false, cta: false, ctaPlain: false, mono: false, radius: 12, density: "compact" } },
-  { key: "icons", label: "Icon grid", hint: "Icons, accent bar, plain CTA",
+  { key: "icons", label: "Icons", hint: "Icon tiles, accent bar, text link",
     style: { anchor: false, icon: true, badge: false, bar: true, peek: false, cta: true, ctaPlain: true, mono: false, radius: 20, density: "roomy" } },
-  { key: "minimal", label: "Minimal", hint: "Just titles + text",
+  { key: "minimal", label: "Minimal", hint: "Just titles and text",
     style: { anchor: true, icon: false, badge: false, bar: false, peek: false, cta: false, ctaPlain: false, mono: false, radius: 12, density: "comfortable" } },
 ];
 
@@ -2495,6 +2495,22 @@ const APP_CSS = `
 
   /* starter presets */
   .glp-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .glp-cardtpl-label { font-size: 13px; font-weight: 500; color: var(--ink-2); margin: 0 0 8px; }
+  .glp-choices--4 .glp-choice__preview { height: 72px; }
+  .glp-choices--4 .glp-choice__sub { line-height: 16px; }
+  .glp-sk { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 10px; }
+  .glp-sk--row { gap: 6px; }
+  .glp-sk__card {
+    position: relative; display: flex; flex-direction: column; gap: 4px; width: 62%; padding: 8px 8px 7px;
+    background: var(--panel); border-radius: 6px; box-shadow: var(--hairline), 0 1px 2px rgb(5 5 5 / 0.05); overflow: hidden;
+  }
+  .glp-sk__card--sm { width: 44%; padding: 6px; }
+  .glp-sk__card--bar::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--accent); }
+  .glp-sk__line { display: block; height: 3px; border-radius: 2px; background: var(--ink-3); }
+  .glp-sk__pill { display: block; width: 26%; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .glp-sk__icon { display: block; width: 10px; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .glp-sk__btn { display: block; width: 34%; height: 7px; margin-top: 2px; border-radius: 4px; background: var(--accent); }
+  .glp-sk__arrow { align-self: flex-end; font-size: 6px; color: var(--accent); }
   .glp-preset {
     text-align: left; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--ink);
     border-radius: 10px; padding: 9px 11px; cursor: pointer; font-family: inherit;
@@ -3227,6 +3243,31 @@ function ChoiceCards({ value, onChange, options }) {
         </button>
       ))}
     </div>
+  );
+}
+/* tiny drawings of each card template's look */
+function CardSketch({ kind }) {
+  const line = (w, o = 1) => <i className="glp-sk__line" style={{ width: w, opacity: o }}></i>;
+  if (kind === "help") {
+    return (
+      <span className="glp-sk glp-sk--row">
+        {[0, 1].map((i) => (
+          <span key={i} className="glp-sk__card glp-sk__card--sm">{line("70%")}{line("45%", 0.5)}<i className="glp-sk__arrow fa-solid fa-arrow-right"></i></span>
+        ))}
+      </span>
+    );
+  }
+  return (
+    <span className="glp-sk">
+      <span className={"glp-sk__card" + (kind === "icons" || kind === "audience" ? " glp-sk__card--bar" : "")}>
+        {kind === "audience" && <i className="glp-sk__pill"></i>}
+        {(kind === "icons" || kind === "audience") && <i className="glp-sk__icon"></i>}
+        {line("65%")}
+        {line("85%", 0.45)}
+        {kind === "audience" && <i className="glp-sk__btn"></i>}
+        {kind === "icons" && line("35%", 0.9)}
+      </span>
+    </span>
   );
 }
 function SettingsGroup({ children }) {
@@ -4984,13 +5025,16 @@ function App() {
                   ) : (
                     <>
                     <div className="glp-pages__actions">
-                      <button className="glp-smallbtn" type="button" onClick={() => newPage()}>+ New</button>
                       <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={() => setRenaming(true)}>Rename</button>
                       <button className="glp-smallbtn" type="button" onClick={duplicateCurrent}>Duplicate</button>
                       <button className="glp-smallbtn glp-smallbtn--danger" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>Delete</button>
                     </div>
                     <div className="glp-pages__tpl">
-                      <div className="glp-pages__tplhead">New from template</div>
+                      <div className="glp-pages__tplhead">New page</div>
+                      <button className="glp-pages__item" type="button" onClick={() => newPage()}>
+                        <i className="fa-regular fa-file" aria-hidden="true"></i>
+                        <span><b>Blank page</b><small>The default starter: a hero and one card section.</small></span>
+                      </button>
                       {PAGE_TEMPLATES.map((t) => (
                         <button key={t.key} className="glp-pages__item" type="button" onClick={() => newPage(t)}>
                           <i className="fa-solid fa-file-lines" aria-hidden="true"></i>
@@ -5088,23 +5132,7 @@ function App() {
               )}
 
               <NavSection id="theme" label="Theme Editor" openNav={openNav} setOpenNav={setOpenNav}>
-                <div className="glp-sub" style={{ marginTop: 4 }}>Quick start</div>
-                <div className="glp-presets">
-                  {PRESETS.map((p) => (
-                    <button key={p.key} type="button" className="glp-preset" title={p.hint} onClick={() => applyPreset(p)}>
-                      <b>{p.label}</b>
-                      <span>{p.hint}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="glp-sub">Global card style</div>
-                <div className="glp-note" style={{ marginBottom: 12 }}>
-                  The default look for every card section set to <b>Global</b>. Individual sections can override it by switching to <b>Custom</b>.
-                </div>
-                <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
-
-                <div className="glp-sub">Typography</div>
+                <div className="glp-sub" style={{ marginTop: 4 }}>Typography</div>
                 <ChoiceCards
                   value={config.typeface.custom ? "custom" : "readme"}
                   onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, custom: v === "custom" } }))}
@@ -5170,6 +5198,24 @@ function App() {
                     </p>
                   </>
                 )}
+
+                <div className="glp-sub">Card style</div>
+                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Used by every section set to <b>Global</b>. A section can switch to <b>Custom</b> in its Card style tab.</p>
+                <div className="glp-cardtpl-label">Card templates</div>
+                <div className="glp-choices glp-choices--4">
+                  {PRESETS.map((p) => {
+                    const cur = config.cardStyle || DEFAULT_STYLE;
+                    const on = Object.keys(p.style).every((k) => cur[k] === p.style[k]);
+                    return (
+                      <button key={p.key} type="button" className={"glp-choice" + (on ? " on" : "")} aria-pressed={on} title={p.hint} onClick={() => applyPreset(p)}>
+                        <span className="glp-choice__preview"><CardSketch kind={p.key} /></span>
+                        <span className="glp-choice__label">{p.label}</span>
+                        <span className="glp-choice__sub">{p.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
 
                 <div className="glp-sub">Page</div>
                 <SettingsGroup>
