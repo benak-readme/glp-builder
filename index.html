@@ -1016,7 +1016,7 @@ const makeDesign = (name, config, override) => ({ id: uid(), name, config, overr
 
 /* ============================================================
    FILE BACKUP — designs mirrored to a real JSON file on disk
-   localStorage is wiped by "clear browsing data", so the Pages menu can also
+   localStorage is wiped by "clear browsing data", so the Pages menu's backup row can also
    keep a file (File System Access API, Chrome/Edge) in sync on every save.
    The file handle lives in IndexedDB; after a reload Chrome needs one click to
    re-grant access, and after a full cache clear you just re-open the file.
@@ -4075,7 +4075,7 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
 }
 
 /* ---------- reusable card-style switches (used by a section in "custom"
-   mode and by the global card style in the Theme Editor) ---------- */
+   mode and by the global card style in Theme → Card style) ---------- */
 function CardStyleControls({ style: st, setStyle, liquid = false }) {
   return (
     <>
@@ -4426,7 +4426,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                 <CardStyleControls style={section.style} setStyle={setStyle} liquid={liquidOn} />
               ) : (
                 <div className="glp-note">
-                  Using the <b>global card style</b> from Theme&nbsp;Editor, shared by every Global section. Switch to <b>Custom</b> to change just this one.
+                  Using the <b>global card style</b>, shared by every Global section. Change it in <b>Theme → Card style</b>, or pick a look in <b>Templates → Card templates</b>. Switch to <b>Custom</b> to change just this section.
                 </div>
               )}
             </>
@@ -5598,7 +5598,7 @@ function App() {
 
               <NavSection id="templates" label="Templates" openNav={openNav} setOpenNav={setOpenNav}>
                 <div className="glp-sub" style={{ marginTop: 4 }}>Page templates</div>
-                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Switches this page to the template. Your current content is replaced, and <b>Undo</b> brings it back. To keep both, use <b>Pages → New page</b>.</p>
+                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Switches this page to the template. Your current content is replaced, and <b>Undo</b> brings it back. To keep this page too, use <b>Pages → Duplicate</b> first.</p>
                 <div className="glp-choices glp-choices--tpl">
                   {[BLANK_TEMPLATE, ...PAGE_TEMPLATES].map((t) => (
                     <button key={t.key} type="button" className={"glp-choice" + (config.templateKey === t.key ? " on" : "")} aria-pressed={config.templateKey === t.key} title={t.hint} onClick={() => applyTemplate(t)}>
@@ -5626,7 +5626,7 @@ function App() {
                 </div>
               </NavSection>
 
-              <NavSection id="theme" label="Theme Editor" openNav={openNav} setOpenNav={setOpenNav}>
+              <NavSection id="theme" label="Theme" openNav={openNav} setOpenNav={setOpenNav}>
                 <div className="glp-sub" style={{ marginTop: 4 }}>Typography</div>
                 <ChoiceCards
                   value={config.typeface.custom ? "custom" : "readme"}
@@ -5821,7 +5821,7 @@ function App() {
                 <Toggle
                   checked={config.banner.enabled}
                   onChange={(v) => setBanner({ enabled: v })}
-                  label="Show a banner below the cards"
+                  label="Show a banner at the bottom of the page"
                   hint='Full-width call-to-action, e.g. "Need help building your integration?"'
                 />
                 {config.banner.enabled && (
