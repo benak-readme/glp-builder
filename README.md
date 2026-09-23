@@ -9,15 +9,14 @@ preview — then copy the generated snippet into
 
 - **Multiple card sections** — stack as many sections as you need, each with
   its own heading, intro, alignment (independent of the hero), card style,
-  and grid. Great for "For developers" up top and "Resources" below. Each
-  section also has its own **builder label** (sidebar/tab name only, never
-  shown on the page) so you can keep track of what a section is for even if
-  its on-page heading is blank or renamed.
+  and grid. Great for "For developers" up top and "Resources" below. Rename
+  any section in the sidebar (pencil next to its name) to keep track of it;
+  that name is builder-only and never shown on the page.
 - **Drag-and-drop reordering** — drag the grip handle on any section, card,
   or column to move it to any position; the ↑/↓ buttons still work too.
 - **Fully granular card styles** — no more fixed templates. Compose any card
-  look from individual switches: icon tile, badge/eyebrow, auto-number,
-  `File_0N` label, top accent bar, preview list, CTA button, plain-text CTA,
+  look from individual switches: icon tile (above or beside the title),
+  badge/eyebrow, top accent bar, link list, preview list, CTA button, plain-text CTA,
   whole-card link, mono/uppercase, plus density and corner-radius controls.
 - **Font Awesome icons by default** — cards use ReadMe's built-in Font
   Awesome (e.g. solid `rocket`) out of the box; emoji are still available as
@@ -43,7 +42,7 @@ preview — then copy the generated snippet into
   link. Great for "Customers / Partners" pick-your-path cards.
 - **Page templates** — **Developer portal** opens a complete starting page
   (brand bar, search hero, audience link lists, icon doc tiles, dark help
-  strip) as a new page. Find it in the Pages menu or Theme Editor.
+  strip) as a new page. Find it in the Pages menu.
 - **Edit text right in the preview** — click any heading, card title, link
   label, or column text in the live preview and type; Enter saves it back
   into the builder (and the code), Escape cancels.
@@ -106,6 +105,6 @@ bundle. To update the app, edit `index.html` and push.
 - Short share links store the design in Netlify Blobs, keyed by the code in
   the URL. Older inline `#c=…` links carry the design in the URL fragment
   (nothing stored). Either way, unsaved work is lost on refresh unless you
-  use **Share link**, **Download .html**, or **Copy HTML**.
+  keep a backup file or use **Export all**, **Share link**, or **Download**.
 - In Liquid mode the in-app preview shows 3 sample projects; ReadMe renders
   your real child projects server-side once the code is pasted into the dash.
