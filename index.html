@@ -3348,6 +3348,10 @@ const APP_CSS = `
     white-space: pre; overflow: auto;
   }
   .glp-editor__hl { color: var(--code-ink); overflow: hidden; pointer-events: none; }
+  /* native controls and scrollbars follow the builder theme (no white scrollbars in Midnight) */
+  .glp { color-scheme: light; }
+  .glp[data-ui="midnight"] { color-scheme: dark; }
+  .glp textarea { scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; }
   .glp-editor textarea {
     resize: none; outline: none; background: transparent; color: transparent;
     caret-color: var(--ink); -webkit-text-fill-color: transparent;
@@ -5004,7 +5008,7 @@ function ImportDialog({ onClose, onCreate }) {
               </Field>
             )}
             <Field label="3. Paste Claude's reply">
-              <textarea className="glp-textarea" style={{ minHeight: 140, fontFamily: "var(--font-mono)", fontSize: 12 }} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="```json { ... } ```" />
+              <textarea className="glp-textarea" spellCheck={false} data-gramm="false" data-enable-grammarly="false" style={{ minHeight: 140, fontFamily: "var(--font-mono)", fontSize: 12 }} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="```json { ... } ```" />
             </Field>
             {err && <div className="glp-modal__err"><i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> {err}</div>}
             <button className="glp-copy" type="button" disabled={!reply.trim()} onClick={create}>
