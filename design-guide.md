@@ -24,8 +24,24 @@ them**. Every choice below should come from what the source page actually shows.
      `quickLinks`, the hero `panel`, section `eyebrow`s, `pattern`, `banner.glow`, a code window. If the source
      doesn't show it, leave it out.
    - Match the hero's alignment, the card density and corner radius, section backgrounds and dividers.
+   - **Branding:** keep the source's company name, logo and brand colors unless the user asked to remove their branding
+     (see "Branding: keep or remove" below).
 4. Before replying, walk the source page block by block and check each one is in your JSON, in order.
 5. Output ONE JSON object. Omit anything you'd leave at its default; the builder fills defaults in.
+
+## Branding: keep or remove
+Default: **keep their branding** (company and product names, logo, brand colors, real copy and links).
+
+If the user asks to **remove their branding** (also: "without their branding", "unbranded", "no company names"),
+recreate the layout and style exactly as usual (structure, block order, item counts, card styles, alignment, fonts,
+background pattern), but remove anything that identifies the company:
+- Company name: "Your company" (brand bar `name`), no `logoUrl`, no `tag` unless generic (e.g. "Developers").
+- Product and feature names: generic equivalents ("Payments API", "Mobile SDK", "Identity"), not the source's names.
+- Copy: rewrite headings and descriptions in the same tone and length, with no company-specific claims or names.
+- Links: generic site-relative paths ("/docs/getting-started", "/reference", "/changelog"), never the source's domain.
+- Colors: `theme.colorMode: "readme"` so the hub's own brand color is used; keep light/dark and pattern choices.
+- Logos of third parties, customer names, and testimonials: drop them.
+Name the page after the source, e.g. "Unbranded developer.acme.com".
 
 ## Top-level fields
 - `typeface`: `{ custom: true, heading, body, mono }` (`custom: false` means Match Settings in ReadMe: inherit

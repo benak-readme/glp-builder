@@ -25,7 +25,8 @@ const TOOLS = [
     description:
       "Returns the design JSON format GLP Builder accepts (hero, brand bar, card and column sections, theme) " +
       "with mapping tips and a complete example. Call this before create_design. When recreating a page, copy the " +
-      "source page's own structure, colors and fonts faithfully; don't imitate the builder's built-in templates.",
+      "source page's own structure, colors and fonts faithfully; don't imitate the builder's built-in templates. Keep the source's branding unless the user asks to " +
+      "remove their branding (see the guide's 'Branding: keep or remove').",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true },
   },

@@ -4921,6 +4921,7 @@ async function writeClipboard(text) {
 function ImportDialog({ onClose, onCreate }) {
   const [tab, setTab] = useState("connector");
   const [url, setUrl] = useState("");
+  const [branding, setBranding] = useState("keep"); /* keep | remove */
   const [reply, setReply] = useState("");
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState("");
@@ -4943,6 +4944,9 @@ function ImportDialog({ onClose, onCreate }) {
   const prompt =
     `Recreate the docs landing page at ${target} as a GLP Builder design (for a ReadMe Enterprise Global Landing Page).\n\n` +
     `Read the page, then follow the design guide ${guide ? "below" : `at ${BUILDER_ORIGIN}/design-guide.md`} exactly. ` +
+    (branding === "remove"
+      ? `Remove their branding: follow the guide's "Branding: keep or remove" section and replace their company name, logo, product names, brand colors and domain links with placeholders, keeping the layout and style. `
+      : `Keep their branding: company name, logo, brand colors, and the real copy and links. `) +
     `Reply with ONLY the design JSON in a single \`\`\`json code block, no commentary.` +
     (guide ? `\n\n---\n\n${guide}` : "");
   const create = () => {
@@ -4963,7 +4967,7 @@ function ImportDialog({ onClose, onCreate }) {
           <div className="glp-modal__body">
             <ol className="glp-steps">
               <li>In Claude, open <b>Settings → Connectors</b>, find <b>GLP Builder</b>, and click <b>Connect</b>. It's already set up for everyone at ReadMe.</li>
-              <li>In any chat, ask something like <i>"Recreate developer.acme.com as a GLP Builder page."</i></li>
+              <li>In any chat, ask something like <i>"Recreate developer.acme.com as a GLP Builder page."</i> Add <i>"without their branding"</i> to swap their name, logo, product names, colors and links for placeholders.</li>
               <li>Claude replies with a builder link. Open it, then click <b>Save as a page</b>.</li>
             </ol>
             <details className="glp-more">
@@ -4981,6 +4985,10 @@ function ImportDialog({ onClose, onCreate }) {
           <div className="glp-modal__body">
             <Field label="1. Page to recreate">
               <input className="glp-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://developer.acme.com" />
+            </Field>
+            <Field label="Branding">
+              <Seg value={branding} onChange={setBranding} options={[{ value: "keep", label: "Keep their branding" }, { value: "remove", label: "Remove their branding" }]} />
+              <div className="glp-hint" style={{ marginTop: 6 }}>{branding === "remove" ? "Same layout and style. Their name, logo, product names, colors and links become placeholders." : "Same layout and style, with their name, logo, colors, copy and links."}</div>
             </Field>
             <div className="glp-copyrow" style={{ marginBottom: 14 }}>
               <button className="glp-copy" type="button" onClick={() => copy(prompt, "prompt")}>
