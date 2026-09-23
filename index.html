@@ -208,6 +208,8 @@ const CARD_DEFAULTS = {
   ctaText: "View docs",
   ctaStyle: "ghost",
   primary: false,
+  /* small count/label on the card, e.g. "913 pages" */
+  meta: "",
   /* link-list style: rows of { label, href }; *word* renders italic */
   links: [],
   note: "",
@@ -230,7 +232,19 @@ const DEFAULT_LIQUID = {
   accents: ["green", "purple", "amber"],
 };
 
-const DEFAULT_SECTION_LAYOUT = { colMin: 258, gap: 20, autoH: true, cardMinH: 396, bento: false, spaceAbove: 36, divider: false, dividerStyle: "hairline", bg: "none" };
+const DEFAULT_SECTION_LAYOUT = { colMin: 258, gap: 20, autoH: true, cardMinH: 396, bento: false, list: false, spaceAbove: 36, divider: false, dividerStyle: "hairline", bg: "none" };
+const SAMPLE_CODE = `import { Client } from '@acme/sdk';
+
+const client = new Client({ apiKey: process.env.API_KEY });
+
+// Create a resource and read it back.
+const created = await client.resources.create({
+  name: 'my-first-resource',
+  region: 'us-east-1',
+});
+
+console.log(created.id);`;
+const DEFAULT_CODE = { file: "quickstart.ts", langs: "TypeScript, Python, Go, Ruby, Java, cURL", text: SAMPLE_CODE };
 
 /* ---------------- text-columns section ----------------
    A section can be a grid of 1–4 evenly-distributed text columns, each with
@@ -294,6 +308,14 @@ const DEFAULT_CONFIG = {
     buttons: false,
     /* small helper line under the relocated search row (hero search mode only) */
     searchHint: "",
+    /* none | glow (soft accent glow behind the hero, full width) */
+    bg: "none",
+    /* normal | large (search row under the hero) */
+    searchSize: "normal",
+    /* pill links under the hero, e.g. popular sections */
+    quickLinks: [],
+    /* card beside a left-aligned hero: a titled list of links with a small count; hosts the search row when search is under the hero */
+    panel: { enabled: false, title: "Jump to", links: [] },
     btnPrimary: { label: "Get started", href: "/getting-started" },
     btnSecondary: { label: "API Reference", href: "/reference" },
   },
@@ -330,6 +352,11 @@ const DEFAULT_CONFIG = {
     text: "Our team can walk you through setup, auth, and best practices.",
     btnLabel: "Contact us",
     btnHref: "/contact",
+    /* left (copy + button side by side) | center (stacked, two buttons) */
+    align: "left",
+    btn2Label: "",
+    btn2Href: "",
+    glow: false,
   },
   footer: "Can't find what you need? Use the search above or ask the AI assistant.",
   sections: [
@@ -337,6 +364,7 @@ const DEFAULT_CONFIG = {
       id: uid(),
       type: "cards",
       label: "",
+      eyebrow: "",
       heading: "",
       intro: "",
       align: "center",
@@ -379,6 +407,85 @@ const DEFAULT_CONFIG = {
 /* ---------------- page templates ----------------
    Whole-page starting points (content + layout), unlike PRESETS which only
    restyle cards. Each call returns a fresh config with new ids. */
+
+/* ---- building blocks shared by the Aurora / Spotlight / Editorial / Terminal templates ---- */
+const tplSections = (o) => {
+  const center = o.align === "center";
+  const L = (label, href) => ({ label, href });
+  const card = (x) => ({ ...CARD_DEFAULTS, id: uid(), ...x });
+  const listDocs = !!o.listDocs;
+  return [
+    {
+      label: "Doc sets",
+      heading: o.docsHeading || "",
+      intro: "",
+      align: center ? "center" : "left",
+      source: "static",
+      styleMode: "custom",
+      style: { ...DEFAULT_STYLE, anchor: true, icon: true, iconInline: listDocs, cta: !listDocs, ctaPlain: true, radius: 10, density: "comfortable" },
+      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 420, gap: 18, spaceAbove: o.docsSpace || 64, list: listDocs },
+      cards: [
+        card({ icon: "book-open", title: o.names ? o.names[0] : "Guides", blurb: "Start here. Concepts, tutorials and how-to guides for building with the platform.", href: "/guides", meta: "120 pages", ctaText: "Browse" }),
+        card({ icon: "code", title: o.names ? o.names[1] : "API Reference", blurb: "Every endpoint, with parameters, responses and ready-to-run code samples.", href: "/reference", meta: "48 endpoints", ctaText: "Browse" }),
+      ],
+    },
+    {
+      label: "Why",
+      eyebrow: o.whyEyebrow !== undefined ? o.whyEyebrow : "Why the docs",
+      heading: o.whyHeading !== undefined ? o.whyHeading : "Everything in one place, and all of it searchable",
+      intro: "",
+      align: center ? "center" : "left",
+      source: "static",
+      styleMode: "custom",
+      style: { ...DEFAULT_STYLE, anchor: false, num: true, radius: 10, density: "comfortable" },
+      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 280, gap: 18, spaceAbove: 88 },
+      cards: [
+        card({ title: "Start in minutes", blurb: "Quickstarts that get you from nothing to a working call, without reading the whole manual first.", href: "/guides/quickstart" }),
+        card({ title: "Written for building", blurb: "Every guide ends somewhere useful: a working example, a next step, and the reference page behind it.", href: "/guides" }),
+        card({ title: "Searchable end to end", blurb: "Titles, descriptions and page text, so the answer is one keystroke away wherever you are.", href: "/search" }),
+      ],
+    },
+    {
+      label: "Code sample",
+      type: "code",
+      eyebrow: "Code samples",
+      heading: "Built for the way you work",
+      intro: "Copy a sample, change two values, and it runs. Every reference page carries one, in the language you already use.",
+      align: "left",
+      layout: { ...DEFAULT_SECTION_LAYOUT, spaceAbove: 96 },
+      code: { ...DEFAULT_CODE },
+    },
+    {
+      label: "Contents",
+      eyebrow: o.contentsEyebrow !== undefined ? o.contentsEyebrow : "Contents",
+      heading: o.contentsHeading !== undefined ? o.contentsHeading : "Browse the documentation",
+      intro: "Every project in this hub, updated automatically.",
+      align: center ? "center" : "left",
+      source: "liquid",
+      styleMode: "custom",
+      style: { ...DEFAULT_STYLE, anchor: true, radius: 10, density: "compact" },
+      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 300, gap: 14, spaceAbove: 96 },
+      liquid: { ...DEFAULT_LIQUID, peek: false, blurbFallback: "Guides and reference for this project." },
+    },
+  ];
+};
+const tplBanner = () => ({
+  enabled: true, align: "center", glow: true,
+  title: "Can't find it?",
+  text: "Everything here is searchable. Start from the guides, or jump straight to the reference.",
+  btnLabel: "Start building", btnHref: "/guides",
+  btn2Label: "Read the API", btn2Href: "/reference",
+});
+const tplBase = (over) =>
+  migrateConfig({
+    ...DEFAULT_CONFIG,
+    searchMode: "hero",
+    flattenHeader: false,
+    theme: { colorMode: "readme", pattern: false },
+    footer: "",
+    ...over,
+  });
+
 const PAGE_TEMPLATES = [
   {
     key: "portal",
@@ -479,6 +586,69 @@ const PAGE_TEMPLATES = [
       });
     },
   },
+  {
+    key: "aurora",
+    label: "Aurora",
+    hint: "Glowing hero with a Jump to panel holding search, doc sets, code sample",
+    build: () => tplBase({
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", bg: "glow", eyebrow: "docs.acme.com", titleSize: 58, subtitleSize: 17,
+        title: "Everything you need to build with Acme",
+        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
+        buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" },
+        panel: { enabled: true, title: "Jump to", links: [
+          { label: "Get started", href: "/guides/getting-started", meta: "22" },
+          { label: "Guides", href: "/guides", meta: "96" },
+          { label: "API reference", href: "/reference", meta: "48" },
+          { label: "SDKs", href: "/sdks", meta: "6" },
+          { label: "Changelog", href: "/changelog", meta: "12" },
+        ] } },
+      sections: tplSections({ align: "left" }),
+      banner: tplBanner(),
+    }),
+  },
+  {
+    key: "spotlight",
+    label: "Spotlight",
+    hint: "Search-first: a big centered search box with quick links",
+    build: () => tplBase({
+      hero: { ...DEFAULT_CONFIG.hero, align: "center", title: "How can we help?", subtitle: "", titleSize: 56, padY: 24,
+        searchSize: "large", buttons: false,
+        quickLinks: [
+          { label: "Get started", href: "/guides/getting-started" }, { label: "Guides", href: "/guides" },
+          { label: "API reference", href: "/reference" }, { label: "SDKs", href: "/sdks" }, { label: "Changelog", href: "/changelog" },
+        ] },
+      sections: tplSections({ align: "center", docsSpace: 56, whyEyebrow: "", whyHeading: "Why developers stay", contentsEyebrow: "", contentsHeading: "Documentation" }),
+      banner: tplBanner(),
+    }),
+  },
+  {
+    key: "editorial",
+    label: "Editorial",
+    hint: "Serif headlines, doc sets as reading rows, chapter-style sections",
+    build: () => tplBase({
+      typeface: { custom: true, heading: "Fraunces", body: "readme" },
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "Acme documentation", titleSize: 56, subtitleSize: 18,
+        title: "Everything you need to build with Acme",
+        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
+        buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" } },
+      sections: tplSections({ align: "left", listDocs: true, docsSpace: 48, whyEyebrow: "Chapter one", whyHeading: "What you will find", contentsEyebrow: "Contents", contentsHeading: "Chapters" }),
+      banner: tplBanner(),
+    }),
+  },
+  {
+    key: "terminal",
+    label: "Terminal",
+    hint: "Monospace everything, command-line prompt hero, doc sets as a table",
+    build: () => tplBase({
+      typeface: { custom: true, heading: "Geist Mono", body: "Geist Mono" },
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "$ open docs.acme.com", titleSize: 46, subtitleSize: 15,
+        title: "Everything you need to build with Acme",
+        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
+        buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" } },
+      sections: tplSections({ align: "left", listDocs: true, names: ["guides", "api-reference"], docsSpace: 48, whyEyebrow: "# why", whyHeading: "", contentsEyebrow: "# docs", contentsHeading: "" }),
+      banner: tplBanner(),
+    }),
+  }
 ];
 
 /* ---------------- helpers ---------------- */
@@ -611,7 +781,7 @@ const str = (v, d = "") => (typeof v === "string" ? v : v == null ? d : String(v
 const safeLinks = (arr) =>
   Array.isArray(arr) ? arr.filter((l) => l && typeof l === "object").map((l) => ({ label: str(l.label), href: str(l.href) })) : [];
 
-const CARD_STR_FIELDS = ["icon", "title", "blurb", "href", "eyebrow", "peekLabel", "ctaText", "note", "noteLinkLabel", "noteHref"];
+const CARD_STR_FIELDS = ["icon", "title", "blurb", "href", "eyebrow", "peekLabel", "ctaText", "note", "noteLinkLabel", "noteHref", "meta"];
 const normCard = (c) => {
   const o = { ...CARD_DEFAULTS, ...(c && typeof c === "object" ? c : {}) };
   CARD_STR_FIELDS.forEach((k) => { o[k] = str(o[k], CARD_DEFAULTS[k]); });
@@ -636,6 +806,15 @@ function sanitizeConfig(c) {
   hero.padY = safeNum(h.padY, 0, 0, 240);
   hero.btnPrimary = { label: str(h.btnPrimary && h.btnPrimary.label), href: str(h.btnPrimary && h.btnPrimary.href) };
   hero.btnSecondary = { label: str(h.btnSecondary && h.btnSecondary.label), href: str(h.btnSecondary && h.btnSecondary.href) };
+  hero.bg = h.bg === "glow" ? "glow" : "none";
+  hero.searchSize = h.searchSize === "large" ? "large" : "normal";
+  hero.quickLinks = safeLinks(h.quickLinks);
+  const pn = h.panel && typeof h.panel === "object" ? h.panel : {};
+  hero.panel = {
+    enabled: !!pn.enabled,
+    title: str(pn.title, "Jump to"),
+    links: Array.isArray(pn.links) ? pn.links.filter((l) => l && typeof l === "object").map((l) => ({ label: str(l.label), href: str(l.href), meta: str(l.meta) })) : [],
+  };
   const bb = c.brandBar;
   const okFont = (n) => (n === "readme" || FONT_FAMILIES[n] ? n : "readme");
   return {
@@ -643,6 +822,8 @@ function sanitizeConfig(c) {
     typeface: { custom: !!c.typeface.custom, heading: okFont(c.typeface.heading), body: okFont(c.typeface.body), ...(FONT_FAMILIES[c.typeface.mono] ? { mono: c.typeface.mono } : {}) },
     hero,
     footer: str(c.footer),
+    banner: { ...c.banner, title: str(c.banner.title), text: str(c.banner.text), btnLabel: str(c.banner.btnLabel), btnHref: str(c.banner.btnHref),
+      btn2Label: str(c.banner.btn2Label), btn2Href: str(c.banner.btn2Href), align: c.banner.align === "center" ? "center" : "left", glow: !!c.banner.glow },
     searchMode: SEARCH_MODES.includes(c.searchMode) ? c.searchMode : "native",
     headerImage: {
       ...c.headerImage,
@@ -667,6 +848,8 @@ function sanitizeConfig(c) {
       ...sec,
       heading: str(sec.heading),
       intro: str(sec.intro),
+      eyebrow: str(sec.eyebrow),
+      code: { file: str(sec.code.file), langs: str(sec.code.langs), text: str(sec.code.text).slice(0, 8000) },
       label: str(sec.label),
       style: { ...sec.style, radius: safeNum(sec.style.radius, 16, 0, 48) },
       layout: {
@@ -690,7 +873,10 @@ function sanitizeConfig(c) {
 const normColumn = (c) => makeColumn({ ...c, id: c && c.id });
 const normSection = (s) => ({
   id: s.id || uid(),
-  type: s.type === "columns" ? "columns" : "cards",
+  type: s.type === "columns" || s.type === "code" ? s.type : "cards",
+  /* small label line above the heading */
+  eyebrow: typeof s.eyebrow === "string" ? s.eyebrow : "",
+  code: { ...DEFAULT_CODE, ...(s.code && typeof s.code === "object" ? s.code : {}) },
   /* builder-only label for the sidebar/tab — independent of the on-page heading */
   label: s.label || "",
   heading: s.heading || "",
@@ -700,7 +886,7 @@ const normSection = (s) => ({
   /* older saved sections keep their own look ("custom"); the global style is
      opt-in per section so migrating never changes an existing page's cards */
   styleMode: s.styleMode === "global" ? "global" : "custom",
-  style: { ...DEFAULT_STYLE, ...(s.style || {}), num: false, file: false },
+  style: { ...DEFAULT_STYLE, ...(s.style || {}), file: false },
   layout: { ...DEFAULT_SECTION_LAYOUT, ...(s.layout || {}) },
   liquid: { ...DEFAULT_LIQUID, ...(s.liquid || {}) },
   columns: (Array.isArray(s.columns) && s.columns.length ? s.columns.slice(0, 4) : DEFAULT_COLUMNS()).map(normColumn),
@@ -738,7 +924,7 @@ function migrateConfig(loaded) {
       const lp = LEGACY_FONT_PRESETS[loaded.fonts] || LEGACY_FONT_PRESETS.readme;
       return { custom: lp.heading !== "readme", ...lp };
     })(),
-    hero: { ...D.hero, ...(loaded.hero || {}) },
+    hero: { ...D.hero, ...(loaded.hero || {}), panel: { ...D.hero.panel, ...((loaded.hero && loaded.hero.panel) || {}) } },
     ticker: { ...D.ticker, ...(loaded.ticker || {}) },
     brandBar: {
       ...D.brandBar,
@@ -764,7 +950,7 @@ function migrateConfig(loaded) {
       }
       return { colorMode: t.matchReadme === false ? "custom" : "readme", colors, pattern: !!t.pattern };
     })(),
-    cardStyle: { ...DEFAULT_STYLE, ...(loaded.cardStyle || {}), num: false, file: false },
+    cardStyle: { ...DEFAULT_STYLE, ...(loaded.cardStyle || {}), file: false },
     layout: { maxW: (loaded.layout && loaded.layout.maxW) || 1120 },
     banner: { ...D.banner, ...(loaded.banner || {}) },
     footer: loaded.footer != null ? loaded.footer : D.footer,
@@ -935,6 +1121,8 @@ function buildCard(v, style) {
   /* content lives in a growing body so cards stay equal height and the CTA
      keeps a consistent gap / bottom-aligns regardless of content length */
   let body = "";
+  if (style.num && v.num) body += `\n        <span class="bnk-card__num">${v.num}</span>`;
+  if (v.meta) body += `\n        <span class="bnk-card__meta">${v.meta}</span>`;
   if (style.badge) body += `\n        <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
   const iconHtml = `<span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
   const edf = v.ed || (() => "");
@@ -974,7 +1162,7 @@ let _editable = false;
 const ed = (path) => (_editable ? ` data-glp="${path}"` : "");
 /* config paths the preview may write — anything else posted back is ignored */
 const EDITABLE_PATH_RE =
-  /^(hero\.(eyebrow|title|subtitle|searchHint|btnPrimary\.label|btnSecondary\.label)|footer|banner\.(title|text)|brandBar\.(links\.\d+\.label|button\.label)|sections\.\d+\.(heading|intro|cards\.\d+\.(title|blurb|peekLabel|peekItems\.\d+|links\.\d+\.label)|columns\.\d+\.(heading|body)))$/;
+  /^(hero\.(eyebrow|title|subtitle|searchHint|btnPrimary\.label|btnSecondary\.label)|footer|banner\.(title|text)|brandBar\.(links\.\d+\.label|button\.label)|hero\.panel\.(title|links\.\d+\.label)|banner\.btn2Label|sections\.\d+\.(heading|intro|eyebrow|cards\.\d+\.(title|blurb|peekLabel|peekItems\.\d+|links\.\d+\.label)|columns\.\d+\.(heading|body)))$/;
 
 /* immutable set of a dotted path ("sections.0.cards.2.title") */
 function setAtPath(obj, parts, value) {
@@ -1030,6 +1218,8 @@ function sectionCards(sec, palette, style, si) {
             icon: iconMarkup(c),
             title: esc(c.title),
             blurb: esc(c.blurb),
+            num: String(i + 1).padStart(2, "0"),
+            meta: esc(c.meta || ""),
             linksHtml: staticLinks(c, `sections.${si}.cards.${i}`),
             peekHtml: staticPeek(c, `sections.${si}.cards.${i}`),
             ed: (f) => ed(`sections.${si}.cards.${i}.${f}`),
@@ -1061,6 +1251,7 @@ function sectionCards(sec, palette, style, si) {
       badgeHtml: Q.badge === "lock" ? LOCK_SVG : '<span class="bnk-dot"></span>',
       icon: iconMarkup(Q),
       title: "{{ child.name }}",
+      num: "{% if forloop.index < 10 %}0{% endif %}{{ forloop.index }}",
       blurb: `{{ child.description | default: "${esc(Q.blurbFallback)}" }}`,
       peekHtml: liquidPeek,
       ctaText: esc(Q.ctaText),
@@ -1184,7 +1375,11 @@ function generateHTMLInner(cfg) {
   /* per-section grids */
   const gridRules = sections
     .map((sec, i) =>
-      sec.type === "columns"
+      sec.type === "code"
+        ? ""
+        : sec.type !== "columns" && sec.layout.list
+        ? `  .bnk-sec-${i} .bnk-grid { display: grid; grid-template-columns: 1fr; gap: 0; }`
+        : sec.type === "columns"
         ? `  .bnk-sec-${i} .bnk-cols {
     display: grid;
     grid-template-columns: repeat(${Math.min(4, Math.max(1, (sec.columns || []).length || 1))}, 1fr);
@@ -1370,6 +1565,97 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
 ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${patternSvg("FFFFFF")};`)}
 `
     : "";
+
+  /* ===== template building blocks: glow, side panel, quick links, big search,
+     section eyebrow, numbered/meta cards, list rows, code sample, centered banner ===== */
+  const extrasCSS = `
+  .bnk-landing > *:not(.bnk-heroglow):not(.bnk-herobg) { position: relative; z-index: 1; }
+  .bnk-heroglow {
+    position: absolute; top: -80px; left: 50%; width: 100vw; height: 720px; transform: translateX(-50%);
+    z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--bnk-accent) 26%, transparent), transparent 70%),
+      radial-gradient(45% 45% at 85% 0%, color-mix(in srgb, var(--bnk-accent) 14%, transparent), transparent 70%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+            mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  }
+  .bnk-herogrid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); gap: 48px; align-items: center; margin-top: 34px; }
+  .bnk-herogrid .bnk-hero { margin-top: 0; }
+  .bnk-panel {
+    padding: 22px; border-radius: var(--bnk-radius, 14px); background: var(--card-bg); border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+  }
+  .bnk-panel .bnk-actions--panel { margin: 0 0 18px; justify-content: stretch; }
+  .bnk-panel .bnk-actions--panel .rm-Header-search { flex: 1 1 auto !important; }
+  .bnk-panel__title { margin: 0 0 8px; font-family: ${F.mono}; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bnk-ink-2) !important; }
+  .bnk-panel__link {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 10px; margin: 0 -10px;
+    border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14.5px; color: var(--bnk-heading) !important;
+  }
+  .bnk-panel__link:hover { background: color-mix(in srgb, var(--bnk-accent) 9%, transparent); }
+  .bnk-panel__meta { font-family: ${F.mono}; font-size: 12px; font-weight: 400; color: var(--bnk-ink-2) !important; }
+  .bnk-quick { display: flex; flex-wrap: wrap; gap: 8px; justify-content: ${heroLeft ? "flex-start" : "center"}; margin: 14px auto 0; max-width: 760px; }
+  .bnk-quick__link {
+    padding: 6px 14px; border-radius: 999px; font-size: 13.5px; text-decoration: none;
+    color: var(--bnk-ink-1) !important; border: 1px solid var(--card-border); background: var(--card-bg);
+    transition: border-color 150ms ease, color 150ms ease;
+  }
+  .bnk-quick__link:hover { border-color: var(--bnk-accent); color: var(--bnk-accent) !important; }
+  .bnk-actions--lg .rm-Header-search { flex: 1 1 640px !important; max-width: 660px; }
+  .bnk-actions--lg .rm-Header-search .rm-SearchToggle { height: 58px !important; font-size: 16px !important; border-radius: 14px !important; padding: 0 20px !important; }
+  .bnk-actions--lg .rm-AskAi-button { height: 58px !important; border-radius: 14px !important; }
+  .bnk-section__eyebrow {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 10px;
+    font-family: ${F.mono}; font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--bnk-accent) !important;
+  }
+  .bnk-section__eyebrow::before { content: ""; width: 18px; height: 1.5px; background: currentColor; }
+  .bnk-sec--center .bnk-section__eyebrow { justify-content: center; }
+  .bnk-card__num { display: block; margin: 0 0 16px; padding-bottom: 12px; font-family: ${F.mono}; font-size: 14px; font-weight: 700; color: var(--accent) !important; position: relative; }
+  .bnk-card__num::after { content: ""; position: absolute; left: 0; bottom: 0; width: 24px; height: 2px; background: var(--accent); opacity: .7; }
+  .bnk-card__meta {
+    position: absolute; top: var(--card-pad-top, 22px); right: 22px; padding: 3px 9px; border-radius: 999px;
+    font-size: 12px; color: var(--bnk-ink-2) !important; background: color-mix(in srgb, var(--bnk-ink-2) 10%, transparent);
+  }
+  .bnk-sec--list .bnk-grid { border: 1px solid var(--card-border); border-radius: var(--card-radius); overflow: hidden; background: var(--card-bg); }
+  .bnk-sec--list .bnk-card { --card-border-now: transparent; --card-shadow: inset 0 -1px 0 var(--card-divider); --card-radius: 0; flex-direction: row; align-items: center; gap: 16px; padding: 16px 22px !important; min-height: 0; }
+  .bnk-sec--list .bnk-card:last-child { --card-shadow: none; }
+  .bnk-sec--list .bnk-card:hover { transform: none; }
+  .bnk-sec--list .bnk-card__body { flex-direction: row; align-items: baseline; gap: 24px; min-width: 0; }
+  .bnk-sec--list .bnk-card__title, .bnk-sec--list .bnk-card__head { flex: 0 0 210px; margin: 0; font-size: 17px; }
+  .bnk-sec--list .bnk-card__head .bnk-card__title { flex: none; }
+  .bnk-sec--list .bnk-card__icon { margin: 0; }
+  .bnk-sec--list .bnk-card__blurb { flex: 1 1 auto; min-width: 0; }
+  .bnk-sec--list .bnk-card__meta { position: static; flex: none; background: none; padding: 0; margin-left: auto; font-family: ${F.mono}; order: 3; }
+  .bnk-sec--list .bnk-card__title, .bnk-sec--list .bnk-card__head { order: 1; }
+  .bnk-sec--list .bnk-card__blurb { order: 2; }
+  .bnk-sec--list .bnk-card__num { display: none; }
+  .bnk-sec--list .bnk-card__arrow, .bnk-sec--list .bnk-card__go { margin: 0; align-self: center; }
+  .bnk-codesec { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 48px; align-items: center; }
+  .bnk-codesec .bnk-section { margin: 0; }
+  .bnk-codesec__langs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .bnk-codesec__lang { padding: 5px 12px; border-radius: 999px; font-family: ${F.mono}; font-size: 12px; color: var(--bnk-ink-2) !important; border: 1px solid var(--card-border); }
+  .bnk-codesec__lang.on { color: var(--bnk-accent) !important; border-color: color-mix(in srgb, var(--bnk-accent) 55%, transparent); background: color-mix(in srgb, var(--bnk-accent) 12%, transparent); }
+  .bnk-codewin { border-radius: 12px; overflow: hidden; background: #0B0E16; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+  .bnk-codewin__bar { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .bnk-codewin__bar i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .bnk-codewin__bar span { margin-left: 8px; font-family: ${F.mono}; font-size: 12px; color: rgba(255,255,255,.55); }
+  .bnk-codewin__pre { margin: 0; padding: 20px 22px 24px; overflow: auto; font-family: ${F.mono}; font-size: 13px; line-height: 1.7; color: #E6EAF5; white-space: pre; }
+  .bnk-banner.bnk-banner--center { flex-direction: column; text-align: center; gap: 0; padding: 52px 36px; }
+  .bnk-banner--center .bnk-banner__title { font-size: 30px; margin-bottom: 12px; }
+  .bnk-banner--center .bnk-banner__text { max-width: 560px; margin: 0 auto; font-size: 15px; }
+  .bnk-banner__btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 26px; }
+  .bnk-banner .bnk-banner__btn.bnk-banner__btn--ghost { background: transparent !important; color: var(--bnk-heading) !important; border: 1px solid color-mix(in srgb, var(--bnk-heading) 25%, transparent); }
+  .bnk-banner.bnk-banner--glow { background:
+      radial-gradient(60% 90% at 15% 0%, color-mix(in srgb, var(--bnk-accent) 22%, transparent), transparent 70%),
+      radial-gradient(50% 80% at 90% 100%, color-mix(in srgb, var(--bnk-accent) 16%, transparent), transparent 70%),
+      var(--card-bg); }
+  @media (max-width: 860px) {
+    .bnk-herogrid, .bnk-codesec { grid-template-columns: 1fr; }
+    .bnk-sec--list .bnk-card__body { flex-direction: column; gap: 6px; }
+    .bnk-sec--list .bnk-card__title, .bnk-sec--list .bnk-card__head { flex: none; }
+  }
+`;
 
   const tickerCSS = cfg.ticker.enabled
     ? `
@@ -1658,6 +1944,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   const sectionsMarkup = sections
     .map((sec, i) => {
       const isCols = sec.type === "columns";
+      const isCode = sec.type === "code";
       const st = effStyle(sec);
       const cls =
         `bnk-sec bnk-sec-${i} bnk-sec--${sec.align === "left" ? "left" : "center"}` +
@@ -1665,7 +1952,9 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
         (["subtle", "accent", "dark"].includes(sec.layout.bg) ? " bnk-sec--bg-" + sec.layout.bg : "") +
         (!isCols && st.bar ? " bnk-sec--bar" : "") +
         (!isCols && st.mono ? " bnk-sec--mono" : "") +
-        (!isCols && sec.layout.bento ? " bnk-sec--bento" : "");
+        (!isCols && !isCode && sec.layout.bento && !sec.layout.list ? " bnk-sec--bento" : "") +
+        (!isCols && !isCode && sec.layout.list ? " bnk-sec--list" : "") +
+        (isCode ? " bnk-sec--code" : "");
       const titleFont = !isCols && st.mono ? F.mono : F.display;
       const titleTt = !isCols && st.mono ? "uppercase" : "none";
       const minh = sec.layout.autoH ? "auto" : `${sec.layout.cardMinH}px`;
@@ -1674,12 +1963,26 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
         st.density
       )}; --title-font: ${titleFont}; --title-tt: ${titleTt}; --card-minh: ${minh};`;
       const heading =
-        sec.heading.trim() || sec.intro.trim()
+        sec.heading.trim() || sec.intro.trim() || (sec.eyebrow || "").trim()
           ? `    <div class="bnk-section">
-${sec.heading.trim() ? `      <h2 class="bnk-section__title"${ed(`sections.${i}.heading`)}>${esc(sec.heading)}</h2>\n` : ""}${
+${(sec.eyebrow || "").trim() ? `      <p class="bnk-section__eyebrow"${ed(`sections.${i}.eyebrow`)}>${esc(sec.eyebrow)}</p>\n` : ""}${sec.heading.trim() ? `      <h2 class="bnk-section__title"${ed(`sections.${i}.heading`)}>${esc(sec.heading)}</h2>\n` : ""}${
               sec.intro.trim() ? `      <p class="bnk-section__text"${ed(`sections.${i}.intro`)}>${esc(sec.intro)}</p>\n` : ""
             }    </div>\n`
           : "";
+      if (isCode) {
+        const code = sec.code || DEFAULT_CODE;
+        const langs = (code.langs || "").split(",").map((x) => x.trim()).filter(Boolean);
+        return `  <div class="${cls}" style="${styleVars}">
+    <div class="bnk-codesec">
+      <div class="bnk-codesec__copy">
+${heading.replace(/^/gm, "  ")}${langs.length ? `        <div class="bnk-codesec__langs">${langs.map((l, k) => `<span class="bnk-codesec__lang${k === 0 ? " on" : ""}">${esc(l)}</span>`).join("")}</div>\n` : ""}      </div>
+      <div class="bnk-codewin">
+        <div class="bnk-codewin__bar"><i></i><i></i><i></i><span>${esc(code.file)}</span></div>
+        <pre class="bnk-codewin__pre"><code>${esc(code.text)}</code></pre>
+      </div>
+    </div>
+  </div>`;
+      }
       const body = isCols
         ? `    <div class="bnk-cols">
 ${sectionColumns(sec, i)}
@@ -1712,7 +2015,34 @@ ${heading}${body}
       <a class="bnk-btn bnk-btn--secondary" href="${esc(normPath(cfg.hero.btnSecondary.href))}"${ed("hero.btnSecondary.label")}>${esc(cfg.hero.btnSecondary.label)}</a>
     </div>\n`
     : "";
-  const bannerMarkup = cfg.banner.enabled
+  const H = cfg.hero;
+  const panelOn = !!(H.panel && H.panel.enabled);
+  const quickLinks = (H.quickLinks || []).filter((l) => (l.label || "").trim());
+  const quickMarkup = quickLinks.length
+    ? `  <div class="bnk-quick">${quickLinks.map((l) => `<a class="bnk-quick__link" href="${esc(normPath(l.href || "/"))}">${esc(l.label)}</a>`).join("")}</div>\n`
+    : "";
+  const actionsMarkup = sm === "hero"
+    ? `  <div class="bnk-actions${H.searchSize === "large" ? " bnk-actions--lg" : ""}${panelOn ? " bnk-actions--panel" : ""}" id="rm-actions"></div>\n${!panelOn && H.searchHint && H.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint")}>${esc(H.searchHint)}</p>\n` : ""}`
+    : "";
+  const panelLinks = panelOn ? (H.panel.links || []).map((l, j) => ({ ...l, j })).filter((l) => (l.label || "").trim()) : [];
+  const panelMarkup = panelOn
+    ? `    <aside class="bnk-panel">
+${sm === "hero" ? "    " + actionsMarkup.trim() + "\n" : ""}      <p class="bnk-panel__title"${ed("hero.panel.title")}>${esc(H.panel.title)}</p>
+${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l.href || "/"))}"><span${ed(`hero.panel.links.${l.j}.label`)}>${esc(l.label)}</span>${(l.meta || "").trim() ? `<span class="bnk-panel__meta">${esc(l.meta)}</span>` : ""}</a>`).join("\n")}
+    </aside>\n`
+    : "";
+  const bannerCenter = cfg.banner.align === "center";
+  const bannerMarkup = cfg.banner.enabled && bannerCenter
+    ? `\n  <div class="bnk-banner bnk-banner--center${cfg.banner.glow ? " bnk-banner--glow" : ""}">
+    <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
+    <p class="bnk-banner__text"${ed("banner.text")}>${esc(cfg.banner.text)}</p>
+    <div class="bnk-banner__btns">
+      <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>${
+        (cfg.banner.btn2Label || "").trim() ? `\n      <a class="bnk-banner__btn bnk-banner__btn--ghost" href="${esc(normPath(cfg.banner.btn2Href || "/"))}"${ed("banner.btn2Label")}>${esc(cfg.banner.btn2Label)}</a>` : ""
+      }
+    </div>
+  </div>\n`
+    : cfg.banner.enabled
     ? `\n  <div class="bnk-banner">
     <div class="bnk-banner__copy">
       <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
@@ -1870,6 +2200,7 @@ ${tickerCSS}
 ${chipCSS}
   .bnk-hero__title {
     margin: 0 0 20px;
+    text-wrap: balance;
     font-family: ${F.display};
     font-weight: 600;
     font-size: ${heroTitleSize}px;
@@ -1877,7 +2208,7 @@ ${chipCSS}
     color: var(--bnk-heading) !important;
   }
   .bnk-hero__sub { margin: 0 ${heroLeft ? "0" : "auto"}; max-width: 660px; font-size: ${heroSubSize}px; line-height: 1.5; color: var(--bnk-ink-2) !important; }
-${heroButtonsCSS}${actionsCSS}${patternCSS}${sectionCSS}${gridRules}
+${heroButtonsCSS}${actionsCSS}${extrasCSS}${patternCSS}${sectionCSS}${gridRules}
 ${cardCSS}
 ${accentRules}
   .rm-arrow { display: inline-block; transition: transform 200ms ease; }
@@ -1895,11 +2226,10 @@ ${bannerCSS}
 </style>
 
 <div class="bnk-landing" id="rm-root">
-${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}  <div class="bnk-hero">
+${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${H.bg === "glow" ? '  <div class="bnk-heroglow" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}${panelOn ? '  <div class="bnk-herogrid">\n' : ""}  <div class="bnk-hero">
 ${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title"${ed("hero.title")}>${esc(cfg.hero.title)}</h1>
-    <p class="bnk-hero__sub"${ed("hero.subtitle")}>${esc(cfg.hero.subtitle)}</p>
-${heroButtons}  </div>
-${sm === "hero" ? `\n  <div class="bnk-actions" id="rm-actions"></div>\n${cfg.hero.searchHint && cfg.hero.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint")}>${esc(cfg.hero.searchHint)}</p>\n` : ""}` : ""}
+${cfg.hero.subtitle.trim() ? `    <p class="bnk-hero__sub"${ed("hero.subtitle")}>${esc(cfg.hero.subtitle)}</p>\n` : ""}${heroButtons}  </div>
+${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}
 ${sectionsMarkup}
 ${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer"${ed("footer")}>${esc(cfg.footer)}</p>` : ""}
 </div>
@@ -2649,6 +2979,7 @@ const APP_CSS = `
   .glp-iconpop .glp-seg { margin-bottom: 8px; }
   .glp-linkrow .glp-input { min-width: 0; }
   .glp-linkrow .glp-input:first-child { flex: 1.4; }
+  .glp-linkrow .glp-linkrow__meta { flex: 0 0 64px; }
 
   .glp-add {
     width: 100%; border: 1px dashed var(--line-2); background: transparent;
@@ -3419,7 +3750,7 @@ function RowHead({ noun, max, index, count, open, onToggle, onMove, onDuplicate,
 }
 
 /* ---------- shared: editable list of { label, href } rows ---------- */
-function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefPh = "/path", addLabel = "+ Add link" }) {
+function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefPh = "/path", addLabel = "+ Add link", withMeta = false }) {
   const list = links || [];
   const setRow = (i, p) => onChange(list.map((l, j) => (j === i ? { ...l, ...p } : l)));
   const move = (i, dir) => {
@@ -3435,12 +3766,13 @@ function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefP
         <div className="glp-peekitem glp-linkrow" key={i}>
           <input className="glp-input" value={l.label} placeholder={labelPh} onChange={(e) => setRow(i, { label: e.target.value })} />
           <input className="glp-input" value={l.href} placeholder={hrefPh} onChange={(e) => setRow(i, { href: e.target.value })} />
+          {withMeta && <input className="glp-input glp-linkrow__meta" value={l.meta || ""} placeholder="Count" onChange={(e) => setRow(i, { meta: e.target.value })} />}
           <button className="glp-iconbtn" type="button" title="Move up" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}><i className="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
           <button className="glp-iconbtn" type="button" title="Remove" aria-label="Remove" onClick={() => onChange(list.filter((_, j) => j !== i))}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
       ))}
       {list.length < max && (
-        <button className="glp-add glp-add--sm" type="button" onClick={() => onChange([...list, { label: "", href: "" }])}>
+        <button className="glp-add glp-add--sm" type="button" onClick={() => onChange([...list, withMeta ? { label: "", href: "", meta: "" } : { label: "", href: "" }])}>
           {addLabel}
         </button>
       )}
@@ -3474,6 +3806,9 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
               <input className="glp-input" value={card.href} onChange={(e) => set({ href: e.target.value })} placeholder="my-project" />
             </Field>
           </div>
+          <Field label="Count label (optional, e.g. 120 pages)">
+            <input className="glp-input" value={card.meta} onChange={(e) => set({ meta: e.target.value })} placeholder="Blank to hide" />
+          </Field>
           <Field label="Description">
             <textarea className="glp-textarea" rows={2} placeholder={style.links ? "Blank to hide" : ""} value={card.blurb} onChange={(e) => set({ blurb: e.target.value })} />
           </Field>
@@ -3647,6 +3982,7 @@ function CardStyleControls({ style: st, setStyle, liquid = false }) {
         <StyleCheck checked={!!st.anchor} label="Whole card links" onChange={(v) => setStyle({ anchor: v })} />
         <StyleCheck checked={!!st.mono} label="Mono / uppercase" onChange={(v) => setStyle({ mono: v })} />
         {!liquid && <StyleCheck checked={!!st.links} label="Link list" onChange={(v) => setStyle({ links: v })} />}
+        <StyleCheck checked={!!st.num} label="Numbered (01, 02)" onChange={(v) => setStyle({ num: v })} />
         <StyleCheck checked={!!st.iconInline} label="Icon beside title" onChange={(v) => setStyle(v ? { iconInline: true, icon: true } : { iconInline: false })} />
       </div>
       {/* NB: this "button" value means "a styled CTA is shown" (filled or ghost, chosen
@@ -3746,7 +4082,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
   const setLiq = (patch) => onChange({ ...section, liquid: { ...section.liquid, ...patch } });
   const isCols = section.type === "columns";
   const [tabSel, setTab] = useState("content");
-  const tab = isCols && tabSel === "style" ? "content" : tabSel;
+  const tab = (isCols || section.type === "code") && tabSel === "style" ? "content" : tabSel;
   /* the style that actually renders this section's cards: its own or the global one */
   const est = section.styleMode === "custom" ? section.style : globalStyle;
   const liquidOn = section.source === "liquid";
@@ -3795,18 +4131,21 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
       <RowHead noun="section" max={6} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <RenameName value={section.label} fallback={section.heading || `Section ${index + 1}`} onChange={(v) => set({ label: v })} />
-        <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "auto" : section.cards.length + " cards"}</span>
+        <span className="glp-card__meta">{section.type === "code" ? "code" : isCols ? section.columns.length + " cols" : liquidOn ? "auto" : section.cards.length + " cards"}</span>
       </RowHead>
       {open && (
         <div className="glp-card__body">
           <div className="glp-subtabs" role="tablist" aria-label="Section settings">
-            {[["content", "Content"], ["layout", "Layout"], ...(isCols ? [] : [["style", "Card style"]])].map(([k, l]) => (
+            {[["content", "Content"], ["layout", "Layout"], ...(isCols || section.type === "code" ? [] : [["style", "Card style"]])].map(([k, l]) => (
               <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
             ))}
           </div>
 
           {tab === "content" && (
             <>
+              <Field label="Label above heading">
+                <input className="glp-input" value={section.eyebrow} onChange={(e) => set({ eyebrow: e.target.value })} placeholder="Blank to hide, e.g. Code samples" />
+              </Field>
               <Field label="Heading">
                 <input className="glp-input" value={section.heading} onChange={(e) => set({ heading: e.target.value })} placeholder="Blank to hide" />
               </Field>
@@ -3815,15 +4154,30 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
               </Field>
               <Field label="Type" inline>
                 <Seg
-                  value={isCols ? "columns" : "cards"}
+                  value={section.type}
                   onChange={(v) => set({ type: v })}
                   options={[
                     { value: "cards", label: "Cards" },
-                    { value: "columns", label: "Text columns" },
+                    { value: "columns", label: "Columns" },
+                    { value: "code", label: "Code" },
                   ]}
                 />
               </Field>
-              {isCols ? (
+              {section.type === "code" ? (
+                <>
+                  <div className="glp-row2">
+                    <Field label="File name">
+                      <input className="glp-input" value={section.code.file} onChange={(e) => set({ code: { ...section.code, file: e.target.value } })} />
+                    </Field>
+                    <Field label="Language chips">
+                      <input className="glp-input" value={section.code.langs} onChange={(e) => set({ code: { ...section.code, langs: e.target.value } })} placeholder="TypeScript, Python" />
+                    </Field>
+                  </div>
+                  <Field label="Code">
+                    <textarea className="glp-textarea" rows={8} spellCheck={false} style={{ fontFamily: "var(--font-mono)", fontSize: 12, whiteSpace: "pre" }} value={section.code.text} onChange={(e) => set({ code: { ...section.code, text: e.target.value } })} />
+                  </Field>
+                </>
+              ) : isCols ? (
                 <>
                   <div className="glp-sub">Columns</div>
               {section.columns.map((col, i) => (
@@ -3928,11 +4282,14 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                   ]}
                 />
               </Field>
-              {isCols ? (
+              {section.type === "code" ? null : isCols ? (
                 <Slider label="Column gap" value={section.layout.gap} min={12} max={56} onChange={(v) => setLay({ gap: v })} />
               ) : (
                 <>
-                  {!section.layout.bento && (
+                  <Field label="Arrange" inline>
+                    <Seg value={section.layout.list ? "list" : "grid"} onChange={(v) => setLay({ list: v === "list" })} options={[{ value: "grid", label: "Grid" }, { value: "list", label: "List rows" }]} />
+                  </Field>
+                  {!section.layout.bento && !section.layout.list && (
                     <Slider label="Min card width" value={section.layout.colMin} min={180} max={420} onChange={(v) => setLay({ colMin: v })} />
                   )}
                   <Slider label="Card gap" value={section.layout.gap} min={12} max={36} onChange={(v) => setLay({ gap: v })} />
@@ -3948,7 +4305,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
             </>
           )}
 
-          {tab === "style" && !isCols && (
+          {tab === "style" && !isCols && section.type !== "code" && (
             <>
               <Field label="Look" inline>
                 <Seg
@@ -4413,6 +4770,8 @@ function App() {
         id,
         type: "cards",
         label: "",
+        eyebrow: "",
+        code: { ...DEFAULT_CODE },
         heading: "New section",
         intro: "",
         align: "center",
@@ -5352,6 +5711,22 @@ function App() {
                         <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
                       </Field>
                     </div>
+                    <Field label="Layout" inline>
+                      <Seg value={config.banner.align} onChange={(v) => setBanner({ align: v })} options={[{ value: "left", label: "Side by side" }, { value: "center", label: "Centered" }]} />
+                    </Field>
+                    {config.banner.align === "center" && (
+                      <>
+                        <div className="glp-row2">
+                          <Field label="Second button (optional)">
+                            <input className="glp-input" value={config.banner.btn2Label} onChange={(e) => setBanner({ btn2Label: e.target.value })} placeholder="Read the API" />
+                          </Field>
+                          <Field label="Second button link">
+                            <input className="glp-input" value={config.banner.btn2Href} onChange={(e) => setBanner({ btn2Href: e.target.value })} placeholder="/reference" />
+                          </Field>
+                        </div>
+                        <Toggle checked={config.banner.glow} onChange={(v) => setBanner({ glow: v })} label="Glow background" hint="Soft brand-color glow behind the banner." style={{ paddingTop: 0 }} />
+                      </>
+                    )}
                   </>
                 )}
 
@@ -5427,7 +5802,34 @@ function App() {
                     />
                   </Field>
                 )}
+                {effSearchMode(config) === "hero" && (
+                  <Field label="Search size" inline>
+                    <Seg value={config.hero.searchSize} onChange={(v) => setHero({ searchSize: v })} options={[{ value: "normal", label: "Normal" }, { value: "large", label: "Large" }]} />
+                  </Field>
+                )}
+                <Field label="Background" inline>
+                  <Seg value={config.hero.bg} onChange={(v) => setHero({ bg: v })} options={[{ value: "none", label: "None" }, { value: "glow", label: "Glow" }]} />
+                </Field>
                 <NumberField label="Vertical padding" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
+                <Field label="Quick links (pills under the hero)">
+                  <LinkListEditor links={config.hero.quickLinks} onChange={(quickLinks) => setHero({ quickLinks })} max={8} labelPh="Get started" hrefPh="/guides" />
+                </Field>
+                <Toggle
+                  checked={config.hero.panel.enabled}
+                  onChange={(v) => setHero({ panel: { ...config.hero.panel, enabled: v }, ...(v ? { align: "left" } : {}) })}
+                  label="Side panel"
+                  hint="A card beside the hero with a titled list of links and counts. Holds the search box when search sits under the hero."
+                />
+                {config.hero.panel.enabled && (
+                  <>
+                    <Field label="Panel title">
+                      <input className="glp-input" value={config.hero.panel.title} onChange={(e) => setHero({ panel: { ...config.hero.panel, title: e.target.value } })} />
+                    </Field>
+                    <Field label="Panel links">
+                      <LinkListEditor withMeta links={config.hero.panel.links} onChange={(links) => setHero({ panel: { ...config.hero.panel, links } })} max={8} labelPh="Guides" hrefPh="/guides" />
+                    </Field>
+                  </>
+                )}
                 <Toggle
                   checked={config.hero.buttons}
                   onChange={(v) => setHero({ buttons: v })}
