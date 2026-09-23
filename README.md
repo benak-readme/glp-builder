@@ -40,8 +40,8 @@ preview — then copy the generated snippet into
 - **Link-list cards** — a card style that turns a card into rows of chevron
   links (wrap a word in `*asterisks*` for italics) with an optional footnote
   link. Great for "Customers / Partners" pick-your-path cards.
-- **Page templates** — the **Templates** tab switches a page to Stella, Aurora,
-  Spotlight, Editorial or Terminal. **Stella** opens a complete starting page
+- **Page templates** — the **Templates** tab switches a page to Grandview, Aurora,
+  Spotlight, Editorial or Terminal. **Grandview** opens a complete starting page
   (brand bar, search hero, audience link lists, icon doc tiles, dark help
   strip).
 - **Edit text right in the preview** — click any heading, card title, link
