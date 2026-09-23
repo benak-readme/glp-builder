@@ -865,9 +865,10 @@ function buildCard(v, style) {
   /* a card holding its own links can't also be one big <a> (nested anchors) */
   const anchor = style.anchor && !(style.links && v.linksHtml);
   style = anchor === style.anchor ? style : { ...style, anchor };
+  const extra = v.attrs || "";
   const openTag = style.anchor
-    ? `<a class="bnk-card ${v.accentClass}${primaryCls}" href="${v.href}"\n       ${INLINE_CARD_STYLE}>`
-    : `<div class="bnk-card ${v.accentClass}${primaryCls}"\n       ${INLINE_CARD_STYLE}>`;
+    ? `<a class="bnk-card ${v.accentClass}${primaryCls}" href="${v.href}"${extra}\n       ${INLINE_CARD_STYLE}>`
+    : `<div class="bnk-card ${v.accentClass}${primaryCls}"${extra}\n       ${INLINE_CARD_STYLE}>`;
   const closeTag = style.anchor ? "</a>" : "</div>";
 
   /* content lives in a growing body so cards stay equal height and the CTA
@@ -1004,6 +1005,9 @@ function sectionCards(sec, palette, style, si) {
       ctaText: esc(Q.ctaText),
       ctaStyle: Q.ctaStyle,
       comment: "One card per child project (Liquid)",
+      /* preview only: these cards are filled by ReadMe, so the preview explains
+         that on hover and opens the section's settings on click */
+      attrs: _editable ? ` data-glp-auto="${si}"` : "",
     },
     style
   );
@@ -1877,8 +1881,10 @@ function expandLiquidForPreview(html) {
 const PREVIEW_EDIT_SCRIPT = `
 <style>
   [data-glp] { cursor: text; border-radius: 3px; outline: 1px dashed transparent; outline-offset: 3px; transition: outline-color 120ms ease; }
-  [data-glp]:hover { outline-color: rgba(76,141,255,.55); }
-  [data-glp]:focus { outline: 2px solid #4C8DFF; outline-offset: 3px; }
+  [data-glp]:hover { outline-color: rgba(33,58,255,.55); }
+  [data-glp]:focus { outline: 2px solid #213AFF; outline-offset: 3px; }
+  [data-glp-auto] { cursor: help; }
+  [data-glp-auto]:hover { outline: 1px dashed rgba(33,58,255,.55); outline-offset: 3px; }
 </style>
 <script>
 (function () {
@@ -1929,6 +1935,30 @@ const PREVIEW_EDIT_SCRIPT = `
     var s = getSelection();
     if (s.modify) { s.modify("move", "backward", "word"); s.modify("extend", "forward", "word"); }
   }, true);
+  /* "Auto from projects" cards: nothing to type into, so say why and let a
+     click jump to that section's settings in the builder */
+  var tip = null;
+  function showTip(card, x, y) {
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.setAttribute("style", "position:fixed;z-index:99999;max-width:260px;padding:8px 11px;border-radius:8px;background:#00033F;color:#fff;font:500 12px/1.45 -apple-system,Segoe UI,sans-serif;box-shadow:0 8px 24px rgba(0,3,63,.3);pointer-events:none");
+      tip.innerHTML = "<b>Auto-filled by ReadMe</b><br>One card per child project, using each project's name and description. Click to open this section's settings.";
+      document.body.appendChild(tip);
+    }
+    tip.style.display = "block";
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(x + 14, innerWidth - w - 8) + "px";
+    tip.style.top = Math.min(y + 16, innerHeight - h - 8) + "px";
+  }
+  document.addEventListener("mousemove", function (e) {
+    var card = e.target.closest && e.target.closest("[data-glp-auto]");
+    if (card) showTip(card, e.clientX, e.clientY); else if (tip) tip.style.display = "none";
+  });
+  document.addEventListener("click", function (e) {
+    var card = e.target.closest && e.target.closest("[data-glp-auto]");
+    if (card) parent.postMessage({ type: "glp-focus-section", index: Number(card.getAttribute("data-glp-auto")) }, "*");
+  }, true);
+
   /* links inside the preview never navigate */
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
   document.addEventListener("auxclick", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
@@ -3998,14 +4028,22 @@ function App() {
   const generated = useMemo(() => generateHTML(config), [config]);
   /* same page with data-glp hooks so text can be edited right in the preview */
   const previewHtml = useMemo(() => generateHTML(config, { editable: true }), [config]);
+  const configRef = useRef(config);
+  configRef.current = config;
 
   /* edits committed inside the preview iframe come back as { path, value } */
   useEffect(() => {
     const onMsg = (e) => {
       const d = e.data;
-      if (!d || d.type !== "glp-edit" || typeof d.path !== "string" || typeof d.value !== "string") return;
+      if (!d || typeof d !== "object") return;
       const fromPreview = [...document.querySelectorAll("iframe.glp-frame")].some((f) => f.contentWindow === e.source);
-      if (!fromPreview || !EDITABLE_PATH_RE.test(d.path)) return;
+      if (!fromPreview) return;
+      if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
+        const sec = configRef.current.sections[d.index];
+        if (sec) { setOpenNav("sections"); setOpenSection(sec.id); }
+        return;
+      }
+      if (d.type !== "glp-edit" || typeof d.path !== "string" || typeof d.value !== "string" || !EDITABLE_PATH_RE.test(d.path)) return;
       setConfig((c) => setAtPath(c, d.path.split("."), d.value.slice(0, 2000)));
     };
     window.addEventListener("message", onMsg);
