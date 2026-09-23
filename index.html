@@ -1676,7 +1676,7 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button {
     -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
   }
-${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  ", (pad) => `${pad}background-color: rgb(12 11 14 / 0.92) !important;`)}
+${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  ", (pad) => `${pad}background-color: rgba(var(--color-bg-page-rgb, 11, 12, 13), 0.92) !important;`)}
   @media (max-width: 860px) {
     .bnk-herogrid, .bnk-codesec { grid-template-columns: 1fr; }
     .bnk-sec--list .bnk-card__body { flex-direction: column; gap: 6px; }
@@ -1889,7 +1889,7 @@ ${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  "
   .bnk-card__arrow { margin-top: 18px; align-self: flex-end; color: var(--accent) !important; font-size: 16px; }
 
   .bnk-card:hover { transform: translateY(-3px); --card-bg-now: #F4F4F5; --card-border-now: color-mix(in srgb, var(--accent) 45%, #D4D4D8); }
-${darkBlock(".bnk-card:hover", "  ", (pad) => `${pad}--card-bg-now: #1C1E20;
+${darkBlock(".bnk-card:hover", "  ", (pad) => `${pad}--card-bg-now: rgba(255, 255, 255, 0.08);
 ${pad}--card-border-now: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.18));`)}
   .bnk-landing .bnk-sec--bg-dark .bnk-card:hover { --card-bg-now: rgba(255, 255, 255, 0.08); --card-border-now: rgba(255, 255, 255, 0.24); }
   .bnk-card:hover .rm-arrow { transform: translateX(4px); }
@@ -2156,10 +2156,13 @@ ${
 <style>${F.importUrl ? `\n  @import url('${F.importUrl}');` : ""}
 ${headerCSS}${brandCSS}${heroImageCSS}${headerCenterCSS}
   /* ===== GLOBAL THEME MAP — LIGHT / DEFAULT ===== */
+  /* Text and borders follow the hub's own ReadMe variables (so the page matches
+     the default theme or a customer's custom one), falling back to ReadMe's
+     default values when a variable isn't there. */
   .bnk-landing {
-    --bnk-ink-1: #52525B;
-    --bnk-ink-2: #71717A;
-    --bnk-heading: #18181B;
+    --bnk-ink-1: var(--color-text-muted, #484C58);
+    --bnk-ink-2: var(--color-text-minimum, #666B79);
+    --bnk-heading: var(--color-text-default, #32343A);
 
     /* Primary accent (hero chip / buttons / banner / ticker) */
     --bnk-accent: ${primary.light};
@@ -2171,9 +2174,9 @@ ${lightAccents}
     --bnk-cta-on: #FFFFFF;
 
     --card-bg: #FFFFFF;
-    --card-border: #E4E4E7;
-    --card-title: #18181B;
-    --card-divider: #EEEEF0;
+    --card-border: var(--color-border-default, rgba(0, 0, 0, 0.1));
+    --card-title: var(--color-text-default, #32343A);
+    --card-divider: var(--color-border-muted, rgba(0, 0, 0, 0.05));
     --card-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(0,0,0,.07);
     --card-blur: none;
 ${lightRoles.length ? "\n    /* custom colors */\n" + lightRoles.map((v) => "    " + v).join("\n") + "\n" : ""}
@@ -2189,19 +2192,19 @@ ${lightRoles.length ? "\n    /* custom colors */\n" + lightRoles.map((v) => "   
   }
 
   /* ===== DARK MODE — via ReadMe's native data-color-mode signal ===== */
-${darkBlock(".bnk-landing", "  ", (pad) => `${pad}/* ReadMe's own dark-mode neutrals, so the page blends into a dark hub */
-${pad}--bnk-ink-1: #A8ACAF;
-${pad}--bnk-ink-2: #8E8F95;
-${pad}--bnk-heading: #F8F8FA;
+${darkBlock(".bnk-landing", "  ", (pad) => `${pad}/* ReadMe's dark-mode variables (fallbacks = ReadMe's default dark values) */
+${pad}--bnk-ink-1: var(--color-text-muted, #C9CCD4);
+${pad}--bnk-ink-2: var(--color-text-minimum, #AEB2BD);
+${pad}--bnk-heading: var(--color-text-default, #FFFFFF);
 
 ${pad}--bnk-accent: ${primary.dark};
 ${darkAccents(pad)}
 ${pad}--bnk-cta-on: #0B0F14;
 
-${pad}--card-bg: #161819;
-${pad}--card-border: #2A2C2E;
-${pad}--card-title: #F8F8FA;
-${pad}--card-divider: #1F2123;
+${pad}--card-bg: rgba(255, 255, 255, 0.05);
+${pad}--card-border: var(--color-border-default, rgba(255, 255, 255, 0.1));
+${pad}--card-title: var(--color-text-default, #FFFFFF);
+${pad}--card-divider: var(--color-border-muted, rgba(255, 255, 255, 0.05));
 ${pad}--card-shadow: none;
 ${pad}--card-blur: blur(9px) saturate(118%);${darkRoles.length ? "\n" + darkRoles.map((v) => pad + v).join("\n") : ""}`)}${hasPageBg ? `
   /* full-width page background (extends past the content column) */
@@ -2414,25 +2417,41 @@ function buildPreviewDoc(userHtml, mode) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 <style>
+  /* stand-in for a hub on ReadMe's default theme: the same CSS variables
+     ReadMe sets (values read from a live hub in each mode) */
+  :root {
+    --color-bg-page: ${dark ? "#0b0c0d" : "#fff"};
+    --color-bg-page-rgb: ${dark ? "11, 12, 13" : "255, 255, 255"};
+    --color-bg-page-muted: ${dark ? "#17181a" : "#f9fafb"};
+    --color-bg-hover: ${dark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)"};
+    --color-text-default: ${dark ? "#fff" : "#32343a"};
+    --color-text-muted: ${dark ? "#c9ccd4" : "#484c58"};
+    --color-text-minimum: ${dark ? "#aeb2bd" : "#666b79"};
+    --color-border-default: ${dark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"};
+    --color-border-muted: ${dark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)"};
+    --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
   html, body { margin: 0; padding: 0; }
   body {
-    background: ${dark ? "#0C0B0E" : "#FBFBFC"};
-    font-family: Inter, -apple-system, sans-serif;
+    background: var(--color-bg-page);
+    color: var(--color-text-default);
+    font-family: var(--font-family);
     min-height: 100vh;
   }
   .rm-Header {
-    background: ${dark ? "#0C0B0E" : "#FFFFFF"};
-    box-shadow: 0 1px 0 ${dark ? "#1F2123" : "rgba(0,0,0,.08)"};
+    background: var(--color-bg-page);
+    box-shadow: 0 1px 0 var(--color-border-default);
+    position: relative; z-index: 10; /* ReadMe's header stacks above page content */
   }
   .rm-Header-top {
     display: flex; align-items: center; gap: 16px;
     padding: 10px 24px;
-    border-bottom: 1px solid ${dark ? "#1F2123" : "rgba(0,0,0,.06)"};
+    border-bottom: 1px solid var(--color-border-muted);
   }
   .rm-Header-brand {
     display: flex; align-items: center; gap: 9px;
     font-weight: 600; font-size: 15px;
-    color: ${dark ? "#F8F8FA" : "#18181B"};
+    color: var(--color-text-default);
     margin-right: auto;
   }
   .rm-Header-brand .brand-mark {
@@ -2443,31 +2462,31 @@ function buildPreviewDoc(userHtml, mode) {
   }
   .rm-Header-bottom {
     display: flex; gap: 20px; padding: 9px 24px;
-    font-size: 13.5px; color: ${dark ? "#ADAEB5" : "#52525B"};
+    font-size: 13.5px; color: var(--color-text-minimum);
   }
   .rm-Header-search { display: flex; }
   .rm-SearchToggle {
     display: flex; align-items: center; gap: 8px;
     min-width: 210px;
-    border: 1px solid ${dark ? "#2A2C2E" : "rgba(0,0,0,.12)"};
-    background: ${dark ? "#0C0B0E" : "#fff"};
-    color: ${dark ? "#ADAEB5" : "#71717A"};
+    border: 1px solid var(--color-border-default);
+    background: var(--color-bg-page);
+    color: var(--color-text-minimum);
     border-radius: 8px; padding: 7px 12px;
     font-size: 13.5px; font-family: inherit; cursor: pointer;
     text-align: left;
   }
   .rm-SearchToggle kbd {
     margin-left: auto; font-size: 11px;
-    border: 1px solid ${dark ? "#2A2C2E" : "rgba(0,0,0,.14)"};
+    border: 1px solid var(--color-border-default);
     border-radius: 4px; padding: 1px 5px;
     font-family: ui-monospace, monospace;
   }
   .rm-AskAi { display: flex; }
   .rm-AskAi-button {
     display: inline-flex; align-items: center; gap: 7px;
-    border: 1px solid ${dark ? "#2A2C2E" : "rgba(0,0,0,.12)"};
-    background: ${dark ? "#0C0B0E" : "#fff"};
-    color: ${dark ? "#F8F8FA" : "#18181B"};
+    border: 1px solid var(--color-border-default);
+    background: var(--color-bg-page);
+    color: var(--color-text-default);
     border-radius: 8px; padding: 7px 14px;
     font-size: 13.5px; font-family: inherit; cursor: pointer;
   }
