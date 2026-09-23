@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GLP Builder: Global landing pages for ReadMe Enterprise</title>
 <meta name="description" content="Visually build a Global Landing Page for your ReadMe Enterprise group, then copy the generated HTML into your dash.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A6CD6'/><text x='50' y='66' font-size='44' text-anchor='middle' fill='white' font-family='Helvetica,Arial,sans-serif' font-weight='800'>GL</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23213AFF'/><text x='50' y='66' font-size='44' text-anchor='middle' fill='white' font-family='Helvetica,Arial,sans-serif' font-weight='800'>GL</text></svg>">
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; background: #F0F3F8; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #F2F2F2; }
   #root { height: 100%; }
   .boot { height:100%; display:flex; align-items:center; justify-content:center; color:#4A5670; font-family:-apple-system,"Segoe UI",sans-serif; font-size:14px; font-weight:500; }
-  @media (prefers-color-scheme: dark) { html, body { background: #111a2e; } .boot { color: #b7c1d8; } }
+  @media (prefers-color-scheme: dark) { html, body { background: #00021E; } .boot { color: rgba(255,255,255,.72); } }
 </style>
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -47,52 +47,72 @@ const ACCENTS = {
    `readme` inherits the hub's own typeface via ReadMe's --font-family
    variable (set by ReadMe's defaults or the customer's Custom CSS /
    Appearance settings); importUrl is null so no Google font is loaded. */
-const FONTS = {
-  readme: {
-    label: "Match ReadMe",
-    hint: "Inherit the hub's own font (default or your Custom CSS)",
-    display: "var(--font-family, inherit)",
-    body: "var(--font-family, inherit)",
-    mono: "ui-monospace, SFMono-Regular, Menlo, monospace",
-    importUrl: null,
-  },
-  grotesk: {
-    label: "Space Grotesk + Inter",
-    hint: "Geometric and technical, the original look",
-    display: "'Space Grotesk', sans-serif",
-    body: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    mono: "'Space Mono', ui-monospace, monospace",
-    importUrl:
-      "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Inter:wght@400;500&family=Space+Mono:wght@400;700&display=swap",
-  },
-  editorial: {
-    label: "Fraunces + Source Sans 3",
-    hint: "Warm serif display, friendly body",
-    display: "'Fraunces', Georgia, serif",
-    body: "'Source Sans 3', -apple-system, sans-serif",
-    mono: "'IBM Plex Mono', ui-monospace, monospace",
-    importUrl:
-      "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap",
-  },
-  modern: {
-    label: "Manrope + Inter",
-    hint: "Soft, contemporary product feel",
-    display: "'Manrope', sans-serif",
-    body: "'Inter', -apple-system, sans-serif",
-    mono: "'JetBrains Mono', ui-monospace, monospace",
-    importUrl:
-      "https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;700&display=swap",
-  },
-  plex: {
-    label: "IBM Plex (all roles)",
-    hint: "Uniform, engineering-grade system",
-    display: "'IBM Plex Sans', sans-serif",
-    body: "'IBM Plex Sans', -apple-system, sans-serif",
-    mono: "'IBM Plex Mono', ui-monospace, monospace",
-    importUrl:
-      "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap",
-  },
+/* Page typography mirrors the fonts ReadMe's own Appearance settings offer, so
+   a landing page never uses a face the hub itself can't. "readme" = Match
+   ReadMe: inherit the hub's font (its default, a picked font, or an upload). */
+const FONT_FAMILIES = {
+  "Literata": { kind: "serif", w: "400;500;600;700" },
+  "Lora": { kind: "serif", w: "400;500;600;700" },
+  "Merriweather": { kind: "serif", w: "400;700" },
+  "Fraunces": { kind: "serif", w: "400;500;600;700" },
+  "IBM Plex Serif": { kind: "serif", w: "400;500;600;700" },
+  "DM Sans": { kind: "sans", w: "400;500;600;700" },
+  "Geist": { kind: "sans", w: "400;500;600;700" },
+  "IBM Plex Sans": { kind: "sans", w: "400;500;600;700" },
+  "Inter": { kind: "sans", w: "400;500;600;700" },
+  "Space Grotesk": { kind: "sans", w: "400;500;600;700" },
+  "Work Sans": { kind: "sans", w: "400;500;600;700" },
+  "Syne": { kind: "sans", w: "400;500;600;700" },
+  "DM Mono": { kind: "mono", w: "400;500" },
+  "Geist Mono": { kind: "mono", w: "400;500;600;700" },
+  "IBM Plex Mono": { kind: "mono", w: "400;500;600;700" },
+  "Space Mono": { kind: "mono", w: "400;700" },
+  /* not in ReadMe's lists; only kept so pages made with the old presets render unchanged */
+  "Source Sans 3": { kind: "sans", w: "400;500;600", legacy: true },
+  "Manrope": { kind: "sans", w: "500;600;700", legacy: true },
+  "JetBrains Mono": { kind: "mono", w: "400;700", legacy: true },
 };
+/* ReadMe's pickers (Appearance > Fonts), in its order */
+const BODY_FONTS = ["Literata", "Lora", "Merriweather", "DM Mono", "DM Sans", "Geist", "Geist Mono", "IBM Plex Mono", "IBM Plex Sans", "IBM Plex Serif", "Inter", "Space Grotesk", "Work Sans"];
+const HEADING_FONTS = ["Fraunces", "Syne", "Space Mono", "DM Mono", "DM Sans", "Geist", "Geist Mono", "IBM Plex Mono", "IBM Plex Sans", "IBM Plex Serif", "Inter", "Space Grotesk", "Work Sans"];
+/* the old one-click pairings, mapped for saved/shared pages */
+const CODE_FONTS = ["DM Mono", "Geist Mono", "IBM Plex Mono", "Space Mono"];
+const LEGACY_FONT_PRESETS = {
+  readme: { heading: "readme", body: "readme" },
+  grotesk: { heading: "Space Grotesk", body: "Inter", mono: "Space Mono" },
+  editorial: { heading: "Fraunces", body: "Source Sans 3", mono: "IBM Plex Mono" },
+  modern: { heading: "Manrope", body: "Inter", mono: "JetBrains Mono" },
+  plex: { heading: "IBM Plex Sans", body: "IBM Plex Sans", mono: "IBM Plex Mono" },
+};
+const FONT_FALLBACK = {
+  serif: 'Georgia, "Times New Roman", serif',
+  sans: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  mono: "ui-monospace, SFMono-Regular, Menlo, monospace",
+};
+const fontStack = (name) => (FONT_FAMILIES[name] ? `'${name}', ${FONT_FALLBACK[FONT_FAMILIES[name].kind]}` : "var(--font-family, inherit)");
+/* the page's small labels/buttons use a mono; pick the family's own sibling when it has one */
+const MONO_SIBLING = { "Geist": "Geist Mono", "IBM Plex Sans": "IBM Plex Mono", "IBM Plex Serif": "IBM Plex Mono", "DM Sans": "DM Mono", "Space Grotesk": "Space Mono" };
+function resolveFonts(cfg) {
+  const t0 = cfg.typeface || { heading: "readme", body: "readme" };
+  const t = t0.custom === false ? { heading: "readme", body: "readme" } : t0;
+  const heading = FONT_FAMILIES[t.heading] ? t.heading : "readme";
+  const body = FONT_FAMILIES[t.body] ? t.body : "readme";
+  let mono = FONT_FAMILIES[t.mono] && FONT_FAMILIES[t.mono].kind === "mono" ? t.mono : null;
+  if (!mono) {
+    const pick = [heading, body].find((n) => FONT_FAMILIES[n] && FONT_FAMILIES[n].kind === "mono") || MONO_SIBLING[heading] || MONO_SIBLING[body];
+    mono = pick || null;
+  }
+  const families = [...new Set([heading, body, mono].filter((n) => FONT_FAMILIES[n]))];
+  return {
+    label: heading === "readme" && body === "readme" ? "Match Settings in ReadMe" : `${heading === "readme" ? "ReadMe" : heading} headings, ${body === "readme" ? "ReadMe" : body} body`,
+    display: fontStack(heading),
+    body: fontStack(body),
+    mono: mono ? fontStack(mono) : FONT_FALLBACK.mono,
+    importUrl: families.length
+      ? "https://fonts.googleapis.com/css2?" + families.map((n) => `family=${n.replace(/ /g, "+")}:wght@${FONT_FAMILIES[n].w}`).join("&") + "&display=swap"
+      : null,
+  };
+}
 
 /* ---------------- granular card style ----------------
    Every card look is composed from these switches instead of
@@ -130,13 +150,13 @@ const DEFAULT_STYLE = {
 /* one-click starter looks — each sets the GLOBAL card style (cfg.cardStyle).
    Content (cards/columns) is left untouched; only the look changes. */
 const PRESETS = [
-  { key: "audience", label: "Audience hub", hint: "Badges, icons, preview lists + CTA",
+  { key: "audience", label: "Detailed", hint: "Badges, icons, preview lists and a button",
     style: { anchor: false, icon: true, badge: true, bar: true, peek: true, cta: true, ctaPlain: false, mono: false, radius: 16, density: "comfortable" } },
-  { key: "help", label: "Help center", hint: "Compact, whole-card links",
+  { key: "help", label: "Compact", hint: "Small cards, whole card is a link",
     style: { anchor: true, icon: false, badge: false, bar: false, peek: false, cta: false, ctaPlain: false, mono: false, radius: 12, density: "compact" } },
-  { key: "icons", label: "Icon grid", hint: "Icons, accent bar, plain CTA",
+  { key: "icons", label: "Icons", hint: "Icon tiles, accent bar, text link",
     style: { anchor: false, icon: true, badge: false, bar: true, peek: false, cta: true, ctaPlain: true, mono: false, radius: 20, density: "roomy" } },
-  { key: "minimal", label: "Minimal", hint: "Just titles + text",
+  { key: "minimal", label: "Minimal", hint: "Just titles and text",
     style: { anchor: true, icon: false, badge: false, bar: false, peek: false, cta: false, ctaPlain: false, mono: false, radius: 12, density: "comfortable" } },
 ];
 
@@ -188,6 +208,8 @@ const CARD_DEFAULTS = {
   ctaText: "View docs",
   ctaStyle: "ghost",
   primary: false,
+  /* small count/label on the card, e.g. "913 pages" */
+  meta: "",
   /* link-list style: rows of { label, href }; *word* renders italic */
   links: [],
   note: "",
@@ -210,7 +232,19 @@ const DEFAULT_LIQUID = {
   accents: ["green", "purple", "amber"],
 };
 
-const DEFAULT_SECTION_LAYOUT = { colMin: 258, gap: 20, autoH: true, cardMinH: 396, bento: false, spaceAbove: 36, divider: false, dividerStyle: "hairline", bg: "none" };
+const DEFAULT_SECTION_LAYOUT = { colMin: 258, gap: 20, autoH: true, cardMinH: 396, bento: false, list: false, spaceAbove: 36, divider: false, dividerStyle: "hairline", bg: "none" };
+const SAMPLE_CODE = `import { Client } from '@acme/sdk';
+
+const client = new Client({ apiKey: process.env.API_KEY });
+
+// Create a resource and read it back.
+const created = await client.resources.create({
+  name: 'my-first-resource',
+  region: 'us-east-1',
+});
+
+console.log(created.id);`;
+const DEFAULT_CODE = { file: "quickstart.ts", langs: "TypeScript, Python, Go, Ruby, Java, cURL", text: SAMPLE_CODE };
 
 /* ---------------- text-columns section ----------------
    A section can be a grid of 1–4 evenly-distributed text columns, each with
@@ -242,9 +276,33 @@ const DEFAULT_COLUMNS = () => [
 
 const HERO_SUB_DEFAULT = 15;
 
+/* customizable color roles on the generated page (ReadMe-style Appearance list) */
+const COLOR_ROLES = [
+  { key: "brand", label: "Brand color", hint: "Buttons, links, icons and card accents" },
+  { key: "heading", label: "Headings" },
+  { key: "body", label: "Body text" },
+  { key: "muted", label: "Muted text", hint: "Eyebrows, intros, captions" },
+  { key: "cardBg", label: "Card background" },
+  { key: "cardBorder", label: "Card border" },
+  { key: "pageBg", label: "Page background", hint: "Full-width, behind everything" },
+];
+/* full-width background patterns; "shapes" is the original line art (older pages' "on") */
+const PATTERNS = [
+  { value: "none", label: "None" },
+  { value: "dots", label: "Dots" },
+  { value: "grid", label: "Grid" },
+  { value: "lines", label: "Diagonal" },
+  { value: "shapes", label: "Shapes" },
+];
+const normPattern = (v) => (v === true ? "shapes" : typeof v === "string" && PATTERNS.some((x) => x.value === v) ? v : "none");
+const EMPTY_COLORS = () => ({
+  light: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, ""])),
+  dark: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, ""])),
+});
+
 /* ---------------- default config (fresh-install starter) ---------------- */
 const DEFAULT_CONFIG = {
-  fonts: "readme",
+  typeface: { heading: "readme", body: "readme" },
   hero: {
     eyebrow: "",
     chip: "",
@@ -259,6 +317,14 @@ const DEFAULT_CONFIG = {
     buttons: false,
     /* small helper line under the relocated search row (hero search mode only) */
     searchHint: "",
+    /* none | glow (soft accent glow behind the hero, full width) */
+    bg: "none",
+    /* normal | large (search row under the hero) */
+    searchSize: "normal",
+    /* pill links under the hero, e.g. popular sections */
+    quickLinks: [],
+    /* card beside a left-aligned hero: a titled list of links with a small count; hosts the search row when search is under the hero */
+    panel: { enabled: false, title: "Jump to", links: [] },
     btnPrimary: { label: "Get started", href: "/getting-started" },
     btnSecondary: { label: "API Reference", href: "/reference" },
   },
@@ -283,7 +349,9 @@ const DEFAULT_CONFIG = {
   flattenHeader: false,
   headerImage: { enabled: false, url: "", height: 380, tint: 0, offset: 64 },
   /* matchReadme = inherit the hub's own accent color instead of picking one */
-  theme: { uniform: false, matchReadme: true, accent: "blue", customLight: "#0B63C5", customDark: "#6FB4F5", pattern: false },
+  /* colorMode "readme" inherits the hub's brand color; "custom" uses `colors`
+     (per role, per appearance; "" = keep the default) */
+  theme: { colorMode: "readme", colors: EMPTY_COLORS(), pattern: "none", patternStrength: "subtle" },
   /* global card style — sections in "global" style mode inherit this look */
   cardStyle: { ...DEFAULT_STYLE },
   layout: { maxW: 1120 },
@@ -293,6 +361,11 @@ const DEFAULT_CONFIG = {
     text: "Our team can walk you through setup, auth, and best practices.",
     btnLabel: "Contact us",
     btnHref: "/contact",
+    /* left (copy + button side by side) | center (stacked, two buttons) */
+    align: "left",
+    btn2Label: "",
+    btn2Href: "",
+    glow: false,
   },
   footer: "Can't find what you need? Use the search above or ask the AI assistant.",
   sections: [
@@ -300,6 +373,7 @@ const DEFAULT_CONFIG = {
       id: uid(),
       type: "cards",
       label: "",
+      eyebrow: "",
       heading: "",
       intro: "",
       align: "center",
@@ -342,6 +416,86 @@ const DEFAULT_CONFIG = {
 /* ---------------- page templates ----------------
    Whole-page starting points (content + layout), unlike PRESETS which only
    restyle cards. Each call returns a fresh config with new ids. */
+
+/* ---- building blocks shared by the Aurora / Spotlight / Editorial / Terminal templates ---- */
+const tplSections = (o) => {
+  const center = o.align === "center";
+  const L = (label, href) => ({ label, href });
+  const card = (x) => ({ ...CARD_DEFAULTS, id: uid(), ...x });
+  const listDocs = !!o.listDocs;
+  return [
+    {
+      label: "Doc sets",
+      heading: o.docsHeading || "",
+      intro: "",
+      align: center ? "center" : "left",
+      source: "static",
+      styleMode: "custom",
+      style: { ...DEFAULT_STYLE, anchor: true, icon: true, iconInline: listDocs, cta: !listDocs, ctaPlain: true, radius: 10, density: "comfortable" },
+      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 420, gap: 18, spaceAbove: o.docsSpace || 64, list: listDocs },
+      cards: [
+        card({ icon: "book-open", title: o.names ? o.names[0] : "Guides", blurb: "Start here. Concepts, tutorials and how-to guides for building with the platform.", href: "/guides", meta: "120 pages", ctaText: "Browse" }),
+        card({ icon: "code", title: o.names ? o.names[1] : "API Reference", blurb: "Every endpoint, with parameters, responses and ready-to-run code samples.", href: "/reference", meta: "48 endpoints", ctaText: "Browse" }),
+      ],
+    },
+    {
+      label: "Why",
+      eyebrow: o.whyEyebrow !== undefined ? o.whyEyebrow : "Why the docs",
+      heading: o.whyHeading !== undefined ? o.whyHeading : "Everything in one place, and all of it searchable",
+      intro: "",
+      align: center ? "center" : "left",
+      source: "static",
+      styleMode: "custom",
+      style: { ...DEFAULT_STYLE, anchor: false, num: true, radius: 10, density: "comfortable" },
+      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 280, gap: 18, spaceAbove: 88 },
+      cards: [
+        card({ title: "Start in minutes", blurb: "Quickstarts that get you from nothing to a working call, without reading the whole manual first.", href: "/guides/quickstart" }),
+        card({ title: "Written for building", blurb: "Every guide ends somewhere useful: a working example, a next step, and the reference page behind it.", href: "/guides" }),
+        card({ title: "Searchable end to end", blurb: "Titles, descriptions and page text, so the answer is one keystroke away wherever you are.", href: "/search" }),
+      ],
+    },
+    {
+      label: "Code sample",
+      type: "code",
+      eyebrow: "Code samples",
+      heading: "Built for the way you work",
+      intro: "Copy a sample, change two values, and it runs. Every reference page carries one, in the language you already use.",
+      align: "left",
+      layout: { ...DEFAULT_SECTION_LAYOUT, spaceAbove: 96 },
+      code: { ...DEFAULT_CODE },
+    },
+    {
+      label: "Contents",
+      eyebrow: o.contentsEyebrow !== undefined ? o.contentsEyebrow : "Contents",
+      heading: o.contentsHeading !== undefined ? o.contentsHeading : "Browse the documentation",
+      intro: "Every project in this hub, updated automatically.",
+      align: center ? "center" : "left",
+      source: "liquid",
+      styleMode: "custom",
+      style: { ...DEFAULT_STYLE, anchor: true, radius: 10, density: "compact" },
+      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 300, gap: 14, spaceAbove: 96 },
+      liquid: { ...DEFAULT_LIQUID, peek: false, blurbFallback: "Guides and reference for this project." },
+    },
+  ];
+};
+const tplBanner = () => ({
+  enabled: true, align: "center", glow: true,
+  title: "Can't find it?",
+  text: "Everything here is searchable. Start from the guides, or jump straight to the reference.",
+  btnLabel: "Start building", btnHref: "/guides",
+  btn2Label: "Read the API", btn2Href: "/reference",
+});
+const tplBase = (over) =>
+  migrateConfig({
+    ...DEFAULT_CONFIG,
+    searchMode: "hero",
+    flattenHeader: false,
+    theme: { colorMode: "readme", pattern: "none" },
+    footer: "",
+    ...over,
+  });
+
+const BLANK_TEMPLATE = { key: "blank", label: "Blank", hint: "A hero and one card section, matching your hub", build: () => migrateConfig(DEFAULT_CONFIG) };
 const PAGE_TEMPLATES = [
   {
     key: "portal",
@@ -353,7 +507,7 @@ const PAGE_TEMPLATES = [
       const tile = (icon, title, blurb, href) => ({ ...CARD_DEFAULTS, id: uid(), icon, title, blurb, href, ctaText: "Open" });
       return migrateConfig({
         ...DEFAULT_CONFIG,
-        fonts: "readme",
+        typeface: { heading: "readme", body: "readme" },
         searchMode: "hero",
         flattenHeader: false,
         brandBar: {
@@ -364,7 +518,7 @@ const PAGE_TEMPLATES = [
           links: [L("Guides", "/guides"), L("API reference", "/reference"), L("Platform guide", "/platform"), L("Release notes", "/changelog")],
           button: { enabled: true, label: "Log in", href: "/login" },
         },
-        theme: { ...DEFAULT_CONFIG.theme, pattern: true },
+        theme: { ...DEFAULT_CONFIG.theme, pattern: "dots" },
         layout: { maxW: 1120 },
         hero: {
           ...DEFAULT_CONFIG.hero,
@@ -442,6 +596,69 @@ const PAGE_TEMPLATES = [
       });
     },
   },
+  {
+    key: "aurora",
+    label: "Aurora",
+    hint: "Glowing hero with a Jump to panel holding search, doc sets, code sample",
+    build: () => tplBase({
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", bg: "glow", eyebrow: "docs.acme.com", titleSize: 58, subtitleSize: 17,
+        title: "Everything you need to build with Acme",
+        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
+        buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" },
+        panel: { enabled: true, title: "Jump to", links: [
+          { label: "Get started", href: "/guides/getting-started", meta: "22" },
+          { label: "Guides", href: "/guides", meta: "96" },
+          { label: "API reference", href: "/reference", meta: "48" },
+          { label: "SDKs", href: "/sdks", meta: "6" },
+          { label: "Changelog", href: "/changelog", meta: "12" },
+        ] } },
+      sections: tplSections({ align: "left" }),
+      banner: tplBanner(),
+    }),
+  },
+  {
+    key: "spotlight",
+    label: "Spotlight",
+    hint: "Search-first: a big centered search box with quick links",
+    build: () => tplBase({
+      hero: { ...DEFAULT_CONFIG.hero, align: "center", title: "How can we help?", subtitle: "", titleSize: 56, padY: 24,
+        searchSize: "large", buttons: false,
+        quickLinks: [
+          { label: "Get started", href: "/guides/getting-started" }, { label: "Guides", href: "/guides" },
+          { label: "API reference", href: "/reference" }, { label: "SDKs", href: "/sdks" }, { label: "Changelog", href: "/changelog" },
+        ] },
+      sections: tplSections({ align: "center", docsSpace: 56, whyEyebrow: "", whyHeading: "Why developers stay", contentsEyebrow: "", contentsHeading: "Documentation" }),
+      banner: tplBanner(),
+    }),
+  },
+  {
+    key: "editorial",
+    label: "Editorial",
+    hint: "Serif headlines, doc sets as reading rows, chapter-style sections",
+    build: () => tplBase({
+      typeface: { custom: true, heading: "Fraunces", body: "readme" },
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "Acme documentation", titleSize: 56, subtitleSize: 18,
+        title: "Everything you need to build with Acme",
+        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
+        buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" } },
+      sections: tplSections({ align: "left", listDocs: true, docsSpace: 48, whyEyebrow: "Chapter one", whyHeading: "What you will find", contentsEyebrow: "Contents", contentsHeading: "Chapters" }),
+      banner: tplBanner(),
+    }),
+  },
+  {
+    key: "terminal",
+    label: "Terminal",
+    hint: "Monospace everything, command-line prompt hero, doc sets as a table",
+    build: () => tplBase({
+      typeface: { custom: true, heading: "Geist Mono", body: "Geist Mono" },
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "$ open docs.acme.com", titleSize: 46, subtitleSize: 15,
+        title: "Everything you need to build with Acme",
+        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
+        buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" } },
+      sections: tplSections({ align: "left", listDocs: true, names: ["guides", "api-reference"], docsSpace: 48, whyEyebrow: "# why", whyHeading: "", contentsEyebrow: "# docs", contentsHeading: "" }),
+      banner: tplBanner(),
+    }),
+  }
 ];
 
 /* ---------------- helpers ---------------- */
@@ -574,7 +791,7 @@ const str = (v, d = "") => (typeof v === "string" ? v : v == null ? d : String(v
 const safeLinks = (arr) =>
   Array.isArray(arr) ? arr.filter((l) => l && typeof l === "object").map((l) => ({ label: str(l.label), href: str(l.href) })) : [];
 
-const CARD_STR_FIELDS = ["icon", "title", "blurb", "href", "eyebrow", "peekLabel", "ctaText", "note", "noteLinkLabel", "noteHref"];
+const CARD_STR_FIELDS = ["icon", "title", "blurb", "href", "eyebrow", "peekLabel", "ctaText", "note", "noteLinkLabel", "noteHref", "meta"];
 const normCard = (c) => {
   const o = { ...CARD_DEFAULTS, ...(c && typeof c === "object" ? c : {}) };
   CARD_STR_FIELDS.forEach((k) => { o[k] = str(o[k], CARD_DEFAULTS[k]); });
@@ -599,11 +816,24 @@ function sanitizeConfig(c) {
   hero.padY = safeNum(h.padY, 0, 0, 240);
   hero.btnPrimary = { label: str(h.btnPrimary && h.btnPrimary.label), href: str(h.btnPrimary && h.btnPrimary.href) };
   hero.btnSecondary = { label: str(h.btnSecondary && h.btnSecondary.label), href: str(h.btnSecondary && h.btnSecondary.href) };
+  hero.bg = h.bg === "glow" ? "glow" : "none";
+  hero.searchSize = h.searchSize === "large" ? "large" : "normal";
+  hero.quickLinks = safeLinks(h.quickLinks);
+  const pn = h.panel && typeof h.panel === "object" ? h.panel : {};
+  hero.panel = {
+    enabled: !!pn.enabled,
+    title: str(pn.title, "Jump to"),
+    links: Array.isArray(pn.links) ? pn.links.filter((l) => l && typeof l === "object").map((l) => ({ label: str(l.label), href: str(l.href), meta: str(l.meta) })) : [],
+  };
   const bb = c.brandBar;
+  const okFont = (n) => (n === "readme" || FONT_FAMILIES[n] ? n : "readme");
   return {
     ...c,
+    typeface: { custom: !!c.typeface.custom, heading: okFont(c.typeface.heading), body: okFont(c.typeface.body), ...(FONT_FAMILIES[c.typeface.mono] ? { mono: c.typeface.mono } : {}) },
     hero,
     footer: str(c.footer),
+    banner: { ...c.banner, title: str(c.banner.title), text: str(c.banner.text), btnLabel: str(c.banner.btnLabel), btnHref: str(c.banner.btnHref),
+      btn2Label: str(c.banner.btn2Label), btn2Href: str(c.banner.btn2Href), align: c.banner.align === "center" ? "center" : "left", glow: !!c.banner.glow },
     searchMode: SEARCH_MODES.includes(c.searchMode) ? c.searchMode : "native",
     headerImage: {
       ...c.headerImage,
@@ -613,9 +843,13 @@ function sanitizeConfig(c) {
       offset: safeNum(c.headerImage.offset, 64, 0, 400),
     },
     theme: {
-      ...c.theme,
-      customLight: safeHex(c.theme.customLight, DEFAULT_CONFIG.theme.customLight),
-      customDark: safeHex(c.theme.customDark, DEFAULT_CONFIG.theme.customDark),
+      colorMode: c.theme.colorMode === "custom" ? "custom" : "readme",
+      pattern: PATTERNS.some((x) => x.value === c.theme.pattern) ? c.theme.pattern : "none",
+      patternStrength: c.theme.patternStrength === "medium" ? "medium" : "subtle",
+      colors: {
+        light: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, safeHex(c.theme.colors.light[r.key], "")])),
+        dark: Object.fromEntries(COLOR_ROLES.map((r) => [r.key, safeHex(c.theme.colors.dark[r.key], "")])),
+      },
     },
     cardStyle: { ...c.cardStyle, radius: safeNum(c.cardStyle.radius, 16, 0, 48) },
     layout: { maxW: safeNum(c.layout.maxW, 1120, 640, 1920) },
@@ -625,6 +859,8 @@ function sanitizeConfig(c) {
       ...sec,
       heading: str(sec.heading),
       intro: str(sec.intro),
+      eyebrow: str(sec.eyebrow),
+      code: { file: str(sec.code.file), langs: str(sec.code.langs), text: str(sec.code.text).slice(0, 8000) },
       label: str(sec.label),
       style: { ...sec.style, radius: safeNum(sec.style.radius, 16, 0, 48) },
       layout: {
@@ -648,7 +884,10 @@ function sanitizeConfig(c) {
 const normColumn = (c) => makeColumn({ ...c, id: c && c.id });
 const normSection = (s) => ({
   id: s.id || uid(),
-  type: s.type === "columns" ? "columns" : "cards",
+  type: s.type === "columns" || s.type === "code" ? s.type : "cards",
+  /* small label line above the heading */
+  eyebrow: typeof s.eyebrow === "string" ? s.eyebrow : "",
+  code: { ...DEFAULT_CODE, ...(s.code && typeof s.code === "object" ? s.code : {}) },
   /* builder-only label for the sidebar/tab — independent of the on-page heading */
   label: s.label || "",
   heading: s.heading || "",
@@ -658,7 +897,7 @@ const normSection = (s) => ({
   /* older saved sections keep their own look ("custom"); the global style is
      opt-in per section so migrating never changes an existing page's cards */
   styleMode: s.styleMode === "global" ? "global" : "custom",
-  style: { ...DEFAULT_STYLE, ...(s.style || {}), num: false, file: false },
+  style: { ...DEFAULT_STYLE, ...(s.style || {}), file: false },
   layout: { ...DEFAULT_SECTION_LAYOUT, ...(s.layout || {}) },
   liquid: { ...DEFAULT_LIQUID, ...(s.liquid || {}) },
   columns: (Array.isArray(s.columns) && s.columns.length ? s.columns.slice(0, 4) : DEFAULT_COLUMNS()).map(normColumn),
@@ -690,8 +929,13 @@ function migrateConfig(loaded) {
   if (!loaded || typeof loaded !== "object") loaded = {};
   if (Array.isArray(loaded.sections)) loaded = { ...loaded, sections: loaded.sections.filter((x) => x && typeof x === "object") };
   const base = {
-    fonts: loaded.fonts || D.fonts,
-    hero: { ...D.hero, ...(loaded.hero || {}) },
+    typeface: (() => {
+      const t = loaded.typeface;
+      if (t && typeof t === "object") return { custom: !!t.custom || t.heading !== "readme" || t.body !== "readme", heading: str(t.heading, "readme"), body: str(t.body, "readme"), ...(t.mono ? { mono: str(t.mono) } : {}) };
+      const lp = LEGACY_FONT_PRESETS[loaded.fonts] || LEGACY_FONT_PRESETS.readme;
+      return { custom: lp.heading !== "readme", ...lp };
+    })(),
+    hero: { ...D.hero, ...(loaded.hero || {}), panel: { ...D.hero.panel, ...((loaded.hero && loaded.hero.panel) || {}) } },
     ticker: { ...D.ticker, ...(loaded.ticker || {}) },
     brandBar: {
       ...D.brandBar,
@@ -702,11 +946,26 @@ function migrateConfig(loaded) {
     searchMode: loaded.searchMode || (loaded.moveSearch === false ? "native" : "hero"),
     flattenHeader: loaded.flattenHeader !== false,
     headerImage: { ...D.headerImage, ...(loaded.headerImage || {}) },
-    theme: { ...D.theme, ...(loaded.theme || {}) },
-    cardStyle: { ...DEFAULT_STYLE, ...(loaded.cardStyle || {}), num: false, file: false },
+    theme: (() => {
+      const t = loaded.theme || {};
+      const colors = EMPTY_COLORS();
+      if (t.colors && typeof t.colors === "object") {
+        ["light", "dark"].forEach((m) => COLOR_ROLES.forEach((r) => { colors[m][r.key] = str(t.colors[m] && t.colors[m][r.key]); }));
+        return { colorMode: t.colorMode === "custom" ? "custom" : "readme", colors, pattern: normPattern(t.pattern), patternStrength: t.patternStrength };
+      }
+      /* older configs: matchReadme / uniform + accent|custom pair */
+      if (t.matchReadme === false && t.uniform) {
+        const a = t.accent === "custom" ? { light: t.customLight, dark: t.customDark } : ACCENTS[t.accent] || ACCENTS.blue;
+        colors.light.brand = str(a.light);
+        colors.dark.brand = str(a.dark);
+      }
+      return { colorMode: t.matchReadme === false ? "custom" : "readme", colors, pattern: normPattern(t.pattern), patternStrength: t.patternStrength };
+    })(),
+    cardStyle: { ...DEFAULT_STYLE, ...(loaded.cardStyle || {}), file: false },
     layout: { maxW: (loaded.layout && loaded.layout.maxW) || 1120 },
     banner: { ...D.banner, ...(loaded.banner || {}) },
     footer: loaded.footer != null ? loaded.footer : D.footer,
+    templateKey: typeof loaded.templateKey === "string" ? loaded.templateKey : "",
   };
 
   /* already v4 (has sections) */
@@ -865,14 +1124,17 @@ function buildCard(v, style) {
   /* a card holding its own links can't also be one big <a> (nested anchors) */
   const anchor = style.anchor && !(style.links && v.linksHtml);
   style = anchor === style.anchor ? style : { ...style, anchor };
+  const extra = v.attrs || "";
   const openTag = style.anchor
-    ? `<a class="bnk-card ${v.accentClass}${primaryCls}" href="${v.href}"\n       ${INLINE_CARD_STYLE}>`
-    : `<div class="bnk-card ${v.accentClass}${primaryCls}"\n       ${INLINE_CARD_STYLE}>`;
+    ? `<a class="bnk-card ${v.accentClass}${primaryCls}" href="${v.href}"${extra}\n       ${INLINE_CARD_STYLE}>`
+    : `<div class="bnk-card ${v.accentClass}${primaryCls}"${extra}\n       ${INLINE_CARD_STYLE}>`;
   const closeTag = style.anchor ? "</a>" : "</div>";
 
   /* content lives in a growing body so cards stay equal height and the CTA
      keeps a consistent gap / bottom-aligns regardless of content length */
   let body = "";
+  if (style.num && v.num) body += `\n        <span class="bnk-card__num">${v.num}</span>`;
+  if (v.meta) body += `\n        <span class="bnk-card__meta">${v.meta}</span>`;
   if (style.badge) body += `\n        <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
   const iconHtml = `<span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
   const edf = v.ed || (() => "");
@@ -912,7 +1174,7 @@ let _editable = false;
 const ed = (path) => (_editable ? ` data-glp="${path}"` : "");
 /* config paths the preview may write — anything else posted back is ignored */
 const EDITABLE_PATH_RE =
-  /^(hero\.(eyebrow|title|subtitle|searchHint|btnPrimary\.label|btnSecondary\.label)|footer|banner\.(title|text)|brandBar\.(links\.\d+\.label|button\.label)|sections\.\d+\.(heading|intro|cards\.\d+\.(title|blurb|peekLabel|peekItems\.\d+|links\.\d+\.label)|columns\.\d+\.(heading|body)))$/;
+  /^(hero\.(eyebrow|title|subtitle|searchHint|btnPrimary\.label|btnSecondary\.label)|footer|banner\.(title|text)|brandBar\.(links\.\d+\.label|button\.label)|hero\.panel\.(title|links\.\d+\.label)|banner\.btn2Label|sections\.\d+\.(heading|intro|eyebrow|cards\.\d+\.(title|blurb|peekLabel|peekItems\.\d+|links\.\d+\.label)|columns\.\d+\.(heading|body)))$/;
 
 /* immutable set of a dotted path ("sections.0.cards.2.title") */
 function setAtPath(obj, parts, value) {
@@ -968,6 +1230,8 @@ function sectionCards(sec, palette, style, si) {
             icon: iconMarkup(c),
             title: esc(c.title),
             blurb: esc(c.blurb),
+            num: String(i + 1).padStart(2, "0"),
+            meta: esc(c.meta || ""),
             linksHtml: staticLinks(c, `sections.${si}.cards.${i}`),
             peekHtml: staticPeek(c, `sections.${si}.cards.${i}`),
             ed: (f) => ed(`sections.${si}.cards.${i}.${f}`),
@@ -999,11 +1263,15 @@ function sectionCards(sec, palette, style, si) {
       badgeHtml: Q.badge === "lock" ? LOCK_SVG : '<span class="bnk-dot"></span>',
       icon: iconMarkup(Q),
       title: "{{ child.name }}",
+      num: "{% if forloop.index < 10 %}0{% endif %}{{ forloop.index }}",
       blurb: `{{ child.description | default: "${esc(Q.blurbFallback)}" }}`,
       peekHtml: liquidPeek,
       ctaText: esc(Q.ctaText),
       ctaStyle: Q.ctaStyle,
       comment: "One card per child project (Liquid)",
+      /* preview only: these cards are filled by ReadMe, so the preview explains
+         that on hover and opens the section's settings on click */
+      attrs: _editable ? ` data-glp-auto="${si}"` : "",
     },
     style
   );
@@ -1050,7 +1318,7 @@ function generateHTML(cfg, opts) {
 }
 
 function generateHTMLInner(cfg) {
-  const F = FONTS[cfg.fonts] || FONTS.grotesk;
+  const F = resolveFonts(cfg);
   const L = cfg.layout;
   const sections = cfg.sections;
   const heroLeft = cfg.hero.align === "left";
@@ -1065,17 +1333,34 @@ function generateHTMLInner(cfg) {
   const effStyle = (sec) => (sec.styleMode === "custom" ? sec.style : cfg.cardStyle || DEFAULT_STYLE);
 
   /* optional single global accent for every card.
-     "Match ReadMe" wins over the uniform picker: it inherits the hub's own
+     "Match Settings in ReadMe" wins over the uniform picker: it inherits the hub's own
      brand/link color via ReadMe's CSS variable (adapts to light & dark on its
      own), falling back to our blue if the variable isn't present. */
   const theme = cfg.theme || {};
-  const themeAccent = theme.matchReadme
+  const custom = theme.colorMode === "custom";
+  const CL = (custom && theme.colors && theme.colors.light) || {};
+  const CD = (custom && theme.colors && theme.colors.dark) || {};
+  const themeAccent = !custom
     ? { light: "var(--color-link-primary, #0B63C5)", dark: "var(--color-link-primary, #6FB4F5)" }
-    : theme.uniform
-    ? theme.accent === "custom"
-      ? { light: theme.customLight, dark: theme.customDark }
-      : ACCENTS[theme.accent] || ACCENTS.blue
-    : null;
+    : CL.brand || CD.brand
+    ? { light: CL.brand || CD.brand, dark: CD.brand || CL.brand }
+    : null; /* custom with no brand color: each card keeps its own accent */
+  /* custom role overrides; a dark value only applies in dark mode (light text
+     colors would be unreadable there), except brand which falls back above */
+  const roleVars = (C) =>
+    [
+      C.heading && `--bnk-heading: ${C.heading}; --card-title: ${C.heading};`,
+      C.body && `--bnk-ink-1: ${C.body};`,
+      C.muted && `--bnk-ink-2: ${C.muted};`,
+      C.cardBg && `--card-bg: ${C.cardBg};`,
+      C.cardBorder && `--card-border: ${C.cardBorder};`,
+      C.pageBg && `--page-bg: ${C.pageBg};`,
+    ].filter(Boolean);
+  const lightRoles = roleVars(CL);
+  /* page background has no built-in dark default, so a light-only value must
+     not leak into dark mode */
+  const darkRoles = roleVars({ ...CD, pageBg: "" }).concat(CL.pageBg || CD.pageBg ? [`--page-bg: ${CD.pageBg || "transparent"};`] : []);
+  const hasPageBg = !!(CL.pageBg || CD.pageBg);
 
   /* per-section accent palettes */
   const palettes = sections.map((sec) => {
@@ -1102,7 +1387,11 @@ function generateHTMLInner(cfg) {
   /* per-section grids */
   const gridRules = sections
     .map((sec, i) =>
-      sec.type === "columns"
+      sec.type === "code"
+        ? ""
+        : sec.type !== "columns" && sec.layout.list
+        ? `  .bnk-sec-${i} .bnk-grid { display: grid; grid-template-columns: 1fr; gap: 0; }`
+        : sec.type === "columns"
         ? `  .bnk-sec-${i} .bnk-cols {
     display: grid;
     grid-template-columns: repeat(${Math.min(4, Math.max(1, (sec.columns || []).length || 1))}, 1fr);
@@ -1274,10 +1563,17 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
 `
     : "";
 
-  /* ===== Subtle full-bleed background pattern ===== */
-  const patternSvg = (stroke) =>
-    `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23${stroke}' stroke-opacity='0.045' stroke-width='1.2'%3E%3Ccircle cx='24' cy='24' r='9'/%3E%3Crect x='70' y='14' width='24' height='18' rx='3'/%3E%3Cpath d='M18 84h22M29 73v22'/%3E%3Cpath d='M78 96l12-14 12 14z'/%3E%3Cpath d='M60 52l6 6-6 6-6-6z'/%3E%3C/g%3E%3C/svg%3E")`;
-  const patternCSS = theme.pattern
+  /* ===== Full-width background pattern (dots / grid / diagonal / shapes) ===== */
+  const patternKind = normPattern(theme.pattern);
+  const pk = theme.patternStrength === "medium" ? 2 : 1;
+  const svgUrl = (svg) => `url("data:image/svg+xml,${svg.replace(/</g, "%3C").replace(/>/g, "%3E").replace(/#/g, "%23").replace(/"/g, "'")}")`;
+  const patternSvg = (c) => {
+    if (patternKind === "dots") return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"><circle cx="1.5" cy="1.5" r="1.2" fill="#${c}" fill-opacity="${0.16 * pk}"/></svg>`);
+    if (patternKind === "grid") return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><path d="M32 0V32M0 32H32" fill="none" stroke="#${c}" stroke-opacity="${0.06 * pk}"/></svg>`);
+    if (patternKind === "lines") return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"><path d="M-1 15L15 -1M-1 1L1 -1M13 15L15 13" fill="none" stroke="#${c}" stroke-opacity="${0.06 * pk}"/></svg>`);
+    return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><g fill="none" stroke="#${c}" stroke-opacity="${0.045 * pk}" stroke-width="1.2"><circle cx="24" cy="24" r="9"/><rect x="70" y="14" width="24" height="18" rx="3"/><path d="M18 84h22M29 73v22"/><path d="M78 96l12-14 12 14z"/><path d="M60 52l6 6-6 6-6-6z"/></g></svg>`);
+  };
+  const patternCSS = patternKind !== "none"
     ? `
   .bnk-landing { isolation: isolate; }
   .bnk-landing::before {
@@ -1288,6 +1584,97 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
 ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${patternSvg("FFFFFF")};`)}
 `
     : "";
+
+  /* ===== template building blocks: glow, side panel, quick links, big search,
+     section eyebrow, numbered/meta cards, list rows, code sample, centered banner ===== */
+  const extrasCSS = `
+  .bnk-landing > *:not(.bnk-heroglow):not(.bnk-herobg) { position: relative; z-index: 1; }
+  .bnk-heroglow {
+    position: absolute; top: -80px; left: 50%; width: 100vw; height: 720px; transform: translateX(-50%);
+    z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(60% 55% at 22% 18%, color-mix(in srgb, var(--bnk-accent) 26%, transparent), transparent 70%),
+      radial-gradient(45% 45% at 85% 0%, color-mix(in srgb, var(--bnk-accent) 14%, transparent), transparent 70%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+            mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  }
+  .bnk-herogrid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); gap: 48px; align-items: center; margin-top: 34px; }
+  .bnk-herogrid .bnk-hero { margin-top: 0; }
+  .bnk-panel {
+    padding: 22px; border-radius: var(--bnk-radius, 14px); background: var(--card-bg); border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+  }
+  .bnk-panel .bnk-actions--panel { margin: 0 0 18px; justify-content: stretch; }
+  .bnk-panel .bnk-actions--panel .rm-Header-search { flex: 1 1 auto !important; }
+  .bnk-panel__title { margin: 0 0 8px; font-family: ${F.mono}; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bnk-ink-2) !important; }
+  .bnk-panel__link {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 10px; margin: 0 -10px;
+    border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14.5px; color: var(--bnk-heading) !important;
+  }
+  .bnk-panel__link:hover { background: color-mix(in srgb, var(--bnk-accent) 9%, transparent); }
+  .bnk-panel__meta { font-family: ${F.mono}; font-size: 12px; font-weight: 400; color: var(--bnk-ink-2) !important; }
+  .bnk-quick { display: flex; flex-wrap: wrap; gap: 8px; justify-content: ${heroLeft ? "flex-start" : "center"}; margin: 14px auto 0; max-width: 760px; }
+  .bnk-quick__link {
+    padding: 6px 14px; border-radius: 999px; font-size: 13.5px; text-decoration: none;
+    color: var(--bnk-ink-1) !important; border: 1px solid var(--card-border); background: var(--card-bg);
+    transition: border-color 150ms ease, color 150ms ease;
+  }
+  .bnk-quick__link:hover { border-color: var(--bnk-accent); color: var(--bnk-accent) !important; }
+  .bnk-actions--lg .rm-Header-search { flex: 1 1 640px !important; max-width: 660px; }
+  .bnk-actions--lg .rm-Header-search .rm-SearchToggle { height: 58px !important; font-size: 16px !important; border-radius: 14px !important; padding: 0 20px !important; }
+  .bnk-actions--lg .rm-AskAi-button { height: 58px !important; border-radius: 14px !important; }
+  .bnk-section__eyebrow {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 10px;
+    font-family: ${F.mono}; font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--bnk-accent) !important;
+  }
+  .bnk-section__eyebrow::before { content: ""; width: 18px; height: 1.5px; background: currentColor; }
+  .bnk-sec--center .bnk-section__eyebrow { justify-content: center; }
+  .bnk-card__num { display: block; margin: 0 0 16px; padding-bottom: 12px; font-family: ${F.mono}; font-size: 14px; font-weight: 700; color: var(--accent) !important; position: relative; }
+  .bnk-card__num::after { content: ""; position: absolute; left: 0; bottom: 0; width: 24px; height: 2px; background: var(--accent); opacity: .7; }
+  .bnk-card__meta {
+    position: absolute; top: var(--card-pad-top, 22px); right: 22px; padding: 3px 9px; border-radius: 999px;
+    font-size: 12px; color: var(--bnk-ink-2) !important; background: color-mix(in srgb, var(--bnk-ink-2) 10%, transparent);
+  }
+  .bnk-sec--list .bnk-grid { border: 1px solid var(--card-border); border-radius: var(--card-radius); overflow: hidden; background: var(--card-bg); }
+  .bnk-sec--list .bnk-card { --card-border-now: transparent; --card-shadow: inset 0 -1px 0 var(--card-divider); --card-radius: 0; flex-direction: row; align-items: center; gap: 16px; padding: 16px 22px !important; min-height: 0; }
+  .bnk-sec--list .bnk-card:last-child { --card-shadow: none; }
+  .bnk-sec--list .bnk-card:hover { transform: none; }
+  .bnk-sec--list .bnk-card__body { flex-direction: row; align-items: baseline; gap: 24px; min-width: 0; }
+  .bnk-sec--list .bnk-card__title, .bnk-sec--list .bnk-card__head { flex: 0 0 210px; margin: 0; font-size: 17px; }
+  .bnk-sec--list .bnk-card__head .bnk-card__title { flex: none; }
+  .bnk-sec--list .bnk-card__icon { margin: 0; }
+  .bnk-sec--list .bnk-card__blurb { flex: 1 1 auto; min-width: 0; }
+  .bnk-sec--list .bnk-card__meta { position: static; flex: none; background: none; padding: 0; margin-left: auto; font-family: ${F.mono}; order: 3; }
+  .bnk-sec--list .bnk-card__title, .bnk-sec--list .bnk-card__head { order: 1; }
+  .bnk-sec--list .bnk-card__blurb { order: 2; }
+  .bnk-sec--list .bnk-card__num { display: none; }
+  .bnk-sec--list .bnk-card__arrow, .bnk-sec--list .bnk-card__go { margin: 0; align-self: center; }
+  .bnk-codesec { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 48px; align-items: center; }
+  .bnk-codesec .bnk-section { margin: 0; }
+  .bnk-codesec__langs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .bnk-codesec__lang { padding: 5px 12px; border-radius: 999px; font-family: ${F.mono}; font-size: 12px; color: var(--bnk-ink-2) !important; border: 1px solid var(--card-border); }
+  .bnk-codesec__lang.on { color: var(--bnk-accent) !important; border-color: color-mix(in srgb, var(--bnk-accent) 55%, transparent); background: color-mix(in srgb, var(--bnk-accent) 12%, transparent); }
+  .bnk-codewin { border-radius: 12px; overflow: hidden; background: #0B0E16; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+  .bnk-codewin__bar { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .bnk-codewin__bar i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .bnk-codewin__bar span { margin-left: 8px; font-family: ${F.mono}; font-size: 12px; color: rgba(255,255,255,.55); }
+  .bnk-codewin__pre { margin: 0; padding: 20px 22px 24px; overflow: auto; font-family: ${F.mono}; font-size: 13px; line-height: 1.7; color: #E6EAF5; white-space: pre; }
+  .bnk-banner.bnk-banner--center { flex-direction: column; text-align: center; gap: 0; padding: 52px 36px; }
+  .bnk-banner--center .bnk-banner__title { font-size: 30px; margin-bottom: 12px; }
+  .bnk-banner--center .bnk-banner__text { max-width: 560px; margin: 0 auto; font-size: 15px; }
+  .bnk-banner__btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 26px; }
+  .bnk-banner .bnk-banner__btn.bnk-banner__btn--ghost { background: transparent !important; color: var(--bnk-heading) !important; border: 1px solid color-mix(in srgb, var(--bnk-heading) 25%, transparent); }
+  .bnk-banner.bnk-banner--glow { background:
+      radial-gradient(60% 90% at 15% 0%, color-mix(in srgb, var(--bnk-accent) 22%, transparent), transparent 70%),
+      radial-gradient(50% 80% at 90% 100%, color-mix(in srgb, var(--bnk-accent) 16%, transparent), transparent 70%),
+      var(--card-bg); }
+  @media (max-width: 860px) {
+    .bnk-herogrid, .bnk-codesec { grid-template-columns: 1fr; }
+    .bnk-sec--list .bnk-card__body { flex-direction: column; gap: 6px; }
+    .bnk-sec--list .bnk-card__title, .bnk-sec--list .bnk-card__head { flex: none; }
+  }
+`;
 
   const tickerCSS = cfg.ticker.enabled
     ? `
@@ -1576,6 +1963,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   const sectionsMarkup = sections
     .map((sec, i) => {
       const isCols = sec.type === "columns";
+      const isCode = sec.type === "code";
       const st = effStyle(sec);
       const cls =
         `bnk-sec bnk-sec-${i} bnk-sec--${sec.align === "left" ? "left" : "center"}` +
@@ -1583,7 +1971,9 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
         (["subtle", "accent", "dark"].includes(sec.layout.bg) ? " bnk-sec--bg-" + sec.layout.bg : "") +
         (!isCols && st.bar ? " bnk-sec--bar" : "") +
         (!isCols && st.mono ? " bnk-sec--mono" : "") +
-        (!isCols && sec.layout.bento ? " bnk-sec--bento" : "");
+        (!isCols && !isCode && sec.layout.bento && !sec.layout.list ? " bnk-sec--bento" : "") +
+        (!isCols && !isCode && sec.layout.list ? " bnk-sec--list" : "") +
+        (isCode ? " bnk-sec--code" : "");
       const titleFont = !isCols && st.mono ? F.mono : F.display;
       const titleTt = !isCols && st.mono ? "uppercase" : "none";
       const minh = sec.layout.autoH ? "auto" : `${sec.layout.cardMinH}px`;
@@ -1592,12 +1982,26 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
         st.density
       )}; --title-font: ${titleFont}; --title-tt: ${titleTt}; --card-minh: ${minh};`;
       const heading =
-        sec.heading.trim() || sec.intro.trim()
+        sec.heading.trim() || sec.intro.trim() || (sec.eyebrow || "").trim()
           ? `    <div class="bnk-section">
-${sec.heading.trim() ? `      <h2 class="bnk-section__title"${ed(`sections.${i}.heading`)}>${esc(sec.heading)}</h2>\n` : ""}${
+${(sec.eyebrow || "").trim() ? `      <p class="bnk-section__eyebrow"${ed(`sections.${i}.eyebrow`)}>${esc(sec.eyebrow)}</p>\n` : ""}${sec.heading.trim() ? `      <h2 class="bnk-section__title"${ed(`sections.${i}.heading`)}>${esc(sec.heading)}</h2>\n` : ""}${
               sec.intro.trim() ? `      <p class="bnk-section__text"${ed(`sections.${i}.intro`)}>${esc(sec.intro)}</p>\n` : ""
             }    </div>\n`
           : "";
+      if (isCode) {
+        const code = sec.code || DEFAULT_CODE;
+        const langs = (code.langs || "").split(",").map((x) => x.trim()).filter(Boolean);
+        return `  <div class="${cls}" style="${styleVars}">
+    <div class="bnk-codesec">
+      <div class="bnk-codesec__copy">
+${heading.replace(/^/gm, "  ")}${langs.length ? `        <div class="bnk-codesec__langs">${langs.map((l, k) => `<span class="bnk-codesec__lang${k === 0 ? " on" : ""}">${esc(l)}</span>`).join("")}</div>\n` : ""}      </div>
+      <div class="bnk-codewin">
+        <div class="bnk-codewin__bar"><i></i><i></i><i></i><span>${esc(code.file)}</span></div>
+        <pre class="bnk-codewin__pre"><code>${esc(code.text)}</code></pre>
+      </div>
+    </div>
+  </div>`;
+      }
       const body = isCols
         ? `    <div class="bnk-cols">
 ${sectionColumns(sec, i)}
@@ -1630,7 +2034,34 @@ ${heading}${body}
       <a class="bnk-btn bnk-btn--secondary" href="${esc(normPath(cfg.hero.btnSecondary.href))}"${ed("hero.btnSecondary.label")}>${esc(cfg.hero.btnSecondary.label)}</a>
     </div>\n`
     : "";
-  const bannerMarkup = cfg.banner.enabled
+  const H = cfg.hero;
+  const panelOn = !!(H.panel && H.panel.enabled);
+  const quickLinks = (H.quickLinks || []).filter((l) => (l.label || "").trim());
+  const quickMarkup = quickLinks.length
+    ? `  <div class="bnk-quick">${quickLinks.map((l) => `<a class="bnk-quick__link" href="${esc(normPath(l.href || "/"))}">${esc(l.label)}</a>`).join("")}</div>\n`
+    : "";
+  const actionsMarkup = sm === "hero"
+    ? `  <div class="bnk-actions${H.searchSize === "large" ? " bnk-actions--lg" : ""}${panelOn ? " bnk-actions--panel" : ""}" id="rm-actions"></div>\n${!panelOn && H.searchHint && H.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint")}>${esc(H.searchHint)}</p>\n` : ""}`
+    : "";
+  const panelLinks = panelOn ? (H.panel.links || []).map((l, j) => ({ ...l, j })).filter((l) => (l.label || "").trim()) : [];
+  const panelMarkup = panelOn
+    ? `    <aside class="bnk-panel">
+${sm === "hero" ? "    " + actionsMarkup.trim() + "\n" : ""}      <p class="bnk-panel__title"${ed("hero.panel.title")}>${esc(H.panel.title)}</p>
+${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l.href || "/"))}"><span${ed(`hero.panel.links.${l.j}.label`)}>${esc(l.label)}</span>${(l.meta || "").trim() ? `<span class="bnk-panel__meta">${esc(l.meta)}</span>` : ""}</a>`).join("\n")}
+    </aside>\n`
+    : "";
+  const bannerCenter = cfg.banner.align === "center";
+  const bannerMarkup = cfg.banner.enabled && bannerCenter
+    ? `\n  <div class="bnk-banner bnk-banner--center${cfg.banner.glow ? " bnk-banner--glow" : ""}">
+    <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
+    <p class="bnk-banner__text"${ed("banner.text")}>${esc(cfg.banner.text)}</p>
+    <div class="bnk-banner__btns">
+      <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>${
+        (cfg.banner.btn2Label || "").trim() ? `\n      <a class="bnk-banner__btn bnk-banner__btn--ghost" href="${esc(normPath(cfg.banner.btn2Href || "/"))}"${ed("banner.btn2Label")}>${esc(cfg.banner.btn2Label)}</a>` : ""
+      }
+    </div>
+  </div>\n`
+    : cfg.banner.enabled
     ? `\n  <div class="bnk-banner">
     <div class="bnk-banner__copy">
       <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
@@ -1737,7 +2168,7 @@ ${lightAccents}
     --card-divider: #EEEEF0;
     --card-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 30px rgba(0,0,0,.07);
     --card-blur: none;
-
+${lightRoles.length ? "\n    /* custom colors */\n" + lightRoles.map((v) => "    " + v).join("\n") + "\n" : ""}
     box-sizing: border-box;
     position: relative;
     max-width: ${L.maxW}px;
@@ -1763,7 +2194,9 @@ ${pad}--card-border: rgba(255, 255, 255, 0.09);
 ${pad}--card-title: #ECEFF4;
 ${pad}--card-divider: rgba(255, 255, 255, 0.08);
 ${pad}--card-shadow: none;
-${pad}--card-blur: blur(9px) saturate(118%);`)}
+${pad}--card-blur: blur(9px) saturate(118%);${darkRoles.length ? "\n" + darkRoles.map((v) => pad + v).join("\n") : ""}`)}${hasPageBg ? `
+  /* full-width page background (extends past the content column) */
+  .bnk-landing { background: var(--page-bg, transparent); box-shadow: 0 0 0 100vmax var(--page-bg, transparent); clip-path: inset(0 -100vmax); }` : ""}
 
   .bnk-landing *,
   .bnk-landing *::before { box-sizing: border-box; }
@@ -1786,6 +2219,7 @@ ${tickerCSS}
 ${chipCSS}
   .bnk-hero__title {
     margin: 0 0 20px;
+    text-wrap: balance;
     font-family: ${F.display};
     font-weight: 600;
     font-size: ${heroTitleSize}px;
@@ -1793,7 +2227,7 @@ ${chipCSS}
     color: var(--bnk-heading) !important;
   }
   .bnk-hero__sub { margin: 0 ${heroLeft ? "0" : "auto"}; max-width: 660px; font-size: ${heroSubSize}px; line-height: 1.5; color: var(--bnk-ink-2) !important; }
-${heroButtonsCSS}${actionsCSS}${patternCSS}${sectionCSS}${gridRules}
+${heroButtonsCSS}${actionsCSS}${extrasCSS}${patternCSS}${sectionCSS}${gridRules}
 ${cardCSS}
 ${accentRules}
   .rm-arrow { display: inline-block; transition: transform 200ms ease; }
@@ -1811,11 +2245,10 @@ ${bannerCSS}
 </style>
 
 <div class="bnk-landing" id="rm-root">
-${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}  <div class="bnk-hero">
+${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${H.bg === "glow" ? '  <div class="bnk-heroglow" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}${panelOn ? '  <div class="bnk-herogrid">\n' : ""}  <div class="bnk-hero">
 ${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title"${ed("hero.title")}>${esc(cfg.hero.title)}</h1>
-    <p class="bnk-hero__sub"${ed("hero.subtitle")}>${esc(cfg.hero.subtitle)}</p>
-${heroButtons}  </div>
-${sm === "hero" ? `\n  <div class="bnk-actions" id="rm-actions"></div>\n${cfg.hero.searchHint && cfg.hero.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint")}>${esc(cfg.hero.searchHint)}</p>\n` : ""}` : ""}
+${cfg.hero.subtitle.trim() ? `    <p class="bnk-hero__sub"${ed("hero.subtitle")}>${esc(cfg.hero.subtitle)}</p>\n` : ""}${heroButtons}  </div>
+${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}
 ${sectionsMarkup}
 ${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer"${ed("footer")}>${esc(cfg.footer)}</p>` : ""}
 </div>
@@ -1877,8 +2310,10 @@ function expandLiquidForPreview(html) {
 const PREVIEW_EDIT_SCRIPT = `
 <style>
   [data-glp] { cursor: text; border-radius: 3px; outline: 1px dashed transparent; outline-offset: 3px; transition: outline-color 120ms ease; }
-  [data-glp]:hover { outline-color: rgba(76,141,255,.55); }
-  [data-glp]:focus { outline: 2px solid #4C8DFF; outline-offset: 3px; }
+  [data-glp]:hover { outline-color: rgba(33,58,255,.55); }
+  [data-glp]:focus { outline: 2px solid #213AFF; outline-offset: 3px; }
+  [data-glp-auto] { cursor: help; }
+  [data-glp-auto]:hover { outline: 1px dashed rgba(33,58,255,.55); outline-offset: 3px; }
 </style>
 <script>
 (function () {
@@ -1929,6 +2364,30 @@ const PREVIEW_EDIT_SCRIPT = `
     var s = getSelection();
     if (s.modify) { s.modify("move", "backward", "word"); s.modify("extend", "forward", "word"); }
   }, true);
+  /* "Auto from projects" cards: nothing to type into, so say why and let a
+     click jump to that section's settings in the builder */
+  var tip = null;
+  function showTip(card, x, y) {
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.setAttribute("style", "position:fixed;z-index:99999;max-width:260px;padding:8px 11px;border-radius:8px;background:#00033F;color:#fff;font:500 12px/1.45 -apple-system,Segoe UI,sans-serif;box-shadow:0 8px 24px rgba(0,3,63,.3);pointer-events:none");
+      tip.innerHTML = "<b>Auto-filled by ReadMe</b><br>One card per child project, using each project's name and description. Click to open this section's settings.";
+      document.body.appendChild(tip);
+    }
+    tip.style.display = "block";
+    var w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(x + 14, innerWidth - w - 8) + "px";
+    tip.style.top = Math.min(y + 16, innerHeight - h - 8) + "px";
+  }
+  document.addEventListener("mousemove", function (e) {
+    var card = e.target.closest && e.target.closest("[data-glp-auto]");
+    if (card) showTip(card, e.clientX, e.clientY); else if (tip) tip.style.display = "none";
+  });
+  document.addEventListener("click", function (e) {
+    var card = e.target.closest && e.target.closest("[data-glp-auto]");
+    if (card) parent.postMessage({ type: "glp-focus-section", index: Number(card.getAttribute("data-glp-auto")) }, "*");
+  }, true);
+
   /* links inside the preview never navigate */
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
   document.addEventListener("auxclick", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
@@ -2032,49 +2491,71 @@ ${userHtml.includes("data-glp=") ? PREVIEW_EDIT_SCRIPT : ""}
    BUILDER UI
    ============================================================ */
 const APP_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;700&display=swap');
+  /* faces for the font picker previews (regular weight is enough to judge them) */
+  @import url('https://fonts.googleapis.com/css2?family=Literata&family=Lora&family=Merriweather&family=Fraunces&family=IBM+Plex+Serif&family=DM+Sans&family=Geist&family=IBM+Plex+Sans&family=Inter&family=Space+Grotesk&family=Work+Sans&family=Syne&family=DM+Mono&family=IBM+Plex+Mono&family=Space+Mono&family=Source+Sans+3&family=Manrope&family=JetBrains+Mono&display=swap');
+  /* ReadMe's brand faces, served by readme.com (CORS-open). The file names carry
+     a build hash, so if readme.com redeploys and they 404, the stacks below fall
+     back to Schibsted Grotesk / Georgia without breaking anything. */
+  @font-face { font-family: "STK Bureau Sans"; font-weight: 400; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSans_Book-s.p.1own-0nhaddsj.woff2") format("woff2"); }
+  @font-face { font-family: "STK Bureau Sans"; font-weight: 500; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSans_Regular-s.p.38q825vwl3dv5.woff2") format("woff2"); }
+  @font-face { font-family: "STK Bureau Sans"; font-weight: 700; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSans_Bold-s.p.2n-bgw5dn9rkj.woff2") format("woff2"); }
+  @font-face { font-family: "STK Bureau Serif"; font-weight: 400; font-style: normal; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSerif_Regular-s.p.3l11ftkh3utkg.woff2") format("woff2"); }
+  @font-face { font-family: "STK Bureau Serif"; font-weight: 400; font-style: italic; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSerif_Italic-s.p.3-a17va2x87t3.woff2") format("woff2"); }
 
-  /* ===== Builder UI tokens =====
-     One sans (Schibsted Grotesk) carries the interface; IBM Plex Mono only where
-     monospace earns it (code, numbers, hex). Neutrals are tinted toward ReadMe's
-     blue (hue ~250). Two appearances share every token name:
-       light    (default): white panels, cool blue-tinted canvas behind the preview
-       midnight          : saturated navy, not gray                              */
+  /* ===== Builder UI tokens, from ReadMe's brand system =====
+     - one brand color, ReadMe Blue #213AFF: primary actions, links, focus, selection
+     - true-gray neutrals + alpha hairlines (inset shadows, not hard 1px lines)
+     - STK Bureau Sans for UI (14/20 workhorse), STK Bureau Serif italic for the
+       wordmark, Geist Mono for labels, code and numbers
+     - pill buttons, 6px small controls, 12px containers, 3px focus ring
+     Two appearances share every token name: light, and midnight (ReadMe's
+     deep-navy hero fields). "Match system" picks between them. */
   .glp * { box-sizing: border-box; }
   .glp {
-    --font-ui: "Schibsted Grotesk", -apple-system, "Segoe UI", sans-serif;
-    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --font-ui: "STK Bureau Sans", "Schibsted Grotesk", -apple-system, "Segoe UI", sans-serif;
+    --font-display: "STK Bureau Serif", Georgia, "Times New Roman", serif;
+    --font-mono: "Geist Mono", ui-monospace, Menlo, monospace;
 
-    --bg: oklch(0.952 0.009 250);          /* canvas behind the preview */
-    --panel: oklch(0.995 0.002 250);       /* top bar, sidebar */
-    --panel-2: oklch(0.975 0.006 250);     /* rows, cards */
-    --field: oklch(1 0 0);                 /* inputs */
-    --line: oklch(0.915 0.01 250);
-    --line-2: oklch(0.87 0.013 250);
-    --ink: oklch(0.25 0.035 258);
-    --ink-2: oklch(0.42 0.03 258);
-    --ink-3: oklch(0.52 0.025 258);
-    --accent: oklch(0.55 0.19 252);        /* ReadMe blue, deepened for text contrast */
-    --accent-hover: oklch(0.5 0.19 252);
-    --accent-ink: oklch(1 0 0);
-    --accent-soft: oklch(0.945 0.035 252);
-    --ok: oklch(0.52 0.12 158);
-    --ok-soft: oklch(0.94 0.05 158);
-    --warn: oklch(0.52 0.11 70);
-    --warn-soft: oklch(0.96 0.045 85);
-    --warn-line: oklch(0.85 0.08 80);
-    --danger: oklch(0.54 0.19 25);
-    --danger-line: oklch(0.82 0.08 25);
-    --dot: oklch(0.86 0.015 250);
-    --code-bg: oklch(0.985 0.004 250);
-    --code-ink: oklch(0.3 0.03 258);
-    --shadow-sm: 0 1px 2px oklch(0.3 0.05 258 / 0.06);
-    --shadow-lg: 0 18px 48px oklch(0.3 0.06 258 / 0.16), 0 2px 6px oklch(0.3 0.05 258 / 0.06);
-    --frame-shadow: 0 1px 3px oklch(0.3 0.05 258 / 0.08), 0 16px 40px oklch(0.3 0.06 258 / 0.1);
-    /* editor-area hues (nav tabs) */
-    --hue-theme: oklch(0.55 0.2 300);
-    --hue-header: oklch(0.55 0.12 190);
-    --hue-hero: oklch(0.6 0.15 65);
+    --brand-blue: rgb(33 58 255);
+    --bg: rgb(242 242 242);                /* canvas behind the preview (dotted grid) */
+    --panel: rgb(255 255 255);             /* top bar, sidebar */
+    --panel-2: rgb(248 248 248);           /* rows, cards */
+    --field: rgb(255 255 255);             /* inputs */
+    --line: rgb(5 5 5 / 0.07);
+    --line-2: rgb(5 5 5 / 0.12);
+    --hairline: inset 0 0 0 1px rgb(5 5 5 / 0.08);
+    --ink: rgb(31 31 31);
+    --ink-2: rgb(74 74 74);
+    --ink-3: rgb(107 107 107);
+    /* ReadMe Blue's hue, deepened and calmed for a UI people stare at all day
+       (#213AFF is the marketing color; it's loud as an editor accent) */
+    --accent: rgb(44 62 200);              /* text, icons, selection */
+    --accent-fill: rgb(44 62 200);         /* primary button fill */
+    --accent-hover: rgb(34 50 170);
+    --accent-ink: rgb(255 255 255);
+    --accent-soft: rgb(239 241 251);
+    --focus: 0 0 0 3px rgb(44 62 200 / 0.55);
+    --focus-soft: 0 0 0 3px rgb(44 62 200 / 0.18);
+    --ok: rgb(31 134 48);
+    --ok-dot: rgb(74 198 89);              /* ReadMe's annotation green */
+    --ok-soft: rgb(232 247 234);
+    --warn: rgb(150 88 0);
+    --warn-soft: rgb(255 246 229);
+    --warn-line: rgb(240 205 140);
+    --danger: rgb(196 31 45);
+    --danger-line: rgb(240 180 186);
+    --dot: rgb(5 5 5 / 0.13);
+    --code-bg: rgb(250 250 250);
+    --code-ink: rgb(40 40 40);
+    --shadow-sm: var(--hairline);
+    --shadow-lg: inset 0 0 0 1px rgb(5 5 5 / 0.06), 0 16px 40px rgb(0 3 63 / 0.14);
+    --frame-shadow: 0 0 0 1px rgb(5 5 5 / 0.06), 0 12px 32px rgb(0 3 63 / 0.1);
+    /* editor-area hues from ReadMe's accent ramps */
+    --hue-templates: rgb(200 60 120);
+    --hue-theme: rgb(125 60 220);
+    --hue-header: rgb(31 140 60);
+    --hue-hero: rgb(214 100 0);
     --hue-sections: var(--accent);
 
     height: 100vh;
@@ -2083,43 +2564,49 @@ const APP_CSS = `
     background: var(--bg);
     color: var(--ink);
     font-family: var(--font-ui);
-    font-size: 13.5px;
-    font-feature-settings: "ss01" 1;
+    font-size: 14px;
+    line-height: 20px;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
   }
   .glp[data-ui="midnight"] {
-    --bg: oklch(0.165 0.035 262);
-    --panel: oklch(0.2 0.04 262);
-    --panel-2: oklch(0.235 0.042 262);
-    --field: oklch(0.175 0.035 262);
-    --line: oklch(0.3 0.04 262);
-    --line-2: oklch(0.36 0.045 262);
-    --ink: oklch(0.96 0.01 262);
-    --ink-2: oklch(0.8 0.025 262);
-    --ink-3: oklch(0.7 0.03 262);
-    --accent: oklch(0.72 0.15 250);
-    --accent-hover: oklch(0.78 0.13 250);
-    --accent-ink: oklch(0.18 0.04 262);
-    --accent-soft: oklch(0.3 0.08 255);
-    --ok: oklch(0.78 0.14 158);
-    --ok-soft: oklch(0.3 0.06 158);
-    --warn: oklch(0.83 0.11 80);
-    --warn-soft: oklch(0.28 0.05 75);
-    --warn-line: oklch(0.45 0.08 75);
-    --danger: oklch(0.74 0.15 25);
-    --danger-line: oklch(0.45 0.1 25);
-    --dot: oklch(0.28 0.04 262);
-    --code-bg: oklch(0.15 0.032 262);
-    --code-ink: oklch(0.88 0.02 262);
-    --shadow-sm: none;
-    --shadow-lg: 0 20px 56px oklch(0.08 0.03 262 / 0.6);
-    --frame-shadow: 0 20px 56px oklch(0.08 0.03 262 / 0.55);
-    --hue-theme: oklch(0.76 0.14 300);
-    --hue-header: oklch(0.8 0.11 190);
-    --hue-hero: oklch(0.83 0.13 75);
+    --bg: rgb(0 2 30);                     /* darker than the hero navy, for long sessions */
+    --panel: rgb(0 3 44);
+    --panel-2: rgb(0 3 63);                /* --accent-blue-primary-12, raised rows */
+    --field: rgb(0 2 26);
+    --line: rgb(255 255 255 / 0.1);
+    --line-2: rgb(255 255 255 / 0.17);
+    --hairline: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+    --ink: rgb(255 255 255);
+    --ink-2: rgb(255 255 255 / 0.8);
+    --ink-3: rgb(255 255 255 / 0.64);
+    --accent: rgb(152 164 232);
+    --accent-fill: rgb(50 68 190);
+    --accent-hover: rgb(62 82 210);
+    --accent-ink: rgb(255 255 255);
+    --accent-soft: rgb(18 28 88);
+    --focus: 0 0 0 3px rgb(140 154 230 / 0.6);
+    --focus-soft: 0 0 0 3px rgb(140 154 230 / 0.25);
+    --ok: rgb(110 220 125);
+    --ok-dot: rgb(74 198 89);
+    --ok-soft: rgb(12 60 40);
+    --warn: rgb(255 200 110);
+    --warn-soft: rgb(44 30 30);
+    --warn-line: rgb(120 90 50);
+    --danger: rgb(255 140 150);
+    --danger-line: rgb(130 50 70);
+    --dot: rgb(255 255 255 / 0.09);
+    --code-bg: rgb(0 2 24);
+    --code-ink: rgb(220 226 255);
+    --shadow-sm: var(--hairline);
+    --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
+    --frame-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 20px 56px rgb(0 0 20 / 0.55);
+    --hue-templates: rgb(245 140 185);
+    --hue-theme: rgb(190 150 255);
+    --hue-header: rgb(110 220 125);
+    --hue-hero: rgb(255 170 90);
+    --hue-sections: var(--accent);
   }
-
   .glp-bar {
     display: flex; align-items: center; gap: 16px;
     padding: 0 18px; height: 54px; flex: none;
@@ -2129,17 +2616,17 @@ const APP_CSS = `
   .glp-logo { display: flex; align-items: center; gap: 10px; }
   .glp-logo__mark {
     width: 28px; height: 28px; border-radius: 8px;
-    background: var(--accent);
+    background: var(--accent-fill);
     display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 12.5px; letter-spacing: -0.02em; color: var(--accent-ink);
+    color: var(--accent-ink);
   }
-  .glp-logo__name { font-weight: 700; font-size: 16px; letter-spacing: -0.015em; }
-  .glp-logo__tag { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
+  .glp-logo__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; line-height: 18px; }
+  .glp-logo__tag { font-size: 12px; line-height: 16px; color: var(--ink-3); }
 
-  .glp-tabs { display: flex; gap: 2px; margin-left: 10px; background: var(--bg); padding: 3px; border-radius: 9px; border: 1px solid var(--line); }
+  .glp-tabs { display: flex; gap: 2px; margin-left: 10px; background: var(--bg); padding: 3px; border-radius: 999px; box-shadow: var(--hairline); }
   .glp-tab {
     border: 0; background: transparent; color: var(--ink-2); font-family: inherit;
-    font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; font-weight: 500; padding: 5px 16px; border-radius: 999px; cursor: pointer;
   }
   .glp-tab:hover { color: var(--ink); }
   .glp-tab.on { background: var(--panel); color: var(--ink); box-shadow: var(--shadow-sm), 0 0 0 1px var(--line); }
@@ -2147,6 +2634,12 @@ const APP_CSS = `
   .glp-bar__right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
   .glp-uitoggle { font-size: 14px; width: 34px; height: 34px; border-radius: 8px; margin-right: 4px; }
   .glp-uitoggle.on { background: var(--panel-2); color: var(--ink); }
+  /* Import with Claude: standard button, kept prominent by placement + blue icon */
+  .glp-smallbtn.glp-claudebtn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px; font-size: 13.5px; color: var(--ink); flex: none; }
+  .glp-claudebtn i { color: var(--accent); }
+  @media (max-width: 1439px) { .glp-logo__tag { display: none; } }
+  @media (max-width: 1180px) { .glp-claudebtn span { display: none; } }
+  .glp-section > .glp-card__head .glp-card__meta { max-width: 120px; }
   .glp-uimenu { position: relative; }
   .glp-uimenu__list {
     position: absolute; top: calc(100% + 6px); left: 0; z-index: 41; width: 176px; padding: 5px;
@@ -2163,9 +2656,9 @@ const APP_CSS = `
   .glp-copy {
     display: inline-flex; align-items: center; gap: 8px;
     border: 0; cursor: pointer;
-    background: var(--accent); color: var(--accent-ink);
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    padding: 9px 16px; border-radius: 8px;
+    background: var(--accent-fill); color: var(--accent-ink);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    padding: 8px 18px; border-radius: 999px;
     transition: background 150ms cubic-bezier(.25,1,.5,1);
   }
   .glp-copy:hover { background: var(--accent-hover); }
@@ -2176,7 +2669,7 @@ const APP_CSS = `
   .glp-navtabs {
     position: sticky; top: -20px; z-index: 6;
     margin: -20px -20px 16px; padding: 8px 10px;
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px;
     background: var(--panel); border-bottom: 1px solid var(--line);
   }
   .glp-navtabs button {
@@ -2185,17 +2678,17 @@ const APP_CSS = `
     padding: 7px 4px 6px; color: var(--ink-3); font-size: 11.5px; font-weight: 600; white-space: nowrap;
   }
   /* each area has its own hue (--tc): colored icon at rest, tinted pill when active */
+  .glp-navtabs [data-tab="templates"] { --tc: var(--hue-templates); }
   .glp-navtabs [data-tab="theme"] { --tc: var(--hue-theme); }
   .glp-navtabs [data-tab="headerFooter"] { --tc: var(--hue-header); }
   .glp-navtabs [data-tab="hero"] { --tc: var(--hue-hero); }
   .glp-navtabs [data-tab="sections"] { --tc: var(--hue-sections); }
-  .glp-navtabs button { color: var(--ink-2); font-size: 12px; }
+  .glp-navtabs button { color: var(--ink-2); font-size: 12px; font-weight: 500; border-radius: 10px; padding-left: 2px; padding-right: 2px; }
   .glp-navtabs button i { font-size: 15px; color: var(--tc); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
   .glp-navtabs button:hover { color: var(--ink); background: color-mix(in oklch, var(--tc) 8%, var(--panel)); }
-  .glp-navtabs button:hover i { transform: translateY(-1px); }
   .glp-navtabs button.on {
-    color: var(--ink); background: color-mix(in oklch, var(--tc) 13%, var(--panel));
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tc) 40%, transparent);
+    color: var(--ink); background: color-mix(in oklch, var(--tc) 9%, var(--panel));
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tc) 28%, transparent);
   }
   .glp-side {
     width: 452px; flex: none;
@@ -2232,12 +2725,14 @@ const APP_CSS = `
     background: var(--field);
     border: 1px solid var(--line-2);
     color: var(--ink);
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13.5px;
+    line-height: 20px;
     font-family: inherit;
   }
-  .glp-input:focus, .glp-textarea:focus, .glp-select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-input::placeholder, .glp-textarea::placeholder { color: var(--ink-3); }
+  .glp-input:focus, .glp-textarea:focus, .glp-select:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-textarea { resize: vertical; min-height: 40px; line-height: 1.45; field-sizing: content; max-height: 160px; }
 
   /* a text field with its own size control folded into the same row, instead of a
@@ -2245,9 +2740,9 @@ const APP_CSS = `
      inside it, rather than two competing fields */
   .glp-fieldrow {
     display: flex; align-items: flex-start; gap: 6px;
-    border: 1px solid var(--line-2); border-radius: 8px; background: var(--field);
+    border: 1px solid var(--line-2); border-radius: 6px; background: var(--field);
   }
-  .glp-fieldrow:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-fieldrow:focus-within { border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-fieldrow > .glp-input, .glp-fieldrow > .glp-textarea {
     flex: 1; min-width: 0; border: 0; background: transparent;
   }
@@ -2280,7 +2775,8 @@ const APP_CSS = `
 
   /* sub-block heading + granular style checkbox grid */
   .glp-sub {
-    font-size: 12.5px; font-weight: 700; color: var(--ink);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3);
     margin: 18px 0 8px;
   }
   .glp-sec__body > .glp-sub:first-child { margin-top: 2px; }
@@ -2288,23 +2784,116 @@ const APP_CSS = `
   .glp-check { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
   .glp-check input { accent-color: var(--accent); flex: none; }
 
-  /* font picker */
-  .glp-fonts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
-  .glp-font {
-    display: flex; align-items: center; gap: 11px;
-    width: 100%; min-width: 0;
-    border: 1px solid var(--line-2); border-radius: 10px;
-    background: var(--panel-2); cursor: pointer;
-    padding: 9px 12px;
-    color: var(--ink-2); font-family: inherit; text-align: left;
+  /* Appearance-style choice cards + grouped rows */
+  .glp-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .glp-choice {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 0; border: 0; background: transparent;
+    cursor: pointer; text-align: left; font-family: inherit; color: var(--ink);
   }
-  .glp-font.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--ink); }
-  .glp-font__aa { font-size: 21px; line-height: 1; color: var(--ink); width: 34px; flex: none; }
-  .glp-font__name { font-size: 12.5px; font-weight: 600; display: block; }
-  .glp-font__hint { font-size: 10.5px; color: var(--ink-3); display: block; margin-top: 2px; }
+  .glp-choice__preview {
+    display: flex; align-items: center; justify-content: center; width: 100%; height: 56px; margin-bottom: 6px;
+    border-radius: 10px; background: var(--panel-2); box-shadow: var(--hairline); transition: box-shadow 150ms ease;
+  }
+  .glp-choice:hover .glp-choice__preview { box-shadow: inset 0 0 0 1px var(--line-2); }
+  .glp-choice.on .glp-choice__preview { box-shadow: inset 0 0 0 2px var(--accent); }
+  .glp-choice__label { font-size: 13.5px; font-weight: 500; }
+  .glp-choice__sub { font-size: 12px; color: var(--ink-3); }
+  .glp-choice__aa { font-size: 24px; line-height: 1; }
+  .glp-choice__dots { display: flex; gap: 6px; }
+  .glp-choice__dots i { width: 16px; height: 16px; border-radius: 50%; background: var(--line-2); box-shadow: var(--hairline); }
+  .glp-group { border-radius: 12px; background: var(--panel-2); box-shadow: var(--hairline); margin-bottom: 8px; }
+  .glp-grow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; min-height: 48px; }
+  .glp-grow + .glp-grow { box-shadow: inset 0 1px 0 var(--line); }
+  .glp-grow__label { display: flex; flex-direction: column; min-width: 0; font-size: 13.5px; font-weight: 500; color: var(--ink); }
+  .glp-grow__label > span { display: inline-flex; align-items: center; gap: 4px; }
+  .glp-grow__label small { font-size: 12px; font-weight: 400; color: var(--ink-3); line-height: 16px; }
+  .glp-grow__reset { font-size: 11px; padding: 2px 4px; }
+  .glp-grow__control { flex: none; display: flex; justify-content: flex-end; max-width: 60%; }
+  .glp-grow__control .glp-fontsel { width: 190px; }
+  .glp-check__box { width: 16px; height: 16px; accent-color: var(--accent); }
+  .glp-select--sm { width: 150px; }
+  .glp-cval { display: flex; align-items: center; gap: 8px; width: 150px; padding: 3px 8px 3px 3px; border-radius: 6px; background: var(--field); border: 1px solid var(--line-2); }
+  .glp-cval:focus-within { border-color: var(--accent); box-shadow: var(--focus-soft); }
+  .glp-cval.bad { border-color: var(--danger); }
+  .glp-cval__sw { position: relative; flex: none; width: 22px; height: 22px; border-radius: 5px; cursor: pointer; box-shadow: var(--hairline); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .glp-cval__sw.empty { background: var(--panel-2); color: var(--ink-3); font-size: 10px; }
+  .glp-cval__sw input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .glp-cval__hex { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; padding: 4px 0; outline: none; }
+  .glp-cval__hex::placeholder { color: var(--ink-3); font-family: var(--font-ui); }
+  .glp-sub--row { display: flex; align-items: center; justify-content: space-between; }
+  .glp-modeswitch { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: var(--bg); box-shadow: var(--hairline); text-transform: none; letter-spacing: 0; }
+  .glp-modeswitch button { border: 0; background: transparent; color: var(--ink-3); width: 26px; height: 22px; border-radius: 999px; cursor: pointer; font-size: 11px; }
+  .glp-modeswitch button.on { background: var(--panel); color: var(--accent); box-shadow: var(--hairline); }
+
+  /* font picker (ReadMe's list) */
+  .glp-fontsel { position: relative; min-width: 0; }
+  .glp-fontsel__btn {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    border: 1px solid var(--line-2); border-radius: 6px; background: var(--field); color: var(--ink);
+    padding: 7px 10px; font-size: 14px; cursor: pointer; text-align: left;
+  }
+  .glp-fontsel__btn i { font-size: 10px; color: var(--ink-3); }
+  .glp-fontsel__btn.on, .glp-fontsel__btn:hover { border-color: var(--accent); }
+  .glp-fontsel__list {
+    position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 41; max-height: 340px; overflow-y: auto; padding: 5px;
+    background: var(--panel); border-radius: 10px; box-shadow: var(--shadow-lg);
+  }
+  .glp-fontsel__list button {
+    display: flex; align-items: baseline; gap: 8px; width: 100%; border: 0; background: transparent; color: var(--ink);
+    padding: 8px 10px; border-radius: 7px; font-size: 15px; cursor: pointer; text-align: left;
+  }
+  .glp-fontsel__list button:hover { background: var(--panel-2); }
+  .glp-fontsel__list button.on { background: var(--accent-soft); }
+  .glp-fontsel__list button small { font-family: var(--font-ui); font-size: 12px; color: var(--ink-3); }
+  .glp-fontsel__list button i { margin-left: auto; font-size: 11px; color: var(--accent); }
+  .glp-fontsel__first { margin-bottom: 4px; box-shadow: 0 1px 0 var(--line); border-radius: 7px 7px 0 0 !important; }
 
   /* starter presets */
   .glp-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .glp-choices--tpl .glp-choice__preview { height: 92px; }
+  .glp-choice__badge { margin-left: 6px; font-style: normal; font-size: 11px; font-weight: 500; color: var(--accent); }
+  .glp-ps { display: flex; flex-direction: column; gap: 3px; width: 100%; height: 100%; padding: 10px 12px; position: relative; overflow: hidden; text-align: left; }
+  .glp-ps__l { display: block; border-radius: 2px; background: var(--ink-3); }
+  .glp-ps__row { display: flex; gap: 4px; margin-top: auto; }
+  .glp-ps__card { flex: 1; border-radius: 3px; background: var(--panel); box-shadow: var(--hairline); }
+  .glp-ps__bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+  .glp-ps__dark { display: block; height: 8px; margin-top: 4px; border-radius: 2px; background: var(--ink); opacity: .75; }
+  .glp-ps__glow { position: absolute; inset: -20px auto auto -20px; width: 110px; height: 70px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 22%, transparent); filter: blur(12px); }
+  .glp-ps__split { position: relative; display: flex; gap: 8px; align-items: center; height: 100%; }
+  .glp-ps__split > span { display: flex; flex-direction: column; gap: 3px; }
+  .glp-ps__btns { display: flex; gap: 3px; margin-top: 3px; }
+  .glp-ps__btns i { width: 16px; height: 5px; border-radius: 2px; background: var(--accent); }
+  .glp-ps__btns i + i { background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .glp-ps__panel { flex: 1; height: 80%; border-radius: 4px; background: var(--panel); box-shadow: var(--hairline); }
+  .glp-ps__search { display: block; width: 70%; height: 9px; margin: 0 auto; border-radius: 3px; background: var(--panel); box-shadow: inset 0 0 0 1px var(--line-2); }
+  .glp-ps__chips { display: flex; gap: 3px; justify-content: center; margin: 3px 0 2px; }
+  .glp-ps__chips i { width: 12px; height: 4px; border-radius: 3px; box-shadow: inset 0 0 0 1px var(--line-2); }
+  .glp-ps__serif { height: 6px; border-radius: 1px; background: var(--ink); }
+  .glp-ps__rows { display: flex; flex-direction: column; margin-top: auto; border-radius: 3px; background: var(--panel); box-shadow: var(--hairline); }
+  .glp-ps__rows i { height: 10px; box-shadow: inset 0 -1px 0 var(--line); }
+  .glp-ps__rows i:last-child { box-shadow: none; }
+  .glp-ps__rows--mono i { background: repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--accent) 35%, transparent) 6px 16px, transparent 16px 100%) no-repeat 6px 4px / 50% 2px; }
+  .glp-ps__prompt { font-family: var(--font-mono); font-size: 9px; line-height: 1; color: var(--accent); }
+  .glp-toast {
+    position: fixed; left: 20px; bottom: 20px; z-index: 70; display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px 9px 14px; border-radius: 12px; background: var(--panel); box-shadow: var(--shadow-lg); font-size: 13.5px;
+  }
+  .glp-cardtpl-label { font-size: 13px; font-weight: 500; color: var(--ink-2); margin: 0 0 8px; }
+  .glp-choices--4 .glp-choice__preview { height: 72px; }
+  .glp-choices--4 .glp-choice__sub { line-height: 16px; }
+  .glp-sk { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 10px; }
+  .glp-sk--row { gap: 6px; }
+  .glp-sk__card {
+    position: relative; display: flex; flex-direction: column; gap: 4px; width: 62%; padding: 8px 8px 7px;
+    background: var(--panel); border-radius: 6px; box-shadow: var(--hairline), 0 1px 2px rgb(5 5 5 / 0.05); overflow: hidden;
+  }
+  .glp-sk__card--sm { width: 44%; padding: 6px; }
+  .glp-sk__card--bar::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; background: var(--accent); }
+  .glp-sk__line { display: block; height: 3px; border-radius: 2px; background: var(--ink-3); }
+  .glp-sk__pill { display: block; width: 26%; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 30%, transparent); }
+  .glp-sk__icon { display: block; width: 10px; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--accent) 25%, transparent); }
+  .glp-sk__btn { display: block; width: 34%; height: 7px; margin-top: 2px; border-radius: 4px; background: var(--accent); }
+  .glp-sk__arrow { align-self: flex-end; font-size: 6px; color: var(--accent); }
   .glp-preset {
     text-align: left; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--ink);
     border-radius: 10px; padding: 9px 11px; cursor: pointer; font-family: inherit;
@@ -2327,6 +2916,7 @@ const APP_CSS = `
   /* autosave indicator */
   .glp-save { font-size: 12px; font-weight: 500; color: var(--ink-3); white-space: nowrap; }
   .glp-save.ok { color: var(--ok); }
+  .glp-save.ok i { color: var(--ok-dot); }
   .glp-save.err { color: var(--danger); cursor: help; }
 
   .glp-slider { display: flex; align-items: center; gap: 10px; }
@@ -2335,14 +2925,15 @@ const APP_CSS = `
     width: 62px; flex: none; background: var(--field); border: 1px solid var(--line-2); color: var(--ink);
     border-radius: 6px; padding: 5px 7px; font-family: var(--font-mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums;
   }
-  .glp-numin:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-numin:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-numunit { font-size: 11.5px; color: var(--ink-3); flex: none; width: 16px; }
 
   .glp-card {
-    border: 1px solid var(--line-2);
-    border-radius: 10px;
+    border: 0;
+    border-radius: 12px;
     margin-bottom: 10px;
     background: var(--panel-2);
+    box-shadow: var(--hairline);
     overflow: hidden;
   }
   .glp-card__head {
@@ -2376,16 +2967,17 @@ const APP_CSS = `
     background: linear-gradient(90deg, transparent, var(--rowbg, var(--panel-2)) 18px);
   }
   .glp-card__head:hover > .glp-rowacts, .glp-card__head:focus-within > .glp-rowacts { opacity: 1; pointer-events: auto; }
+  .glp-card__meta { transition: opacity 120ms ease; }
+  .glp-card__head:hover > .glp-card__meta, .glp-card__head:focus-within > .glp-card__meta { opacity: 0; }
   .glp-chev i { font-size: 10px; transition: transform 150ms ease; }
   .glp-chev.open i { transform: rotate(90deg); }
   .glp button:focus-visible, .glp [role=button]:focus-visible, .glp-info:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: 2px;
+    outline: none; box-shadow: var(--focus);
   }
   .glp-card__body { padding: 4px 12px 14px; border-top: 1px solid var(--line); }
 
   /* nested section container gets a subtle accent edge */
-  .glp-section > .glp-card__head { --rowbg: color-mix(in oklch, var(--accent) 6%, var(--panel-2)); background: var(--rowbg); }
-  .glp-card { box-shadow: var(--shadow-sm); }
+  .glp-section > .glp-card__head { --rowbg: color-mix(in oklch, var(--accent) 4%, var(--panel-2)); background: var(--rowbg); }
   .glp-section > .glp-card__body { padding: 8px 12px 14px; }
 
   .glp-swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
@@ -2405,7 +2997,7 @@ const APP_CSS = `
   .glp-hex-wrap { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
   .glp-hex { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
     background: var(--field); border: 1px solid var(--line-2); border-radius: 8px; padding: 3px 6px 3px 3px; }
-  .glp-hex:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-hex:focus-within { border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-hex--invalid { border-color: var(--danger); }
   .glp-hex__err { font-size: 11px; color: var(--danger); line-height: 1.3; }
   .glp-hex__sw { width: 24px; height: 24px; border-radius: 6px; flex: none; border: 1px solid var(--line-2); }
@@ -2416,13 +3008,15 @@ const APP_CSS = `
   .glp-hex__pick::-webkit-color-swatch-wrapper { padding: 2px; }
   .glp-hex__pick::-webkit-color-swatch { border: 1px solid var(--line-2); border-radius: 4px; }
 
-  .glp-seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .glp-seg { display: inline-flex; background: var(--bg); border: 0; box-shadow: var(--hairline); border-radius: 8px; padding: 3px; gap: 2px; flex-wrap: wrap; }
   .glp-seg button {
     border: 0; background: transparent; color: var(--ink-2);
     font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
   }
+  .glp-seg button { white-space: nowrap; }
   .glp-seg button:hover { color: var(--ink); }
-  .glp-seg button.on { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-sm), 0 0 0 1px var(--line-2); }
+  .glp-seg button.on { background: var(--panel); color: var(--ink); font-weight: 500; box-shadow: var(--hairline), 0 1px 2px rgb(5 5 5 / 0.06); }
+  .glp[data-ui="midnight"] .glp-seg button.on { background: var(--accent-soft); }
 
   .glp-peekitem { display: flex; gap: 6px; margin-bottom: 6px; }
   .glp-peekitem .glp-input { flex: 1; }
@@ -2438,6 +3032,7 @@ const APP_CSS = `
   .glp-iconpop .glp-seg { margin-bottom: 8px; }
   .glp-linkrow .glp-input { min-width: 0; }
   .glp-linkrow .glp-input:first-child { flex: 1.4; }
+  .glp-linkrow .glp-linkrow__meta { flex: 0 0 64px; }
 
   .glp-add {
     width: 100%; border: 1px dashed var(--line-2); background: transparent;
@@ -2463,13 +3058,18 @@ const APP_CSS = `
     box-shadow: var(--shadow-lg);
   }
   .glp-modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-  .glp-modal__head b { font-size: 15px; display: inline-flex; gap: 9px; align-items: center; }
+  .glp-modal__head b { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 22px; display: inline-flex; gap: 10px; align-items: center; }
+  .glp-modal__head b i { font-size: 16px; }
   .glp-modal__head b i { color: var(--accent); }
   .glp-modal__lede { margin: 0 0 14px; color: var(--ink-2); font-size: 12.5px; line-height: 1.5; }
   .glp-modal__body { margin-top: 16px; }
   .glp-modal__err { color: var(--danger); font-size: 12px; margin: 0 0 12px; }
   .glp-steps { margin: 0 0 12px; padding-left: 18px; line-height: 1.55; color: var(--ink); }
   .glp-steps li { margin-bottom: 12px; }
+  .glp-more { font-size: 12.5px; color: var(--ink-2); }
+  .glp-more summary { cursor: pointer; color: var(--ink-3); }
+  .glp-more summary:hover { color: var(--ink); }
+  .glp-more p { margin: 8px 0 0; }
   .glp-copyrow { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
   .glp-copyrow code {
     flex: 1; min-width: 0; padding: 7px 10px; border-radius: 7px; background: var(--field); border: 1px solid var(--line-2);
@@ -2501,7 +3101,7 @@ const APP_CSS = `
     border-bottom: 1px solid var(--line);
     background: var(--panel);
   }
-  .glp-view__label { font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .glp-view__label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
   .glp-view__bar .glp-seg { flex-wrap: nowrap; }
   .glp-view__note { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--ink-3); }
   .glp-view__framewrap {
@@ -2554,10 +3154,10 @@ const APP_CSS = `
   .glp-chip--liquid { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
   .glp-smallbtn {
     border: 1px solid var(--line-2); background: var(--panel); color: var(--ink-2);
-    font-size: 12.5px; font-weight: 500; padding: 5px 11px; border-radius: 7px; cursor: pointer; font-family: inherit;
-    box-shadow: var(--shadow-sm);
+    font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 999px; cursor: pointer; font-family: inherit;
+    box-shadow: var(--shadow-sm); border-color: transparent;
   }
-  .glp-smallbtn:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-3); }
+  .glp-smallbtn:hover:not(:disabled) { color: var(--ink); background: var(--panel-2); }
   .glp-smallbtn:disabled { opacity: .5; cursor: default; }
   .glp-smallbtn.done { color: var(--ok); border-color: var(--ok); }
 
@@ -2596,7 +3196,7 @@ const APP_CSS = `
   .glp-pages__actions .glp-smallbtn { flex: 1; text-align: center; padding: 6px 4px; }
   .glp-smallbtn--danger { color: var(--danger); border-color: var(--danger-line); }
   .glp-pages__tpl { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-  .glp-pages__tplhead { font-size: 12px; font-weight: 700; color: var(--ink); padding: 0 4px 6px; }
+  .glp-pages__tplhead { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); padding: 0 4px 6px; }
   .glp-pages__item {
     display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left;
     border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer;
@@ -3013,6 +3613,135 @@ function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain
   );
 }
 
+/* ---------- ReadMe Appearance-style building blocks ----------
+   ChoiceCards: "Default vs Custom" picker cards with a small preview.
+   SettingsGroup / SettingsRow: the rounded list of label-left rows. */
+function ChoiceCards({ value, onChange, options }) {
+  return (
+    <div className="glp-choices" role="radiogroup">
+      {options.map((o) => (
+        <button key={o.value} type="button" role="radio" aria-checked={value === o.value} className={"glp-choice" + (value === o.value ? " on" : "")} onClick={() => onChange(o.value)}>
+          <span className="glp-choice__preview">{o.preview}</span>
+          <span className="glp-choice__label">{o.label}</span>
+          {o.sub && <span className="glp-choice__sub">{o.sub}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+/* tiny drawings of each card template's look */
+function CardSketch({ kind }) {
+  const line = (w, o = 1) => <i className="glp-sk__line" style={{ width: w, opacity: o }}></i>;
+  if (kind === "help") {
+    return (
+      <span className="glp-sk glp-sk--row">
+        {[0, 1].map((i) => (
+          <span key={i} className="glp-sk__card glp-sk__card--sm">{line("70%")}{line("45%", 0.5)}<i className="glp-sk__arrow fa-solid fa-arrow-right"></i></span>
+        ))}
+      </span>
+    );
+  }
+  return (
+    <span className="glp-sk">
+      <span className={"glp-sk__card" + (kind === "icons" || kind === "audience" ? " glp-sk__card--bar" : "")}>
+        {kind === "audience" && <i className="glp-sk__pill"></i>}
+        {(kind === "icons" || kind === "audience") && <i className="glp-sk__icon"></i>}
+        {line("65%")}
+        {line("85%", 0.45)}
+        {kind === "audience" && <i className="glp-sk__btn"></i>}
+        {kind === "icons" && line("35%", 0.9)}
+      </span>
+    </span>
+  );
+}
+/* tiny drawings of each page template's layout */
+function PageSketch({ kind }) {
+  const L = (w, h = 3, o = 1, extra) => <i className="glp-ps__l" style={{ width: w, height: h, opacity: o, ...(extra || {}) }}></i>;
+  const cards = (n, h = 14) => (
+    <span className="glp-ps__row">{Array.from({ length: n }).map((_, i) => <i key={i} className="glp-ps__card" style={{ height: h }}></i>)}</span>
+  );
+  const body = {
+    blank: <>{L("55%", 5, 1, { margin: "4px auto 3px" })}{L("38%", 3, 0.4, { margin: "0 auto 7px" })}{cards(3)}</>,
+    portal: <><span className="glp-ps__bar">{L("18%", 3)}{L("30%", 2, 0.4)}</span>{L("50%", 5)}{L("34%", 3, 0.4, { marginBottom: 6 })}{cards(2, 12)}<span className="glp-ps__dark"></span></>,
+    aurora: <><i className="glp-ps__glow"></i><span className="glp-ps__split"><span style={{ flex: 1.3 }}>{L("90%", 5)}{L("70%", 5)}{L("60%", 3, 0.4)}<span className="glp-ps__btns"><i></i><i></i></span></span><i className="glp-ps__panel"></i></span></>,
+    spotlight: <>{L("46%", 5, 1, { margin: "6px auto 5px" })}<i className="glp-ps__search"></i><span className="glp-ps__chips"><i></i><i></i><i></i><i></i></span>{cards(2, 10)}</>,
+    editorial: <>{L("30%", 2, 0.5)}<i className="glp-ps__l glp-ps__serif" style={{ width: "80%" }}></i>{L("50%", 3, 0.4, { marginBottom: 6 })}<span className="glp-ps__rows"><i></i><i></i></span></>,
+    terminal: <><span className="glp-ps__prompt">$ _</span>{L("70%", 4)}{L("46%", 3, 0.4, { marginBottom: 6 })}<span className="glp-ps__rows glp-ps__rows--mono"><i></i><i></i></span></>,
+  }[kind] || cards(3);
+  return <span className="glp-ps">{body}</span>;
+}
+function SettingsGroup({ children }) {
+  return <div className="glp-group">{children}</div>;
+}
+function SettingsRow({ label, hint, onReset, children }) {
+  return (
+    <div className="glp-grow">
+      <div className="glp-grow__label">
+        <span>
+          {label}
+          {onReset && (
+            <button type="button" className="glp-iconbtn glp-grow__reset" title="Reset to default" aria-label={"Reset " + label} onClick={onReset}>
+              <i className="fa-solid fa-rotate-left" aria-hidden="true"></i>
+            </button>
+          )}
+        </span>
+        {hint && <small>{hint}</small>}
+      </div>
+      <div className="glp-grow__control">{children}</div>
+    </div>
+  );
+}
+/* swatch + hex; empty = "use the default" (slashed swatch), like ReadMe's */
+function ColorValue({ value, onChange, label }) {
+  const [txt, setTxt] = useState(value || "");
+  useEffect(() => { setTxt(value || ""); }, [value]);
+  const valid = normHex(txt);
+  return (
+    <div className={"glp-cval" + (txt && !valid ? " bad" : "")}>
+      <label className={"glp-cval__sw" + (value ? "" : " empty")} style={value ? { background: value } : undefined} title={"Pick " + label}>
+        {!value && <i className="fa-solid fa-slash" aria-hidden="true"></i>}
+        <input type="color" value={normHex(value) || "#213aff"} onChange={(e) => onChange(e.target.value)} aria-label={"Pick " + label} />
+      </label>
+      <input className="glp-cval__hex" value={txt} placeholder="Default" spellCheck={false} aria-label={label + " hex"}
+        onChange={(e) => { setTxt(e.target.value); const h = normHex(e.target.value); if (h) onChange(h); if (!e.target.value.trim()) onChange(""); }}
+        onBlur={() => { if (txt && !normHex(txt)) setTxt(value || ""); }} />
+    </div>
+  );
+}
+
+/* ---------- font picker: ReadMe's font list, each option shown in its own face ---------- */
+function FontSelect({ label, value, options, onChange, bare, firstLabel = "Match Settings in ReadMe", firstSub = "Whatever your hub uses" }) {
+  const [open, setOpen] = useState(false);
+  const list = FONT_FAMILIES[value] && !options.includes(value) ? [...options, value] : options; /* keep a legacy pick visible */
+  const face = (n) => (n === "readme" ? "var(--font-ui)" : `'${n}', ${FONT_FALLBACK[FONT_FAMILIES[n].kind]}`);
+  const name = (n) => (n === "readme" ? firstLabel : n + (FONT_FAMILIES[n] && FONT_FAMILIES[n].legacy ? " (older preset)" : ""));
+  const body = (
+      <div className="glp-fontsel">
+        <button type="button" className={"glp-fontsel__btn" + (open ? " on" : "")} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span style={{ fontFamily: face(value) }}>{name(value)}</span>
+          <i className="fa-solid fa-chevron-down" aria-hidden="true"></i>
+        </button>
+        {open && (
+          <>
+            <div className="glp-pages__backdrop" onClick={() => setOpen(false)} />
+            <div className="glp-fontsel__list" role="listbox" aria-label={label}>
+              {["readme", ...list].map((n, i) => (
+                <button key={n} type="button" role="option" aria-selected={value === n}
+                  className={(value === n ? "on" : "") + (i === 0 ? " glp-fontsel__first" : "")}
+                  onClick={() => { onChange(n); setOpen(false); }}>
+                  <span style={{ fontFamily: face(n) }}>{name(n)}</span>
+                  {n === "readme" && <small>{firstSub}</small>}
+                  {value === n && <i className="fa-solid fa-check" aria-hidden="true"></i>}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+  );
+  return bare ? body : <Field label={label} inline>{body}</Field>;
+}
+
 /* ---------- inline-renamable row name (builder-only label, never on the page).
    Click the pencil or double-click the name; Enter/blur saves, Escape cancels,
    clearing it falls back to the section heading / "Section N". ---------- */
@@ -3090,7 +3819,7 @@ function RowHead({ noun, max, index, count, open, onToggle, onMove, onDuplicate,
 }
 
 /* ---------- shared: editable list of { label, href } rows ---------- */
-function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefPh = "/path", addLabel = "+ Add link" }) {
+function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefPh = "/path", addLabel = "+ Add link", withMeta = false }) {
   const list = links || [];
   const setRow = (i, p) => onChange(list.map((l, j) => (j === i ? { ...l, ...p } : l)));
   const move = (i, dir) => {
@@ -3106,12 +3835,13 @@ function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefP
         <div className="glp-peekitem glp-linkrow" key={i}>
           <input className="glp-input" value={l.label} placeholder={labelPh} onChange={(e) => setRow(i, { label: e.target.value })} />
           <input className="glp-input" value={l.href} placeholder={hrefPh} onChange={(e) => setRow(i, { href: e.target.value })} />
+          {withMeta && <input className="glp-input glp-linkrow__meta" value={l.meta || ""} placeholder="Count" onChange={(e) => setRow(i, { meta: e.target.value })} />}
           <button className="glp-iconbtn" type="button" title="Move up" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}><i className="fa-solid fa-arrow-up" aria-hidden="true"></i></button>
           <button className="glp-iconbtn" type="button" title="Remove" aria-label="Remove" onClick={() => onChange(list.filter((_, j) => j !== i))}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
       ))}
       {list.length < max && (
-        <button className="glp-add glp-add--sm" type="button" onClick={() => onChange([...list, { label: "", href: "" }])}>
+        <button className="glp-add glp-add--sm" type="button" onClick={() => onChange([...list, withMeta ? { label: "", href: "", meta: "" } : { label: "", href: "" }])}>
           {addLabel}
         </button>
       )}
@@ -3145,6 +3875,9 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
               <input className="glp-input" value={card.href} onChange={(e) => set({ href: e.target.value })} placeholder="my-project" />
             </Field>
           </div>
+          <Field label="Count label (optional, e.g. 120 pages)">
+            <input className="glp-input" value={card.meta} onChange={(e) => set({ meta: e.target.value })} placeholder="Blank to hide" />
+          </Field>
           <Field label="Description">
             <textarea className="glp-textarea" rows={2} placeholder={style.links ? "Blank to hide" : ""} value={card.blurb} onChange={(e) => set({ blurb: e.target.value })} />
           </Field>
@@ -3318,6 +4051,7 @@ function CardStyleControls({ style: st, setStyle, liquid = false }) {
         <StyleCheck checked={!!st.anchor} label="Whole card links" onChange={(v) => setStyle({ anchor: v })} />
         <StyleCheck checked={!!st.mono} label="Mono / uppercase" onChange={(v) => setStyle({ mono: v })} />
         {!liquid && <StyleCheck checked={!!st.links} label="Link list" onChange={(v) => setStyle({ links: v })} />}
+        <StyleCheck checked={!!st.num} label="Numbered (01, 02)" onChange={(v) => setStyle({ num: v })} />
         <StyleCheck checked={!!st.iconInline} label="Icon beside title" onChange={(v) => setStyle(v ? { iconInline: true, icon: true } : { iconInline: false })} />
       </div>
       {/* NB: this "button" value means "a styled CTA is shown" (filled or ghost, chosen
@@ -3417,7 +4151,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
   const setLiq = (patch) => onChange({ ...section, liquid: { ...section.liquid, ...patch } });
   const isCols = section.type === "columns";
   const [tabSel, setTab] = useState("content");
-  const tab = isCols && tabSel === "style" ? "content" : tabSel;
+  const tab = (isCols || section.type === "code") && tabSel === "style" ? "content" : tabSel;
   /* the style that actually renders this section's cards: its own or the global one */
   const est = section.styleMode === "custom" ? section.style : globalStyle;
   const liquidOn = section.source === "liquid";
@@ -3466,18 +4200,21 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
       <RowHead noun="section" max={6} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <RenameName value={section.label} fallback={section.heading || `Section ${index + 1}`} onChange={(v) => set({ label: v })} />
-        <span className="glp-card__meta">{isCols ? section.columns.length + " cols" : liquidOn ? "from projects" : section.cards.length + " cards"}</span>
+        <span className="glp-card__meta">{section.type === "code" ? "code" : isCols ? section.columns.length + " cols" : liquidOn ? "auto" : section.cards.length + " cards"}</span>
       </RowHead>
       {open && (
         <div className="glp-card__body">
           <div className="glp-subtabs" role="tablist" aria-label="Section settings">
-            {[["content", "Content"], ["layout", "Layout"], ...(isCols ? [] : [["style", "Card style"]])].map(([k, l]) => (
+            {[["content", "Content"], ["layout", "Layout"], ...(isCols || section.type === "code" ? [] : [["style", "Card style"]])].map(([k, l]) => (
               <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
             ))}
           </div>
 
           {tab === "content" && (
             <>
+              <Field label="Label above heading">
+                <input className="glp-input" value={section.eyebrow} onChange={(e) => set({ eyebrow: e.target.value })} placeholder="Blank to hide, e.g. Code samples" />
+              </Field>
               <Field label="Heading">
                 <input className="glp-input" value={section.heading} onChange={(e) => set({ heading: e.target.value })} placeholder="Blank to hide" />
               </Field>
@@ -3486,15 +4223,30 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
               </Field>
               <Field label="Type" inline>
                 <Seg
-                  value={isCols ? "columns" : "cards"}
+                  value={section.type}
                   onChange={(v) => set({ type: v })}
                   options={[
                     { value: "cards", label: "Cards" },
-                    { value: "columns", label: "Text columns" },
+                    { value: "columns", label: "Columns" },
+                    { value: "code", label: "Code" },
                   ]}
                 />
               </Field>
-              {isCols ? (
+              {section.type === "code" ? (
+                <>
+                  <div className="glp-row2">
+                    <Field label="File name">
+                      <input className="glp-input" value={section.code.file} onChange={(e) => set({ code: { ...section.code, file: e.target.value } })} />
+                    </Field>
+                    <Field label="Language chips">
+                      <input className="glp-input" value={section.code.langs} onChange={(e) => set({ code: { ...section.code, langs: e.target.value } })} placeholder="TypeScript, Python" />
+                    </Field>
+                  </div>
+                  <Field label="Code">
+                    <textarea className="glp-textarea" rows={8} spellCheck={false} style={{ fontFamily: "var(--font-mono)", fontSize: 12, whiteSpace: "pre" }} value={section.code.text} onChange={(e) => set({ code: { ...section.code, text: e.target.value } })} />
+                  </Field>
+                </>
+              ) : isCols ? (
                 <>
                   <div className="glp-sub">Columns</div>
               {section.columns.map((col, i) => (
@@ -3599,11 +4351,14 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                   ]}
                 />
               </Field>
-              {isCols ? (
+              {section.type === "code" ? null : isCols ? (
                 <Slider label="Column gap" value={section.layout.gap} min={12} max={56} onChange={(v) => setLay({ gap: v })} />
               ) : (
                 <>
-                  {!section.layout.bento && (
+                  <Field label="Arrange" inline>
+                    <Seg value={section.layout.list ? "list" : "grid"} onChange={(v) => setLay({ list: v === "list" })} options={[{ value: "grid", label: "Grid" }, { value: "list", label: "List rows" }]} />
+                  </Field>
+                  {!section.layout.bento && !section.layout.list && (
                     <Slider label="Min card width" value={section.layout.colMin} min={180} max={420} onChange={(v) => setLay({ colMin: v })} />
                   )}
                   <Slider label="Card gap" value={section.layout.gap} min={12} max={36} onChange={(v) => setLay({ gap: v })} />
@@ -3619,7 +4374,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
             </>
           )}
 
-          {tab === "style" && !isCols && (
+          {tab === "style" && !isCols && section.type !== "code" && (
             <>
               <Field label="Look" inline>
                 <Seg
@@ -3767,10 +4522,11 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
 /* ---------- React-controlled nav accordion panel ---------- */
 /* the four editor areas, switched by the tab bar pinned to the top of the sidebar */
 const NAV_TABS = [
+  { id: "templates", label: "Templates", icon: "fa-shapes" },
   { id: "theme", label: "Theme", icon: "fa-palette" },
   { id: "sections", label: "Sections", icon: "fa-layer-group" },
-  { id: "hero", label: "Hero", icon: "fa-heading" },
-  { id: "headerFooter", label: "Header & Footer", icon: "fa-bars" },
+  { id: "hero", label: "Hero", icon: "fa-image" },
+  { id: "headerFooter", label: "Header & Footer", icon: "fa-window-maximize" },
 ];
 
 function NavTabs({ openNav, setOpenNav }) {
@@ -3853,29 +4609,31 @@ function ImportDialog({ onClose, onCreate }) {
   };
   return (
     <div className="glp-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="glp-modal__box" role="dialog" aria-modal="true" aria-label="Import a page with Claude">
+      <div className="glp-modal__box" role="dialog" aria-modal="true" aria-label="Import with Claude">
         <div className="glp-modal__head">
-          <b><i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Recreate a page with Claude</b>
+          <b><i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Import with Claude</b>
           <button className="glp-iconbtn" type="button" aria-label="Close" onClick={onClose}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
-        <p className="glp-modal__lede">Claude reads any docs landing page and rebuilds it here as an editable design. It runs on your normal Claude login, no API key.</p>
+        <p className="glp-modal__lede">Give Claude any docs landing page and it rebuilds it here as a design you can edit. Uses your normal Claude login.</p>
         <Seg value={tab} onChange={setTab} options={[{ value: "connector", label: "Connector (recommended)" }, { value: "prompt", label: "Copy a prompt" }]} />
 
         {tab === "connector" ? (
           <div className="glp-modal__body">
             <ol className="glp-steps">
-              <li>In Claude, open <b>Settings → Connectors → Add custom connector</b>, name it <b>GLP Builder</b>, and paste this URL:
-                <div className="glp-copyrow">
-                  <code>{mcpUrl}</code>
-                  <button className="glp-smallbtn" type="button" onClick={() => copy(mcpUrl, "mcp")}>
-                    <i className={"fa-solid " + (copied === "mcp" ? "fa-check" : "fa-copy")} aria-hidden="true"></i> {copied === "mcp" ? "Copied" : "Copy"}
-                  </button>
-                </div>
-              </li>
+              <li>In Claude, open <b>Settings → Connectors</b>, find <b>GLP Builder</b>, and click <b>Connect</b>. It's already set up for everyone at ReadMe.</li>
               <li>In any chat, ask something like <i>"Recreate developer.acme.com as a GLP Builder page."</i></li>
               <li>Claude replies with a builder link. Open it, then click <b>Save as a page</b>.</li>
             </ol>
-            <p className="glp-note">One-time setup. On Team or Enterprise plans, an owner may need to add the connector for the organization first.</p>
+            <details className="glp-more">
+              <summary>Not listed in your Claude?</summary>
+              <p>Add it yourself under <b>Settings → Connectors → Add custom connector</b> with this URL:</p>
+              <div className="glp-copyrow">
+                <code>{mcpUrl}</code>
+                <button className="glp-smallbtn" type="button" onClick={() => copy(mcpUrl, "mcp")}>
+                  <i className={"fa-solid " + (copied === "mcp" ? "fa-check" : "fa-copy")} aria-hidden="true"></i> {copied === "mcp" ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </details>
           </div>
         ) : (
           <div className="glp-modal__body">
@@ -3941,6 +4699,7 @@ function App() {
     setUiMenu(false);
     try { v === "system" ? localStorage.removeItem("glp-builder:ui") : localStorage.setItem("glp-builder:ui", v); } catch (e) {}
   };
+  const [colorEdit, setColorEdit] = useState("light");
   const [openNav, setOpenNavRaw] = useState(() => {
     try { const v = localStorage.getItem("glp-builder:nav"); if (NAV_TABS.some((t) => t.id === v)) return v; } catch (e) {}
     return "sections";
@@ -3971,14 +4730,22 @@ function App() {
   const generated = useMemo(() => generateHTML(config), [config]);
   /* same page with data-glp hooks so text can be edited right in the preview */
   const previewHtml = useMemo(() => generateHTML(config, { editable: true }), [config]);
+  const configRef = useRef(config);
+  configRef.current = config;
 
   /* edits committed inside the preview iframe come back as { path, value } */
   useEffect(() => {
     const onMsg = (e) => {
       const d = e.data;
-      if (!d || d.type !== "glp-edit" || typeof d.path !== "string" || typeof d.value !== "string") return;
+      if (!d || typeof d !== "object") return;
       const fromPreview = [...document.querySelectorAll("iframe.glp-frame")].some((f) => f.contentWindow === e.source);
-      if (!fromPreview || !EDITABLE_PATH_RE.test(d.path)) return;
+      if (!fromPreview) return;
+      if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
+        const sec = configRef.current.sections[d.index];
+        if (sec) { setOpenNav("sections"); setOpenSection(sec.id); }
+        return;
+      }
+      if (d.type !== "glp-edit" || typeof d.path !== "string" || typeof d.value !== "string" || !EDITABLE_PATH_RE.test(d.path)) return;
       setConfig((c) => setAtPath(c, d.path.split("."), d.value.slice(0, 2000)));
     };
     window.addEventListener("message", onMsg);
@@ -3995,6 +4762,23 @@ function App() {
   const setHeaderImage = (p) => setConfig((c) => ({ ...c, headerImage: { ...c.headerImage, ...p } }));
   const setTheme = (p) => setConfig((c) => ({ ...c, theme: { ...c.theme, ...p } }));
   const setCardStyle = (p) => setConfig((c) => ({ ...c, cardStyle: { ...(c.cardStyle || DEFAULT_STYLE), ...p } }));
+  const [tplNotice, setTplNotice] = useState(null);
+  const applyTemplate = (t) => {
+    if (override !== null) {
+      try { if (!window.confirm("This page has manual code edits. Switching templates discards them. Continue?")) return; } catch (e) {}
+      setOverride(null);
+    }
+    const cfg = { ...t.build(), templateKey: t.key };
+    setConfig(cfg);
+    setOpenSection(cfg.sections[0].id);
+    setOpenCard(null);
+    setTplNotice(t.label);
+  };
+  useEffect(() => {
+    if (!tplNotice) return;
+    const id = setTimeout(() => setTplNotice(null), 7000);
+    return () => clearTimeout(id);
+  }, [tplNotice]);
   const applyPreset = (preset) => setConfig((c) => ({ ...c, cardStyle: { ...DEFAULT_STYLE, ...preset.style } }));
 
   /* ---- undo / redo history (rollback) ---- */
@@ -4073,6 +4857,8 @@ function App() {
         id,
         type: "cards",
         label: "",
+        eyebrow: "",
+        code: { ...DEFAULT_CODE },
         heading: "New section",
         intro: "",
         align: "center",
@@ -4244,7 +5030,7 @@ function App() {
   };
 
   const newPage = (template) => {
-    const cfg = template ? template.build() : DEFAULT_CONFIG;
+    const cfg = template ? { ...template.build(), templateKey: template.key } : DEFAULT_CONFIG;
     const d = makeDesign(uniqueName(template ? template.label : "Untitled page"), cfg, "");
     const ds = [...flushCurrent(), d];
     setDesigns(ds);
@@ -4555,6 +5341,14 @@ function App() {
     <div className="glp" data-ui={ui}>
       <style>{APP_CSS}</style>
 
+      {tplNotice && (
+        <div className="glp-toast" role="status">
+          <span>Switched to <b>{tplNotice}</b>.</span>
+          <button type="button" className="glp-smallbtn" onClick={() => { undo(); setTplNotice(null); }}>Undo</button>
+          <button type="button" className="glp-iconbtn" aria-label="Dismiss" onClick={() => setTplNotice(null)}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
+        </div>
+      )}
+
       {importOpen && (
         <ImportDialog
           onClose={() => setImportOpen(false)}
@@ -4574,7 +5368,15 @@ function App() {
 
       <div className="glp-bar">
         <div className="glp-logo">
-          <div className="glp-logo__mark">GL</div>
+          <div className="glp-logo__mark" aria-hidden="true">
+            {/* a tiny landing page: header bar over a row of cards */}
+            <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor">
+              <rect x="2" y="3" width="16" height="3.2" rx="1.2" />
+              <rect x="2" y="8.4" width="4.6" height="8.6" rx="1.2" />
+              <rect x="7.7" y="8.4" width="4.6" height="8.6" rx="1.2" opacity=".75" />
+              <rect x="13.4" y="8.4" width="4.6" height="8.6" rx="1.2" opacity=".5" />
+            </svg>
+          </div>
           <div>
             <div className="glp-logo__name">GLP Builder</div>
             <div className="glp-logo__tag">Global landing pages for ReadMe Enterprise</div>
@@ -4588,6 +5390,11 @@ function App() {
             Code
           </button>
         </div>
+        <button className="glp-smallbtn glp-claudebtn" type="button" onClick={() => setImportOpen(true)}
+          title="Bring any docs landing page into the builder as an editable design, using Claude">
+          <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+          <span>Import with Claude</span>
+        </button>
         <div className="glp-bar__right">
           <div className="glp-uimenu">
             <button className={"glp-iconbtn glp-uitoggle" + (uiMenu ? " on" : "")} type="button" onClick={() => setUiMenu(!uiMenu)}
@@ -4672,13 +5479,16 @@ function App() {
                   ) : (
                     <>
                     <div className="glp-pages__actions">
-                      <button className="glp-smallbtn" type="button" onClick={() => newPage()}>+ New</button>
                       <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={() => setRenaming(true)}>Rename</button>
                       <button className="glp-smallbtn" type="button" onClick={duplicateCurrent}>Duplicate</button>
                       <button className="glp-smallbtn glp-smallbtn--danger" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>Delete</button>
                     </div>
                     <div className="glp-pages__tpl">
-                      <div className="glp-pages__tplhead">New from template</div>
+                      <div className="glp-pages__tplhead">New page</div>
+                      <button className="glp-pages__item" type="button" onClick={() => newPage()}>
+                        <i className="fa-regular fa-file" aria-hidden="true"></i>
+                        <span><b>Blank page</b><small>The default starter: a hero and one card section.</small></span>
+                      </button>
                       {PAGE_TEMPLATES.map((t) => (
                         <button key={t.key} className="glp-pages__item" type="button" onClick={() => newPage(t)}>
                           <i className="fa-solid fa-file-lines" aria-hidden="true"></i>
@@ -4692,7 +5502,7 @@ function App() {
                     <div className="glp-pages__tpl">
                       <button className="glp-pages__item" type="button" onClick={() => { setImportOpen(true); setPagesOpen(false); }}>
                         <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
-                        <span><b>Recreate a page with Claude</b><small>Turn any docs landing page into an editable design.</small></span>
+                        <span><b>Import with Claude</b><small>Bring any docs landing page in as an editable design.</small></span>
                       </button>
                     </div>
                     <div className="glp-pages__tpl">
@@ -4775,83 +5585,132 @@ function App() {
                 </div>
               )}
 
+              <NavSection id="templates" label="Templates" openNav={openNav} setOpenNav={setOpenNav}>
+                <div className="glp-sub" style={{ marginTop: 4 }}>Page templates</div>
+                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Switches this page to the template. Your current content is replaced, and <b>Undo</b> brings it back. To keep both, use <b>Pages → New page</b>.</p>
+                <div className="glp-choices glp-choices--tpl">
+                  {[BLANK_TEMPLATE, ...PAGE_TEMPLATES].map((t) => (
+                    <button key={t.key} type="button" className={"glp-choice" + (config.templateKey === t.key ? " on" : "")} aria-pressed={config.templateKey === t.key} title={t.hint} onClick={() => applyTemplate(t)}>
+                      <span className="glp-choice__preview"><PageSketch kind={t.key} /></span>
+                      <span className="glp-choice__label">{t.label}{config.templateKey === t.key && <em className="glp-choice__badge">Current</em>}</span>
+                      <span className="glp-choice__sub">{t.hint}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="glp-sub">Card templates</div>
+                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Restyles every card section set to <b>Global</b>. Content stays as it is.</p>
+                <div className="glp-choices glp-choices--4">
+                  {PRESETS.map((p) => {
+                    const cur = config.cardStyle || DEFAULT_STYLE;
+                    const on = Object.keys(p.style).every((k) => cur[k] === p.style[k]);
+                    return (
+                      <button key={p.key} type="button" className={"glp-choice" + (on ? " on" : "")} aria-pressed={on} title={p.hint} onClick={() => applyPreset(p)}>
+                        <span className="glp-choice__preview"><CardSketch kind={p.key} /></span>
+                        <span className="glp-choice__label">{p.label}</span>
+                        <span className="glp-choice__sub">{p.hint}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </NavSection>
+
               <NavSection id="theme" label="Theme Editor" openNav={openNav} setOpenNav={setOpenNav}>
-                <div className="glp-sub" style={{ marginTop: 4 }}>Quick start</div>
-                <div className="glp-presets">
-                  {PRESETS.map((p) => (
-                    <button key={p.key} type="button" className="glp-preset" title={p.hint} onClick={() => applyPreset(p)}>
-                      <b>{p.label}</b>
-                      <span>{p.hint}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="glp-sub">Global card style</div>
-                <div className="glp-note" style={{ marginBottom: 12 }}>
-                  The default look for every card section set to <b>Global</b>. Individual sections can override it by switching to <b>Custom</b>.
-                </div>
-                <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
-
-                <div className="glp-sub">Typography</div>
-                <div className="glp-fonts">
-                  {Object.entries(FONTS).map(([key, f]) => (
-                    <button key={key} type="button" title={f.hint} className={"glp-font" + (config.fonts === key ? " on" : "")} onClick={() => patch({ fonts: key })}>
-                      <span className="glp-font__aa" style={{ fontFamily: f.display }}>
-                        Aa
-                      </span>
-                      <span className="glp-font__name">{f.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="glp-sub">Colors</div>
-                <Toggle
-                  checked={!!config.theme.matchReadme}
-                  onChange={(v) => setTheme({ matchReadme: v })}
-                  label="Use my ReadMe brand color"
-                  hint="Every accent inherits your hub's brand color (ReadMe's --color-link-primary) so it matches your Appearance settings and adapts to light/dark automatically."
-                  style={{ paddingTop: 0 }}
+                <div className="glp-sub" style={{ marginTop: 4 }}>Typography</div>
+                <ChoiceCards
+                  value={config.typeface.custom ? "custom" : "readme"}
+                  onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, custom: v === "custom" } }))}
+                  options={[
+                    { value: "readme", label: "Match Settings in ReadMe", sub: "Default", preview: <span className="glp-choice__aa">Aa</span> },
+                    { value: "custom", label: "Custom", sub: "Pick fonts", preview: <span className="glp-choice__aa" style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}>Aa</span> },
+                  ]}
                 />
-                {!config.theme.matchReadme && (
+                {config.typeface.custom && (
+                  <SettingsGroup>
+                    <SettingsRow label="Headings">
+                      <FontSelect bare label="Headings" value={config.typeface.heading} options={HEADING_FONTS}
+                        onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, heading: v } }))} />
+                    </SettingsRow>
+                    <SettingsRow label="Body & UI">
+                      <FontSelect bare label="Body & UI" value={config.typeface.body} options={BODY_FONTS}
+                        onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, body: v } }))} />
+                    </SettingsRow>
+                    <SettingsRow label="Code" hint="Eyebrows, labels, small buttons">
+                      <FontSelect bare label="Code" value={config.typeface.mono || "readme"} options={CODE_FONTS} firstLabel="Automatic" firstSub="Matches your fonts"
+                        onChange={(v) => setConfig((c) => { const t = { ...c.typeface }; if (v === "readme") delete t.mono; else t.mono = v; return { ...c, typeface: t }; })} />
+                    </SettingsRow>
+                  </SettingsGroup>
+                )}
+
+                <div className="glp-sub glp-sub--row">
+                  <span>Colors</span>
+                  {config.theme.colorMode === "custom" && (
+                    <span className="glp-modeswitch" role="group" aria-label="Edit colors for">
+                      <button type="button" className={colorEdit === "light" ? "on" : ""} aria-pressed={colorEdit === "light"} title="Edit light-mode colors" onClick={() => { setColorEdit("light"); setMode("light"); }}>
+                        <i className="fa-solid fa-sun" aria-hidden="true"></i>
+                      </button>
+                      <button type="button" className={colorEdit === "dark" ? "on" : ""} aria-pressed={colorEdit === "dark"} title="Edit dark-mode colors" onClick={() => { setColorEdit("dark"); setMode("dark"); }}>
+                        <i className="fa-solid fa-moon" aria-hidden="true"></i>
+                      </button>
+                    </span>
+                  )}
+                </div>
+                <ChoiceCards
+                  value={config.theme.colorMode}
+                  onChange={(v) => setTheme({ colorMode: v })}
+                  options={[
+                    { value: "readme", label: "Match Settings in ReadMe", sub: "Default", preview: <span className="glp-choice__dots"><i style={{ background: "var(--accent-fill)" }}></i><i></i><i></i></span> },
+                    { value: "custom", label: "Custom", sub: "Set each color", preview: <span className="glp-choice__dots"><i style={{ background: config.theme.colors.light.brand || "#FF4C00" }}></i><i style={{ background: config.theme.colors.light.heading || "#1F1F1F" }}></i><i style={{ background: config.theme.colors.light.cardBg || "#FFFFFF" }}></i></span> },
+                  ]}
+                />
+                {config.theme.colorMode === "custom" && (
                   <>
-                    <Toggle
-                      checked={config.theme.uniform}
-                      onChange={(v) => setTheme({ uniform: v })}
-                      label="Use one accent color for every card"
-                      hint="Overrides the per-card accent choices with a single color across all sections."
-                      style={{ paddingTop: 0 }}
-                    />
-                    {config.theme.uniform && (
-                      <Field label="Accent color">
-                        <AccentSwatches
-                          selected={config.theme.accent}
-                          onSelect={(k) => setTheme({ accent: k })}
-                          customCard={{ customLight: config.theme.customLight, customDark: config.theme.customDark }}
-                          onCustom={setTheme}
-                        />
-                      </Field>
-                    )}
+                    <SettingsGroup>
+                      {COLOR_ROLES.map((r) => {
+                        const v = config.theme.colors[colorEdit][r.key];
+                        const setRole = (val) => setConfig((c) => ({ ...c, theme: { ...c.theme, colors: { ...c.theme.colors, [colorEdit]: { ...c.theme.colors[colorEdit], [r.key]: val } } } }));
+                        return (
+                          <SettingsRow key={r.key} label={r.label} hint={r.hint} onReset={v ? () => setRole("") : null}>
+                            <ColorValue value={v} onChange={setRole} label={r.label} />
+                          </SettingsRow>
+                        );
+                      })}
+                    </SettingsGroup>
+                    <p className="glp-hint" style={{ margin: "6px 0 0" }}>
+                      {colorEdit === "light" ? "Light mode. " : "Dark mode (unset colors keep the default dark look). "}
+                      {!config.theme.colors.light.brand && !config.theme.colors.dark.brand ? "With no brand color, each card keeps its own accent." : ""}
+                    </p>
                   </>
                 )}
 
-                <Toggle
-                  checked={!!config.theme.pattern}
-                  onChange={(v) => setTheme({ pattern: v })}
-                  label="Subtle background pattern"
-                  hint="A faint full-width line-art pattern behind the whole landing page (adapts to light/dark)."
-                />
+                <div className="glp-sub">Card style</div>
+                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Used by every section set to <b>Global</b>. A section can switch to <b>Custom</b> in its Card style tab. Start from a look in <b>Templates</b>.</p>
+                <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
 
-                                <Field label="Page width" inline>
-                  <Seg
-                    value={config.layout.maxW}
-                    onChange={(v) => setLayout({ maxW: v })}
-                    options={[
-                      { value: 960, label: "Narrow" },
-                      { value: 1120, label: "Default" },
-                      { value: 1280, label: "Wide" },
-                    ]}
-                  />
-                </Field>
+                <div className="glp-sub">Page</div>
+                <SettingsGroup>
+                  <SettingsRow label="Background pattern" hint="Full width, behind everything">
+                    <select className="glp-select glp-select--sm" value={config.theme.pattern} onChange={(e) => setTheme({ pattern: e.target.value })} aria-label="Background pattern">
+                      {PATTERNS.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+                    </select>
+                  </SettingsRow>
+                  {config.theme.pattern !== "none" && (
+                    <SettingsRow label="Pattern strength">
+                      <Seg value={config.theme.patternStrength || "subtle"} onChange={(v) => setTheme({ patternStrength: v })} options={[{ value: "subtle", label: "Subtle" }, { value: "medium", label: "Medium" }]} />
+                    </SettingsRow>
+                  )}
+                  <SettingsRow label="Page width">
+                    <Seg
+                      value={config.layout.maxW}
+                      onChange={(v) => setLayout({ maxW: v })}
+                      options={[
+                        { value: 960, label: "Narrow" },
+                        { value: 1120, label: "Default" },
+                        { value: 1280, label: "Wide" },
+                      ]}
+                    />
+                  </SettingsRow>
+                </SettingsGroup>
               </NavSection>
 
               <NavSection id="headerFooter" label="Header & Footer" openNav={openNav} setOpenNav={setOpenNav}>
@@ -4970,6 +5829,22 @@ function App() {
                         <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
                       </Field>
                     </div>
+                    <Field label="Layout" inline>
+                      <Seg value={config.banner.align} onChange={(v) => setBanner({ align: v })} options={[{ value: "left", label: "Side by side" }, { value: "center", label: "Centered" }]} />
+                    </Field>
+                    {config.banner.align === "center" && (
+                      <>
+                        <div className="glp-row2">
+                          <Field label="Second button (optional)">
+                            <input className="glp-input" value={config.banner.btn2Label} onChange={(e) => setBanner({ btn2Label: e.target.value })} placeholder="Read the API" />
+                          </Field>
+                          <Field label="Second button link">
+                            <input className="glp-input" value={config.banner.btn2Href} onChange={(e) => setBanner({ btn2Href: e.target.value })} placeholder="/reference" />
+                          </Field>
+                        </div>
+                        <Toggle checked={config.banner.glow} onChange={(v) => setBanner({ glow: v })} label="Glow background" hint="Soft brand-color glow behind the banner." style={{ paddingTop: 0 }} />
+                      </>
+                    )}
                   </>
                 )}
 
@@ -5045,7 +5920,34 @@ function App() {
                     />
                   </Field>
                 )}
+                {effSearchMode(config) === "hero" && (
+                  <Field label="Search size" inline>
+                    <Seg value={config.hero.searchSize} onChange={(v) => setHero({ searchSize: v })} options={[{ value: "normal", label: "Normal" }, { value: "large", label: "Large" }]} />
+                  </Field>
+                )}
+                <Field label="Background" inline>
+                  <Seg value={config.hero.bg} onChange={(v) => setHero({ bg: v })} options={[{ value: "none", label: "None" }, { value: "glow", label: "Glow" }]} />
+                </Field>
                 <NumberField label="Vertical padding" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
+                <Field label="Quick links (pills under the hero)">
+                  <LinkListEditor links={config.hero.quickLinks} onChange={(quickLinks) => setHero({ quickLinks })} max={8} labelPh="Get started" hrefPh="/guides" />
+                </Field>
+                <Toggle
+                  checked={config.hero.panel.enabled}
+                  onChange={(v) => setHero({ panel: { ...config.hero.panel, enabled: v }, ...(v ? { align: "left" } : {}) })}
+                  label="Side panel"
+                  hint="A card beside the hero with a titled list of links and counts. Holds the search box when search sits under the hero."
+                />
+                {config.hero.panel.enabled && (
+                  <>
+                    <Field label="Panel title">
+                      <input className="glp-input" value={config.hero.panel.title} onChange={(e) => setHero({ panel: { ...config.hero.panel, title: e.target.value } })} />
+                    </Field>
+                    <Field label="Panel links">
+                      <LinkListEditor withMeta links={config.hero.panel.links} onChange={(links) => setHero({ panel: { ...config.hero.panel, links } })} max={8} labelPh="Guides" hrefPh="/guides" />
+                    </Field>
+                  </>
+                )}
                 <Toggle
                   checked={config.hero.buttons}
                   onChange={(v) => setHero({ buttons: v })}
@@ -5108,7 +6010,7 @@ function App() {
                     section={section}
                     index={i}
                     count={config.sections.length}
-                    hideAccents={config.theme.uniform || config.theme.matchReadme}
+                    hideAccents={config.theme.colorMode !== "custom" || !!(config.theme.colors.light.brand || config.theme.colors.dark.brand)}
                     globalStyle={config.cardStyle || DEFAULT_STYLE}
                     open={openSection === section.id}
                     onToggle={() => setOpenSection(openSection === section.id ? null : section.id)}
