@@ -3334,10 +3334,22 @@ const APP_CSS = `
     max-height: calc(100vh - 72px); overflow-y: auto;
   }
   .glp-pages__list { max-height: min(260px, 40vh); overflow-y: auto; }
-  .glp-pages__backup { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; padding: 8px 4px 2px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2); }
-  .glp-pages__bstate { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .glp-pages__bstate.ok i.fa-hard-drive { color: var(--ok); }
-  .glp-pages__bio { display: inline-flex; gap: 2px; flex: none; }
+  .glp-menu { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .glp-menu__head { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); padding: 4px 8px 4px; }
+  .glp-menu__row {
+    display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 7px;
+    background: transparent; color: var(--ink); font-family: inherit; font-size: 13.5px; line-height: 18px; text-align: left; cursor: pointer;
+  }
+  .glp-menu__row > i { width: 14px; flex: none; margin-top: 2px; font-size: 12.5px; color: var(--ink-3); text-align: center; }
+  .glp-menu__row > span { flex: 1; min-width: 0; }
+  .glp-menu__row small { display: block; margin-top: 1px; font-size: 11.5px; line-height: 15px; color: var(--ink-3); }
+  .glp-menu__row:hover:not(:disabled):not(.glp-menu__row--status) { background: var(--panel-2); }
+  .glp-menu__row:disabled { opacity: .45; cursor: default; }
+  .glp-menu__row--danger, .glp-menu__row--danger > i { color: var(--danger); }
+  .glp-menu__row--warn > i { color: var(--warn); }
+  .glp-menu__row--status { cursor: default; align-items: center; }
+  .glp-menu__row--status > i { color: var(--ok); margin-top: 0; }
+  .glp-menu__row--status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .glp-linkbtn { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 3px 4px; border-radius: 6px; font-family: inherit; font-size: 12.5px; color: var(--accent); cursor: pointer; }
   .glp-linkbtn:hover { background: var(--accent-soft); }
   .glp-linkbtn.warn { color: var(--warn); }
@@ -3352,11 +3364,7 @@ const APP_CSS = `
   .glp-pages__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .glp-pages__time { flex: none; font-size: 11.5px; color: var(--ink-3); }
   .glp-pages__empty { padding: 12px 8px; color: var(--ink-3); font-size: 12px; text-align: center; }
-  .glp-pages__actions { display: flex; gap: 6px; padding: 8px 2px 2px; margin-top: 4px; border-top: 1px solid var(--line); }
-  .glp-pages__actions .glp-smallbtn { flex: 1; text-align: center; padding: 6px 4px; }
   .glp-smallbtn--danger { color: var(--danger); border-color: var(--danger-line); }
-  .glp-pages__tpl { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-  .glp-pages__tplhead { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); padding: 0 4px 6px; }
   .glp-pages__item {
     display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left;
     border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer;
@@ -3366,9 +3374,6 @@ const APP_CSS = `
   .glp-pages__item i { color: var(--accent); margin-top: 2px; }
   .glp-pages__item b { display: block; font-size: 12.5px; font-weight: 600; }
   .glp-pages__item small { display: block; font-size: 11px; color: var(--ink-3); line-height: 1.4; margin-top: 2px; }
-  .glp-filestate { display: flex; align-items: center; gap: 9px; padding: 7px 8px; font-size: 12px; color: var(--ink-2); }
-  .glp-filestate.ok i.fa-hard-drive { color: var(--ok); }
-  .glp-filestate span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .glp-filemsg { font-size: 11.5px; color: var(--ink-2); padding: 6px 4px 0; }
   .glp-pages__rename { display: flex; gap: 6px; padding: 8px 2px 2px; margin-top: 4px; border-top: 1px solid var(--line); }
   .glp-pages__rename .glp-input { flex: 1; }
@@ -5712,41 +5717,50 @@ function App() {
                     </div>
                   ) : (
                     <>
-                    <div className="glp-pages__actions">
-                      <button className="glp-smallbtn" type="button" title="Start a blank page, then pick a template if you like"
-                        onClick={() => { newPage(); setOpenNav("templates"); }}>
-                        <i className="fa-solid fa-plus" aria-hidden="true"></i> New
+                    <div className="glp-menu">
+                      <button className="glp-menu__row" type="button" onClick={() => { newPage(); setOpenNav("templates"); }}>
+                        <i className="fa-solid fa-plus" aria-hidden="true"></i><span>New page</span>
                       </button>
-                      <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={() => setRenaming(true)}>Rename</button>
-                      <button className="glp-smallbtn" type="button" onClick={duplicateCurrent}>Duplicate</button>
-                      <button className="glp-smallbtn glp-smallbtn--danger" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>Delete</button>
+                      <button className="glp-menu__row" type="button" disabled={sharedView || !currentId} onClick={() => setRenaming(true)}>
+                        <i className="fa-solid fa-pen" aria-hidden="true"></i><span>Rename</span>
+                      </button>
+                      <button className="glp-menu__row" type="button" onClick={duplicateCurrent}>
+                        <i className="fa-regular fa-clone" aria-hidden="true"></i><span>Duplicate</span>
+                      </button>
+                      <button className="glp-menu__row glp-menu__row--danger" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>
+                        <i className="fa-regular fa-trash-can" aria-hidden="true"></i><span>Delete</span>
+                      </button>
                     </div>
-                    <div className="glp-pages__backup">
+                    <div className="glp-menu">
+                      <div className="glp-menu__head">Backup</div>
                       {fileState === "on" ? (
-                        <span className="glp-pages__bstate ok" title={"Every change also saves to " + fileName}>
-                          <i className="fa-solid fa-hard-drive" aria-hidden="true"></i> Backing up to <b>{fileName}</b>
-                          <button className="glp-iconbtn" type="button" title="Stop backing up to this file" aria-label="Stop backing up" onClick={disconnectFile}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
-                        </span>
+                        <div className="glp-menu__row glp-menu__row--status" title={"Every change also saves to " + fileName}>
+                          <i className="fa-solid fa-circle-check" aria-hidden="true"></i>
+                          <span>Backing up to <b>{fileName}</b></span>
+                          <button className="glp-linkbtn" type="button" onClick={disconnectFile}>Stop</button>
+                        </div>
                       ) : fileState === "reconnect" ? (
-                        <button className="glp-linkbtn warn" type="button" onClick={reconnectFile} title="Your browser needs one click to allow saving to the file again">
-                          <i className="fa-solid fa-plug-circle-exclamation" aria-hidden="true"></i> Reconnect backup
+                        <button className="glp-menu__row glp-menu__row--warn" type="button" onClick={reconnectFile}>
+                          <i className="fa-solid fa-plug-circle-exclamation" aria-hidden="true"></i><span>Reconnect backup file<small>Your browser needs one click to allow saving again</small></span>
                         </button>
-                      ) : fileState === "unsupported" ? (
-                        <span className="glp-pages__bstate">Backup:</span>
-                      ) : (
-                        <span className="glp-pages__bstate">
-                          <button className="glp-linkbtn" type="button" onClick={connectNewFile} title="Every change also saves to a .json file you choose, so clearing your browser never loses pages">
-                            <i className="fa-solid fa-hard-drive" aria-hidden="true"></i> Keep a backup file
+                      ) : fileState !== "unsupported" ? (
+                        <>
+                          <button className="glp-menu__row" type="button" onClick={connectNewFile}>
+                            <i className="fa-solid fa-hard-drive" aria-hidden="true"></i><span>Back up to a file…<small>Every change also saves there, so clearing your browser never loses pages</small></span>
                           </button>
-                          <button className="glp-linkbtn" type="button" onClick={openExistingFile} title="Restore pages from a backup file and keep it in sync">Open one</button>
-                        </span>
-                      )}
-                      <span className="glp-pages__bio">
-                        <button className="glp-iconbtn" type="button" title="Export all pages to a .json file" aria-label="Export all pages" onClick={exportDesigns}><i className="fa-solid fa-download" aria-hidden="true"></i></button>
-                        <button className="glp-iconbtn" type="button" title="Import pages from a .json file" aria-label="Import pages" onClick={() => importInput.current && importInput.current.click()}><i className="fa-solid fa-upload" aria-hidden="true"></i></button>
-                        <input ref={importInput} type="file" accept=".json,application/json" style={{ display: "none" }}
-                          onChange={(e) => { importDesigns(e.target.files[0]); e.target.value = ""; }} />
-                      </span>
+                          <button className="glp-menu__row" type="button" onClick={openExistingFile}>
+                            <i className="fa-regular fa-folder-open" aria-hidden="true"></i><span>Restore from a backup file…</span>
+                          </button>
+                        </>
+                      ) : null}
+                      <button className="glp-menu__row" type="button" onClick={exportDesigns}>
+                        <i className="fa-solid fa-download" aria-hidden="true"></i><span>Export all pages</span>
+                      </button>
+                      <button className="glp-menu__row" type="button" onClick={() => importInput.current && importInput.current.click()}>
+                        <i className="fa-solid fa-upload" aria-hidden="true"></i><span>Import pages…</span>
+                      </button>
+                      <input ref={importInput} type="file" accept=".json,application/json" style={{ display: "none" }}
+                        onChange={(e) => { importDesigns(e.target.files[0]); e.target.value = ""; }} />
                     </div>
                     {fileMsg && <div className="glp-filemsg">{fileMsg}</div>}
                     </>
