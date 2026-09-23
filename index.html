@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GLP Builder: Global landing pages for ReadMe Enterprise</title>
 <meta name="description" content="Visually build a Global Landing Page for your ReadMe Enterprise group, then copy the generated HTML into your dash.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A6CD6'/><text x='50' y='66' font-size='44' text-anchor='middle' fill='white' font-family='Helvetica,Arial,sans-serif' font-weight='800'>GL</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%23213AFF'/><text x='50' y='66' font-size='44' text-anchor='middle' fill='white' font-family='Helvetica,Arial,sans-serif' font-weight='800'>GL</text></svg>">
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; background: #F0F3F8; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #F2F2F2; }
   #root { height: 100%; }
   .boot { height:100%; display:flex; align-items:center; justify-content:center; color:#4A5670; font-family:-apple-system,"Segoe UI",sans-serif; font-size:14px; font-weight:500; }
-  @media (prefers-color-scheme: dark) { html, body { background: #111a2e; } .boot { color: #b7c1d8; } }
+  @media (prefers-color-scheme: dark) { html, body { background: #00033F; } .boot { color: rgba(255,255,255,.72); } }
 </style>
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -2032,50 +2032,67 @@ ${userHtml.includes("data-glp=") ? PREVIEW_EDIT_SCRIPT : ""}
    BUILDER UI
    ============================================================ */
 const APP_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;700&display=swap');
+  /* ReadMe's brand faces, served by readme.com (CORS-open). The file names carry
+     a build hash, so if readme.com redeploys and they 404, the stacks below fall
+     back to Schibsted Grotesk / Georgia without breaking anything. */
+  @font-face { font-family: "STK Bureau Sans"; font-weight: 400; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSans_Book-s.p.1own-0nhaddsj.woff2") format("woff2"); }
+  @font-face { font-family: "STK Bureau Sans"; font-weight: 500; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSans_Regular-s.p.38q825vwl3dv5.woff2") format("woff2"); }
+  @font-face { font-family: "STK Bureau Sans"; font-weight: 700; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSans_Bold-s.p.2n-bgw5dn9rkj.woff2") format("woff2"); }
+  @font-face { font-family: "STK Bureau Serif"; font-weight: 400; font-style: normal; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSerif_Regular-s.p.3l11ftkh3utkg.woff2") format("woff2"); }
+  @font-face { font-family: "STK Bureau Serif"; font-weight: 400; font-style: italic; font-display: swap; src: url("https://readme.com/_next/static/immutable/media/STKBureauSerif_Italic-s.p.3-a17va2x87t3.woff2") format("woff2"); }
 
-  /* ===== Builder UI tokens =====
-     One sans (Schibsted Grotesk) carries the interface; IBM Plex Mono only where
-     monospace earns it (code, numbers, hex). Neutrals are tinted toward ReadMe's
-     blue (hue ~250). Two appearances share every token name:
-       light    (default): white panels, cool blue-tinted canvas behind the preview
-       midnight          : saturated navy, not gray                              */
+  /* ===== Builder UI tokens, from ReadMe's brand system =====
+     - one brand color, ReadMe Blue #213AFF: primary actions, links, focus, selection
+     - true-gray neutrals + alpha hairlines (inset shadows, not hard 1px lines)
+     - STK Bureau Sans for UI (14/20 workhorse), STK Bureau Serif italic for the
+       wordmark, Geist Mono for labels, code and numbers
+     - pill buttons, 6px small controls, 12px containers, 3px focus ring
+     Two appearances share every token name: light, and midnight (ReadMe's
+     deep-navy hero fields). "Match system" picks between them. */
   .glp * { box-sizing: border-box; }
   .glp {
-    --font-ui: "Schibsted Grotesk", -apple-system, "Segoe UI", sans-serif;
-    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --font-ui: "STK Bureau Sans", "Schibsted Grotesk", -apple-system, "Segoe UI", sans-serif;
+    --font-display: "STK Bureau Serif", Georgia, "Times New Roman", serif;
+    --font-mono: "Geist Mono", ui-monospace, Menlo, monospace;
 
-    --bg: oklch(0.952 0.009 250);          /* canvas behind the preview */
-    --panel: oklch(0.995 0.002 250);       /* top bar, sidebar */
-    --panel-2: oklch(0.975 0.006 250);     /* rows, cards */
-    --field: oklch(1 0 0);                 /* inputs */
-    --line: oklch(0.915 0.01 250);
-    --line-2: oklch(0.87 0.013 250);
-    --ink: oklch(0.25 0.035 258);
-    --ink-2: oklch(0.42 0.03 258);
-    --ink-3: oklch(0.52 0.025 258);
-    --accent: oklch(0.55 0.19 252);        /* ReadMe blue, deepened for text contrast */
-    --accent-hover: oklch(0.5 0.19 252);
-    --accent-ink: oklch(1 0 0);
-    --accent-soft: oklch(0.945 0.035 252);
-    --ok: oklch(0.52 0.12 158);
-    --ok-soft: oklch(0.94 0.05 158);
-    --warn: oklch(0.52 0.11 70);
-    --warn-soft: oklch(0.96 0.045 85);
-    --warn-line: oklch(0.85 0.08 80);
-    --danger: oklch(0.54 0.19 25);
-    --danger-line: oklch(0.82 0.08 25);
-    --dot: oklch(0.86 0.015 250);
-    --code-bg: oklch(0.985 0.004 250);
-    --code-ink: oklch(0.3 0.03 258);
-    --shadow-sm: 0 1px 2px oklch(0.3 0.05 258 / 0.06);
-    --shadow-lg: 0 18px 48px oklch(0.3 0.06 258 / 0.16), 0 2px 6px oklch(0.3 0.05 258 / 0.06);
-    --frame-shadow: 0 1px 3px oklch(0.3 0.05 258 / 0.08), 0 16px 40px oklch(0.3 0.06 258 / 0.1);
-    /* editor-area hues (nav tabs) */
-    --hue-theme: oklch(0.55 0.2 300);
-    --hue-header: oklch(0.55 0.12 190);
-    --hue-hero: oklch(0.6 0.15 65);
-    --hue-sections: var(--accent);
+    --brand-blue: rgb(33 58 255);
+    --bg: rgb(242 242 242);                /* canvas behind the preview (dotted grid) */
+    --panel: rgb(255 255 255);             /* top bar, sidebar */
+    --panel-2: rgb(248 248 248);           /* rows, cards */
+    --field: rgb(255 255 255);             /* inputs */
+    --line: rgb(5 5 5 / 0.07);
+    --line-2: rgb(5 5 5 / 0.12);
+    --hairline: inset 0 0 0 1px rgb(5 5 5 / 0.08);
+    --ink: rgb(31 31 31);
+    --ink-2: rgb(74 74 74);
+    --ink-3: rgb(107 107 107);
+    --accent: var(--brand-blue);           /* text, icons, selection */
+    --accent-fill: var(--brand-blue);      /* primary button fill */
+    --accent-hover: rgb(20 42 214);
+    --accent-ink: rgb(255 255 255);
+    --accent-soft: rgb(236 238 255);
+    --focus: 0 0 0 3px rgb(14 42 245);
+    --focus-soft: 0 0 0 3px rgb(14 42 245 / 0.25);
+    --ok: rgb(31 134 48);
+    --ok-dot: rgb(74 198 89);              /* ReadMe's annotation green */
+    --ok-soft: rgb(232 247 234);
+    --warn: rgb(150 88 0);
+    --warn-soft: rgb(255 246 229);
+    --warn-line: rgb(240 205 140);
+    --danger: rgb(196 31 45);
+    --danger-line: rgb(240 180 186);
+    --dot: rgb(5 5 5 / 0.13);
+    --code-bg: rgb(250 250 250);
+    --code-ink: rgb(40 40 40);
+    --shadow-sm: var(--hairline);
+    --shadow-lg: inset 0 0 0 1px rgb(5 5 5 / 0.06), 0 16px 40px rgb(0 3 63 / 0.14);
+    --frame-shadow: 0 0 0 1px rgb(5 5 5 / 0.06), 0 12px 32px rgb(0 3 63 / 0.1);
+    /* editor-area hues from ReadMe's accent ramps */
+    --hue-theme: rgb(125 60 220);
+    --hue-header: rgb(31 140 60);
+    --hue-hero: rgb(214 100 0);
+    --hue-sections: var(--brand-blue);
 
     height: 100vh;
     display: flex;
@@ -2083,43 +2100,48 @@ const APP_CSS = `
     background: var(--bg);
     color: var(--ink);
     font-family: var(--font-ui);
-    font-size: 13.5px;
-    font-feature-settings: "ss01" 1;
+    font-size: 14px;
+    line-height: 20px;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
   }
   .glp[data-ui="midnight"] {
-    --bg: oklch(0.165 0.035 262);
-    --panel: oklch(0.2 0.04 262);
-    --panel-2: oklch(0.235 0.042 262);
-    --field: oklch(0.175 0.035 262);
-    --line: oklch(0.3 0.04 262);
-    --line-2: oklch(0.36 0.045 262);
-    --ink: oklch(0.96 0.01 262);
-    --ink-2: oklch(0.8 0.025 262);
-    --ink-3: oklch(0.7 0.03 262);
-    --accent: oklch(0.72 0.15 250);
-    --accent-hover: oklch(0.78 0.13 250);
-    --accent-ink: oklch(0.18 0.04 262);
-    --accent-soft: oklch(0.3 0.08 255);
-    --ok: oklch(0.78 0.14 158);
-    --ok-soft: oklch(0.3 0.06 158);
-    --warn: oklch(0.83 0.11 80);
-    --warn-soft: oklch(0.28 0.05 75);
-    --warn-line: oklch(0.45 0.08 75);
-    --danger: oklch(0.74 0.15 25);
-    --danger-line: oklch(0.45 0.1 25);
-    --dot: oklch(0.28 0.04 262);
-    --code-bg: oklch(0.15 0.032 262);
-    --code-ink: oklch(0.88 0.02 262);
-    --shadow-sm: none;
-    --shadow-lg: 0 20px 56px oklch(0.08 0.03 262 / 0.6);
-    --frame-shadow: 0 20px 56px oklch(0.08 0.03 262 / 0.55);
-    --hue-theme: oklch(0.76 0.14 300);
-    --hue-header: oklch(0.8 0.11 190);
-    --hue-hero: oklch(0.83 0.13 75);
+    --bg: rgb(0 3 63);                     /* --accent-blue-primary-12 */
+    --panel: rgb(1 10 76);
+    --panel-2: rgb(2 18 89);               /* --accent-blue-primary-11 */
+    --field: rgb(0 6 58);
+    --line: rgb(255 255 255 / 0.1);
+    --line-2: rgb(255 255 255 / 0.17);
+    --hairline: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+    --ink: rgb(255 255 255);
+    --ink-2: rgb(255 255 255 / 0.8);
+    --ink-3: rgb(255 255 255 / 0.64);
+    --accent: rgb(140 156 255);
+    --accent-fill: var(--brand-blue);
+    --accent-hover: rgb(58 82 255);
+    --accent-ink: rgb(255 255 255);
+    --accent-soft: rgb(24 40 140);
+    --focus: 0 0 0 3px rgb(120 140 255);
+    --focus-soft: 0 0 0 3px rgb(120 140 255 / 0.35);
+    --ok: rgb(110 220 125);
+    --ok-dot: rgb(74 198 89);
+    --ok-soft: rgb(12 60 40);
+    --warn: rgb(255 200 110);
+    --warn-soft: rgb(50 35 40);
+    --warn-line: rgb(120 90 50);
+    --danger: rgb(255 140 150);
+    --danger-line: rgb(130 50 70);
+    --dot: rgb(255 255 255 / 0.09);
+    --code-bg: rgb(0 4 50);
+    --code-ink: rgb(220 226 255);
+    --shadow-sm: var(--hairline);
+    --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
+    --frame-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 20px 56px rgb(0 0 20 / 0.55);
+    --hue-theme: rgb(190 150 255);
+    --hue-header: rgb(110 220 125);
+    --hue-hero: rgb(255 170 90);
+    --hue-sections: rgb(140 156 255);
   }
-
   .glp-bar {
     display: flex; align-items: center; gap: 16px;
     padding: 0 18px; height: 54px; flex: none;
@@ -2129,17 +2151,17 @@ const APP_CSS = `
   .glp-logo { display: flex; align-items: center; gap: 10px; }
   .glp-logo__mark {
     width: 28px; height: 28px; border-radius: 8px;
-    background: var(--accent);
+    background: var(--accent-fill);
     display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 12.5px; letter-spacing: -0.02em; color: var(--accent-ink);
+    font-family: var(--font-display); font-style: italic; font-size: 15px; color: var(--accent-ink);
   }
-  .glp-logo__name { font-weight: 700; font-size: 16px; letter-spacing: -0.015em; }
+  .glp-logo__name { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 20px; letter-spacing: -0.01em; line-height: 1.1; }
   .glp-logo__tag { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; }
 
-  .glp-tabs { display: flex; gap: 2px; margin-left: 10px; background: var(--bg); padding: 3px; border-radius: 9px; border: 1px solid var(--line); }
+  .glp-tabs { display: flex; gap: 2px; margin-left: 10px; background: var(--bg); padding: 3px; border-radius: 999px; box-shadow: var(--hairline); }
   .glp-tab {
     border: 0; background: transparent; color: var(--ink-2); font-family: inherit;
-    font-size: 13px; font-weight: 600; padding: 6px 16px; border-radius: 6px; cursor: pointer;
+    font-size: 13px; font-weight: 500; padding: 5px 16px; border-radius: 999px; cursor: pointer;
   }
   .glp-tab:hover { color: var(--ink); }
   .glp-tab.on { background: var(--panel); color: var(--ink); box-shadow: var(--shadow-sm), 0 0 0 1px var(--line); }
@@ -2163,9 +2185,9 @@ const APP_CSS = `
   .glp-copy {
     display: inline-flex; align-items: center; gap: 8px;
     border: 0; cursor: pointer;
-    background: var(--accent); color: var(--accent-ink);
-    font-family: inherit; font-size: 13px; font-weight: 600;
-    padding: 9px 16px; border-radius: 8px;
+    background: var(--accent-fill); color: var(--accent-ink);
+    font-family: inherit; font-size: 14px; font-weight: 500;
+    padding: 8px 18px; border-radius: 999px;
     transition: background 150ms cubic-bezier(.25,1,.5,1);
   }
   .glp-copy:hover { background: var(--accent-hover); }
@@ -2189,10 +2211,9 @@ const APP_CSS = `
   .glp-navtabs [data-tab="headerFooter"] { --tc: var(--hue-header); }
   .glp-navtabs [data-tab="hero"] { --tc: var(--hue-hero); }
   .glp-navtabs [data-tab="sections"] { --tc: var(--hue-sections); }
-  .glp-navtabs button { color: var(--ink-2); font-size: 12px; }
+  .glp-navtabs button { color: var(--ink-2); font-size: 12.5px; font-weight: 500; border-radius: 10px; }
   .glp-navtabs button i { font-size: 15px; color: var(--tc); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
   .glp-navtabs button:hover { color: var(--ink); background: color-mix(in oklch, var(--tc) 8%, var(--panel)); }
-  .glp-navtabs button:hover i { transform: translateY(-1px); }
   .glp-navtabs button.on {
     color: var(--ink); background: color-mix(in oklch, var(--tc) 13%, var(--panel));
     box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tc) 40%, transparent);
@@ -2232,12 +2253,14 @@ const APP_CSS = `
     background: var(--field);
     border: 1px solid var(--line-2);
     color: var(--ink);
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 13px;
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13.5px;
+    line-height: 20px;
     font-family: inherit;
   }
-  .glp-input:focus, .glp-textarea:focus, .glp-select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-input::placeholder, .glp-textarea::placeholder { color: var(--ink-3); }
+  .glp-input:focus, .glp-textarea:focus, .glp-select:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-textarea { resize: vertical; min-height: 40px; line-height: 1.45; field-sizing: content; max-height: 160px; }
 
   /* a text field with its own size control folded into the same row, instead of a
@@ -2245,9 +2268,9 @@ const APP_CSS = `
      inside it, rather than two competing fields */
   .glp-fieldrow {
     display: flex; align-items: flex-start; gap: 6px;
-    border: 1px solid var(--line-2); border-radius: 8px; background: var(--field);
+    border: 1px solid var(--line-2); border-radius: 6px; background: var(--field);
   }
-  .glp-fieldrow:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-fieldrow:focus-within { border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-fieldrow > .glp-input, .glp-fieldrow > .glp-textarea {
     flex: 1; min-width: 0; border: 0; background: transparent;
   }
@@ -2280,7 +2303,8 @@ const APP_CSS = `
 
   /* sub-block heading + granular style checkbox grid */
   .glp-sub {
-    font-size: 12.5px; font-weight: 700; color: var(--ink);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3);
     margin: 18px 0 8px;
   }
   .glp-sec__body > .glp-sub:first-child { margin-top: 2px; }
@@ -2327,6 +2351,7 @@ const APP_CSS = `
   /* autosave indicator */
   .glp-save { font-size: 12px; font-weight: 500; color: var(--ink-3); white-space: nowrap; }
   .glp-save.ok { color: var(--ok); }
+  .glp-save.ok i { color: var(--ok-dot); }
   .glp-save.err { color: var(--danger); cursor: help; }
 
   .glp-slider { display: flex; align-items: center; gap: 10px; }
@@ -2335,14 +2360,15 @@ const APP_CSS = `
     width: 62px; flex: none; background: var(--field); border: 1px solid var(--line-2); color: var(--ink);
     border-radius: 6px; padding: 5px 7px; font-family: var(--font-mono); font-size: 12px; text-align: right; font-variant-numeric: tabular-nums;
   }
-  .glp-numin:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-numin:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-numunit { font-size: 11.5px; color: var(--ink-3); flex: none; width: 16px; }
 
   .glp-card {
-    border: 1px solid var(--line-2);
-    border-radius: 10px;
+    border: 0;
+    border-radius: 12px;
     margin-bottom: 10px;
     background: var(--panel-2);
+    box-shadow: var(--hairline);
     overflow: hidden;
   }
   .glp-card__head {
@@ -2379,13 +2405,12 @@ const APP_CSS = `
   .glp-chev i { font-size: 10px; transition: transform 150ms ease; }
   .glp-chev.open i { transform: rotate(90deg); }
   .glp button:focus-visible, .glp [role=button]:focus-visible, .glp-info:focus-visible {
-    outline: 2px solid var(--accent); outline-offset: 2px;
+    outline: none; box-shadow: var(--focus);
   }
   .glp-card__body { padding: 4px 12px 14px; border-top: 1px solid var(--line); }
 
   /* nested section container gets a subtle accent edge */
   .glp-section > .glp-card__head { --rowbg: color-mix(in oklch, var(--accent) 6%, var(--panel-2)); background: var(--rowbg); }
-  .glp-card { box-shadow: var(--shadow-sm); }
   .glp-section > .glp-card__body { padding: 8px 12px 14px; }
 
   .glp-swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
@@ -2405,7 +2430,7 @@ const APP_CSS = `
   .glp-hex-wrap { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
   .glp-hex { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0;
     background: var(--field); border: 1px solid var(--line-2); border-radius: 8px; padding: 3px 6px 3px 3px; }
-  .glp-hex:focus-within { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .glp-hex:focus-within { border-color: var(--accent); box-shadow: var(--focus-soft); }
   .glp-hex--invalid { border-color: var(--danger); }
   .glp-hex__err { font-size: 11px; color: var(--danger); line-height: 1.3; }
   .glp-hex__sw { width: 24px; height: 24px; border-radius: 6px; flex: none; border: 1px solid var(--line-2); }
@@ -2416,13 +2441,14 @@ const APP_CSS = `
   .glp-hex__pick::-webkit-color-swatch-wrapper { padding: 2px; }
   .glp-hex__pick::-webkit-color-swatch { border: 1px solid var(--line-2); border-radius: 4px; }
 
-  .glp-seg { display: inline-flex; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .glp-seg { display: inline-flex; background: var(--bg); border: 0; box-shadow: var(--hairline); border-radius: 8px; padding: 3px; gap: 2px; flex-wrap: wrap; }
   .glp-seg button {
     border: 0; background: transparent; color: var(--ink-2);
     font-size: 12px; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-family: inherit;
   }
   .glp-seg button:hover { color: var(--ink); }
-  .glp-seg button.on { background: var(--panel); color: var(--ink); font-weight: 600; box-shadow: var(--shadow-sm), 0 0 0 1px var(--line-2); }
+  .glp-seg button.on { background: var(--panel); color: var(--ink); font-weight: 500; box-shadow: var(--hairline), 0 1px 2px rgb(5 5 5 / 0.06); }
+  .glp[data-ui="midnight"] .glp-seg button.on { background: var(--accent-soft); }
 
   .glp-peekitem { display: flex; gap: 6px; margin-bottom: 6px; }
   .glp-peekitem .glp-input { flex: 1; }
@@ -2463,7 +2489,8 @@ const APP_CSS = `
     box-shadow: var(--shadow-lg);
   }
   .glp-modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-  .glp-modal__head b { font-size: 15px; display: inline-flex; gap: 9px; align-items: center; }
+  .glp-modal__head b { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 22px; display: inline-flex; gap: 10px; align-items: center; }
+  .glp-modal__head b i { font-size: 16px; }
   .glp-modal__head b i { color: var(--accent); }
   .glp-modal__lede { margin: 0 0 14px; color: var(--ink-2); font-size: 12.5px; line-height: 1.5; }
   .glp-modal__body { margin-top: 16px; }
@@ -2501,7 +2528,7 @@ const APP_CSS = `
     border-bottom: 1px solid var(--line);
     background: var(--panel);
   }
-  .glp-view__label { font-size: 13px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .glp-view__label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
   .glp-view__bar .glp-seg { flex-wrap: nowrap; }
   .glp-view__note { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--ink-3); }
   .glp-view__framewrap {
@@ -2554,10 +2581,10 @@ const APP_CSS = `
   .glp-chip--liquid { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
   .glp-smallbtn {
     border: 1px solid var(--line-2); background: var(--panel); color: var(--ink-2);
-    font-size: 12.5px; font-weight: 500; padding: 5px 11px; border-radius: 7px; cursor: pointer; font-family: inherit;
-    box-shadow: var(--shadow-sm);
+    font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 999px; cursor: pointer; font-family: inherit;
+    box-shadow: var(--shadow-sm); border-color: transparent;
   }
-  .glp-smallbtn:hover:not(:disabled) { color: var(--ink); border-color: var(--ink-3); }
+  .glp-smallbtn:hover:not(:disabled) { color: var(--ink); background: var(--panel-2); }
   .glp-smallbtn:disabled { opacity: .5; cursor: default; }
   .glp-smallbtn.done { color: var(--ok); border-color: var(--ok); }
 
@@ -2596,7 +2623,7 @@ const APP_CSS = `
   .glp-pages__actions .glp-smallbtn { flex: 1; text-align: center; padding: 6px 4px; }
   .glp-smallbtn--danger { color: var(--danger); border-color: var(--danger-line); }
   .glp-pages__tpl { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-  .glp-pages__tplhead { font-size: 12px; font-weight: 700; color: var(--ink); padding: 0 4px 6px; }
+  .glp-pages__tplhead { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); padding: 0 4px 6px; }
   .glp-pages__item {
     display: flex; align-items: flex-start; gap: 10px; width: 100%; text-align: left;
     border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer;
