@@ -2450,7 +2450,11 @@ function buildPreviewDoc(userHtml, mode) {
   .rm-Header-center { display: flex; align-items: center; gap: 8px; }
   .rm-Header-right { justify-self: end; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--color-text-muted); }
   .rm-Header-right .fa-chevron-down { font-size: 10px; }
-  .rm-Header-theme { margin-left: 14px; font-size: 15px; }
+  .rm-Header-theme {
+    margin-left: 12px; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent;
+    color: inherit; font-size: 15px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .rm-Header-theme:hover { background: var(--color-bg-hover); color: var(--color-text-default); }
   .rm-Header-brand {
     display: flex; align-items: center; gap: 9px;
     font-weight: 600; font-size: 15px;
@@ -2515,7 +2519,7 @@ function buildPreviewDoc(userHtml, mode) {
         <div class="rm-Header-search"><button class="rm-SearchToggle"><i class="fa-solid fa-magnifying-glass"></i><span>Search</span><kbd>&#8984;K</kbd></button></div>
         <div class="rm-AskAi"><button class="rm-AskAi-button"><i class="fa-solid fa-wand-magic-sparkles"></i> Ask AI</button></div>
       </div>
-      <div class="rm-Header-right"><span>Your Name</span><i class="fa-solid fa-chevron-down"></i><i class="fa-solid fa-circle-half-stroke rm-Header-theme"></i></div>
+      <div class="rm-Header-right"><span>Your Name</span><i class="fa-solid fa-chevron-down"></i><button type="button" class="rm-Header-theme" title="Switch preview to ${dark ? "light" : "dark"} mode" aria-label="Switch preview to ${dark ? "light" : "dark"} mode" onclick="parent.postMessage({ type: 'glp-preview-mode', mode: '${dark ? "light" : "dark"}' }, '*')"><i class="fa-solid fa-circle-half-stroke"></i></button></div>
     </div>
     <div class="rm-Header-bottom">
       <span class="rm-Header-link">v1.0</span>
@@ -2596,7 +2600,7 @@ const APP_CSS = `
     --code-ink: rgb(40 40 40);
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(5 5 5 / 0.06), 0 16px 40px rgb(0 3 63 / 0.14);
-    --frame-shadow: 0 0 0 1px rgb(5 5 5 / 0.06), 0 12px 32px rgb(0 3 63 / 0.1);
+    --frame-shadow: 0 12px 32px rgb(0 3 63 / 0.1);
     /* editor-area hues from ReadMe's accent ramps */
     --hue-templates: rgb(200 60 120);
     --hue-theme: rgb(125 60 220);
@@ -2648,7 +2652,7 @@ const APP_CSS = `
     --code-ink: rgb(220 226 255);
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
-    --frame-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 20px 56px rgb(0 0 20 / 0.55);
+    --frame-shadow: 0 20px 56px rgb(0 0 20 / 0.55);
     --hue-templates: rgb(245 140 185);
     --hue-theme: rgb(190 150 255);
     --hue-header: rgb(110 220 125);
@@ -3163,9 +3167,9 @@ const APP_CSS = `
   .glp-framestack { position: relative; flex: 1 1 auto; height: 100%; min-width: 0; }
   .glp-frame {
     position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: 0 auto;
-    border: 1px solid var(--line-2);
+    border: 1px solid var(--line);
     border-radius: 12px;
-    background: #fff;
+    background: #fff; background-clip: padding-box;
     width: 100%; height: 100%;
     box-shadow: var(--frame-shadow);
     opacity: 0;
@@ -3173,6 +3177,7 @@ const APP_CSS = `
     transition: max-width 250ms ease;
   }
   .glp-frame.on { opacity: 1; z-index: 1; pointer-events: auto; }
+  .glp-frame--dark { background-color: #0b0c0d; }  /* matches ReadMe's dark page, so no light edge shows */
   .glp-frame.mobile { max-width: 396px; }
 
   .glp-code {
@@ -4580,7 +4585,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
             <iframe
               key={i}
               ref={(el) => { frames.current[i] = el; }}
-              className={"glp-frame" + (device === "mobile" ? " mobile" : "") + (i === active ? " on" : "")}
+              className={"glp-frame" + (device === "mobile" ? " mobile" : "") + (i === active ? " on" : "") + (mode === "dark" ? " glp-frame--dark" : "")}
               title="Landing page preview"
               sandbox="allow-scripts allow-same-origin"
               srcDoc={slots[i]}
@@ -4824,6 +4829,7 @@ function App() {
       if (!d || typeof d !== "object") return;
       const fromPreview = [...document.querySelectorAll("iframe.glp-frame")].some((f) => f.contentWindow === e.source);
       if (!fromPreview) return;
+      if (d.type === "glp-preview-mode" && (d.mode === "light" || d.mode === "dark")) { setMode(d.mode); return; }
       if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
         const sec = configRef.current.sections[d.index];
         if (sec) { setOpenNav("sections"); setOpenSection(sec.id); }
