@@ -112,6 +112,8 @@ const FONTS = {
    mono    : mono, uppercase titles (terminal aesthetic)
    radius  : corner radius (px)
    density : roomy | comfortable | compact (padding + title size)
+   links   : link list (chevron rows) + optional footnote — card becomes a <div>
+   iconInline: icon sits beside the title instead of above it
 ------------------------------------------------------ */
 const DEFAULT_STYLE = {
   anchor: true,
@@ -124,6 +126,8 @@ const DEFAULT_STYLE = {
   cta: false,
   ctaPlain: false,
   mono: false,
+  links: false,
+  iconInline: false,
   radius: 16,
   density: "comfortable",
 };
@@ -189,6 +193,11 @@ const CARD_DEFAULTS = {
   ctaText: "View docs",
   ctaStyle: "ghost",
   primary: false,
+  /* link-list style: rows of { label, href }; *word* renders italic */
+  links: [],
+  note: "",
+  noteLinkLabel: "",
+  noteHref: "",
 };
 
 const DEFAULT_LIQUID = {
@@ -206,7 +215,7 @@ const DEFAULT_LIQUID = {
   accents: ["green", "purple", "amber"],
 };
 
-const DEFAULT_SECTION_LAYOUT = { colMin: 258, gap: 20, autoH: true, cardMinH: 396, bento: false, spaceAbove: 36, divider: false, bg: "none" };
+const DEFAULT_SECTION_LAYOUT = { colMin: 258, gap: 20, autoH: true, cardMinH: 396, bento: false, spaceAbove: 36, divider: false, dividerStyle: "hairline", bg: "none" };
 
 /* ---------------- text-columns section ----------------
    A section can be a grid of 1–4 evenly-distributed text columns, each with
@@ -251,16 +260,33 @@ const DEFAULT_CONFIG = {
     subtitleSize: null,
     padY: 0,
     buttons: false,
+    /* small helper line under the relocated search row (hero search mode only) */
+    searchHint: "",
     btnPrimary: { label: "Get started", href: "/getting-started" },
     btnSecondary: { label: "API Reference", href: "/reference" },
   },
   ticker: { enabled: false, text: "Documentation • Endpoints • SDKs • Guides" },
-  /* native = ReadMe's own default search/Ask AI placement, no relocation */
+  /* custom brand bar: replaces ReadMe's header on the landing page only */
+  brandBar: {
+    enabled: false,
+    logoUrl: "",
+    name: "Your Company",
+    tag: "Developers",
+    links: [
+      { label: "Guides", href: "/guides" },
+      { label: "API reference", href: "/reference" },
+      { label: "Changelog", href: "/changelog" },
+    ],
+    button: { enabled: true, label: "Log in", href: "/login" },
+  },
+  /* native = ReadMe's own default search/Ask AI placement, no relocation.
+     header = centered in the header, hero = row under the hero,
+     brand = inside the custom brand bar */
   searchMode: "native",
   flattenHeader: false,
   headerImage: { enabled: false, url: "", height: 380, tint: 0, offset: 64 },
   /* matchReadme = inherit the hub's own accent color instead of picking one */
-  theme: { uniform: false, matchReadme: true, accent: "blue", customLight: "#0B63C5", customDark: "#6FB4F5" },
+  theme: { uniform: false, matchReadme: true, accent: "blue", customLight: "#0B63C5", customDark: "#6FB4F5", pattern: false },
   /* global card style — sections in "global" style mode inherit this look */
   cardStyle: { ...DEFAULT_STYLE },
   layout: { maxW: 1120 },
@@ -316,6 +342,111 @@ const DEFAULT_CONFIG = {
   ],
 };
 
+/* ---------------- page templates ----------------
+   Whole-page starting points (content + layout), unlike PRESETS which only
+   restyle cards. Each call returns a fresh config with new ids. */
+const PAGE_TEMPLATES = [
+  {
+    key: "portal",
+    label: "Developer portal",
+    hint: "Brand bar, search hero, audience link lists, doc tiles, dark help strip",
+    build: () => {
+      const L = (label, href) => ({ label, href });
+      const tileStyle = { ...DEFAULT_STYLE, anchor: true, icon: true, iconInline: true, cta: true, ctaPlain: true, radius: 8, density: "comfortable" };
+      const tile = (icon, title, blurb, href) => ({ ...CARD_DEFAULTS, id: uid(), icon, title, blurb, href, ctaText: "Open" });
+      return migrateConfig({
+        ...DEFAULT_CONFIG,
+        fonts: "readme",
+        searchMode: "hero",
+        flattenHeader: false,
+        brandBar: {
+          ...DEFAULT_CONFIG.brandBar,
+          enabled: true,
+          name: "Acme",
+          tag: "Developers",
+          links: [L("Guides", "/guides"), L("API reference", "/reference"), L("Platform guide", "/platform"), L("Release notes", "/changelog")],
+          button: { enabled: true, label: "Log in", href: "/login" },
+        },
+        theme: { ...DEFAULT_CONFIG.theme, pattern: true },
+        layout: { maxW: 1120 },
+        hero: {
+          ...DEFAULT_CONFIG.hero,
+          align: "left",
+          eyebrow: "Platform docs",
+          title: "Welcome to Acme technical documentation",
+          subtitle: "Everything you need to build on the Acme platform: guides, the API reference, platform documentation, and release notes, all in one place.",
+          titleSize: 40,
+          subtitleSize: 18,
+          searchHint: "Search runs across every documentation set below. Ask AI answers in plain language, with links to the pages it used.",
+          buttons: true,
+          btnPrimary: { label: "Start building", href: "/guides" },
+          btnSecondary: { label: "Browse the API reference", href: "/reference" },
+        },
+        banner: { ...DEFAULT_CONFIG.banner, enabled: false },
+        footer: "",
+        sections: [
+          {
+            label: "Audiences",
+            heading: "How are you working with Acme?",
+            intro: "Pick the path that matches how you work with us.",
+            align: "left",
+            source: "static",
+            styleMode: "custom",
+            style: { ...DEFAULT_STYLE, anchor: false, links: true, radius: 8, density: "comfortable" },
+            layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 380, gap: 24, spaceAbove: 48 },
+            cards: [
+              {
+                ...CARD_DEFAULTS, id: uid(), title: "Customers", blurb: "", href: "/guides",
+                links: [
+                  L("Are you building an integration using *standard API access*?", "/guides/standard-access"),
+                  L("Are you building an integration using the *analytics API*?", "/guides/analytics-api"),
+                  L("Not building an integration? Looking for detailed product information?", "/platform"),
+                ],
+              },
+              {
+                ...CARD_DEFAULTS, id: uid(), title: "Partners", blurb: "", href: "/partners",
+                links: [L("Do you have a partner agreement? Are you integrating your product with our platform?", "/guides/partner-access")],
+                note: "Don't have a partner agreement yet?", noteLinkLabel: "Apply for partnership", noteHref: "/partners",
+              },
+            ],
+          },
+          {
+            label: "Doc tiles",
+            heading: "Explore the documentation",
+            intro: "Learn more about our products and how to integrate them with your business.",
+            align: "left",
+            source: "static",
+            styleMode: "custom",
+            style: tileStyle,
+            layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 300, gap: 24, spaceAbove: 72, divider: true, dividerStyle: "accent" },
+            cards: [
+              tile("list-check", "Integration how-to", "Step-by-step guides to reach specific business goals.", "/guides"),
+              tile("code", "Developer guide", "Build and customize your integrations using our APIs.", "/guides/getting-started"),
+              tile("book", "API reference", "Browse endpoints, parameters, and data definitions.", "/reference"),
+              tile("table-cells-large", "Platform guide", "Detailed information about our platform products.", "/platform"),
+              tile("clock-rotate-left", "Release notes", "Stay up to date with platform and API changes.", "/changelog"),
+            ],
+          },
+          {
+            label: "Help strip",
+            type: "columns",
+            heading: "",
+            intro: "",
+            align: "left",
+            layout: { ...DEFAULT_SECTION_LAYOUT, gap: 28, spaceAbove: 56, bg: "dark" },
+            columns: [
+              { heading: "Need a hand?", body: "Search or ask AI at the top of this page, or start from one of these.", ctas: [] },
+              { heading: "Getting started", body: "Authenticate and make your first call.", ctas: [{ label: "Open", href: "/guides/getting-started", style: "plain" }] },
+              { heading: "What's new", body: "Latest platform and API changes.", ctas: [{ label: "Open", href: "/changelog", style: "plain" }] },
+              { heading: "Support", body: "Product help for your team.", ctas: [{ label: "Contact support", href: "/support", style: "plain" }] },
+            ],
+          },
+        ],
+      });
+    },
+  },
+];
+
 /* ---------------- helpers ---------------- */
 const esc = (s = "") =>
   String(s)
@@ -352,6 +483,19 @@ ${indent}  [data-color-mode="system"] ${selector} {
 ${body(indent + "    ")}
 ${indent}  }
 ${indent}}`;
+
+/* escape, then turn *word* into <em>word</em> (link-list labels) */
+const inlineEm = (s = "") => esc(s).replace(/\*([^*]+)\*/g, "<em>$1</em>");
+
+/* the search placement that actually renders: the brand bar hides ReadMe's
+   header, so "native"/"header" would leave search invisible → fall back to hero */
+const effSearchMode = (cfg) =>
+  cfg.brandBar && cfg.brandBar.enabled
+    ? cfg.searchMode === "brand" || cfg.searchMode === "hero" ? cfg.searchMode : "hero"
+    : cfg.searchMode === "brand" ? "native" : cfg.searchMode;
+
+const CHEVRON_SVG =
+  '<svg class="bnk-chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>';
 
 /* auto-prepend "/" to link paths (leaves full URLs and #anchors alone) */
 const normPath = (v) => (!v || /^[/#]/.test(v) || /^https?:/i.test(v) ? v : "/" + v);
@@ -414,7 +558,7 @@ const encodeConfig = (cfg) => btoa(unescape(encodeURIComponent(JSON.stringify(cf
 const decodeConfig = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
 
 /* ---------------- config migration / normalization ---------------- */
-const normCard = (c) => ({ ...CARD_DEFAULTS, ...c, id: c.id || uid() });
+const normCard = (c) => ({ ...CARD_DEFAULTS, ...c, links: Array.isArray(c.links) ? c.links : [], id: c.id || uid() });
 
 const normColumn = (c) => makeColumn({ ...c, id: c && c.id });
 const normSection = (s) => ({
@@ -462,6 +606,12 @@ function migrateConfig(loaded) {
     fonts: loaded.fonts || D.fonts,
     hero: { ...D.hero, ...(loaded.hero || {}) },
     ticker: { ...D.ticker, ...(loaded.ticker || {}) },
+    brandBar: {
+      ...D.brandBar,
+      ...(loaded.brandBar || {}),
+      links: loaded.brandBar && Array.isArray(loaded.brandBar.links) ? loaded.brandBar.links : D.brandBar.links,
+      button: { ...D.brandBar.button, ...((loaded.brandBar && loaded.brandBar.button) || {}) },
+    },
     searchMode: loaded.searchMode || (loaded.moveSearch === false ? "native" : "hero"),
     flattenHeader: loaded.flattenHeader !== false,
     headerImage: { ...D.headerImage, ...(loaded.headerImage || {}) },
@@ -571,6 +721,9 @@ const INLINE_CARD_STYLE =
    (vars are either literal strings or Liquid tags) */
 function buildCard(v, style) {
   const primaryCls = v.primary ? " bnk-card--primary" : "";
+  /* a card holding its own links can't also be one big <a> (nested anchors) */
+  const anchor = style.anchor && !(style.links && v.linksHtml);
+  style = anchor === style.anchor ? style : { ...style, anchor };
   const openTag = style.anchor
     ? `<a class="bnk-card ${v.accentClass}${primaryCls}" href="${v.href}"\n       ${INLINE_CARD_STYLE}>`
     : `<div class="bnk-card ${v.accentClass}${primaryCls}"\n       ${INLINE_CARD_STYLE}>`;
@@ -582,9 +735,15 @@ function buildCard(v, style) {
   if (style.file) body += `\n        <span class="bnk-card__eyebrow">${v.fileLabel}</span>`;
   else if (style.badge) body += `\n        <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
   if (style.num) body += `\n        <span class="bnk-card__num">${v.num}</span>`;
-  if (style.icon) body += `\n        <span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
-  body += `\n        <span class="bnk-card__title">${v.title}</span>`;
-  body += `\n        <span class="bnk-card__blurb">${v.blurb}</span>`;
+  const iconHtml = `<span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
+  const titleHtml = `<span class="bnk-card__title">${v.title}</span>`;
+  if (style.icon && style.iconInline) body += `\n        <span class="bnk-card__head">${iconHtml}${titleHtml}</span>`;
+  else {
+    if (style.icon) body += `\n        ${iconHtml}`;
+    body += `\n        ${titleHtml}`;
+  }
+  if (v.blurb) body += `\n        <span class="bnk-card__blurb">${v.blurb}</span>`;
+  if (style.links && v.linksHtml) body += `\n${v.linksHtml}`;
   if (style.peek && v.peekHtml) body += `\n${v.peekHtml}`;
 
   let foot = "";
@@ -616,6 +775,23 @@ ${items
       </span>`;
 }
 
+function staticLinks(c) {
+  const links = (c.links || []).filter((l) => (l.label || "").trim());
+  const rows = links
+    .map((l) => `          <a class="bnk-card__link" href="${esc(normPath(l.href || "/"))}">${CHEVRON_SVG}<span>${inlineEm(l.label)}</span></a>`)
+    .join("\n");
+  const noteText = (c.note || "").trim();
+  const noteLink = (c.noteLinkLabel || "").trim();
+  const note =
+    noteText || noteLink
+      ? `        <span class="bnk-card__note">${esc(noteText)}${
+          noteLink ? `${noteText ? " " : ""}<a href="${esc(normPath(c.noteHref || "/"))}">${esc(noteLink)}</a>` : ""
+        }</span>`
+      : "";
+  if (!rows && !note) return "";
+  return `${rows ? `        <span class="bnk-card__links">\n${rows}\n        </span>` : ""}${rows && note ? "\n" : ""}${note}`;
+}
+
 /* build the cards for one section — static list or a Liquid loop.
    `style` is the section's effective card style (its own or the global one). */
 function sectionCards(sec, palette, style) {
@@ -635,6 +811,7 @@ function sectionCards(sec, palette, style) {
             fileLabel: `File_${String(i + 1).padStart(2, "0")}${c.eyebrow.trim() ? " // " + esc(c.eyebrow) : ""}`,
             title: esc(c.title),
             blurb: esc(c.blurb),
+            linksHtml: staticLinks(c),
             peekHtml: staticPeek(c),
             ctaText: esc(c.ctaText),
             ctaStyle: c.ctaStyle,
@@ -720,6 +897,8 @@ function generateHTML(cfg) {
   const heroSubSize = cfg.hero.subtitleSize != null ? cfg.hero.subtitleSize : 14.5;
   const heroPadY = cfg.hero.padY || 0;
   const hasLiquid = sections.some((s) => s.type !== "columns" && s.source === "liquid");
+  const sm = effSearchMode(cfg);
+  const BB = cfg.brandBar || {};
 
   /* effective card style for a section: its own ("custom") or the global one */
   const effStyle = (sec) => (sec.styleMode === "custom" ? sec.style : cfg.cardStyle || DEFAULT_STYLE);
@@ -782,7 +961,7 @@ function generateHTML(cfg) {
   @media (max-width: 760px) { .bnk-sec-${i} .bnk-grid > * { grid-column: 1 / -1 !important; } }`
         : `  .bnk-sec-${i} .bnk-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(${sec.layout.colMin}px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(${sec.layout.colMin}px, 100%), 1fr));
     gap: ${sec.layout.gap}px;
   }`
     )
@@ -821,7 +1000,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
     : "";
 
   const headerCenterCSS =
-    cfg.searchMode === "header"
+    sm === "header"
       ? `
   /* ===== Search + Ask AI centered inside the header top row ===== */
   .rm-Header-top { position: relative !important; }
@@ -846,7 +1025,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
       : "";
 
   const actionsCSS =
-    cfg.searchMode === "hero"
+    sm === "hero"
       ? `
   /* ===== Search + Ask AI row (relocated under the hero) ===== */
   .bnk-actions {
@@ -883,9 +1062,71 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
     border-radius: 12px !important;
     padding: 0 18px !important;
     font-size: 14px !important;
-  }
+  }${cfg.hero.searchHint && cfg.hero.searchHint.trim() ? `
+  .bnk-search-hint {
+    margin: 4px ${heroLeft ? "0" : "auto"} 0;
+    max-width: 660px;
+    text-align: ${heroLeft ? "left" : "center"};
+    font-size: 13px; line-height: 1.5;
+    color: var(--bnk-ink-2) !important;
+  }` : ""}
 `
       : "";
+
+  /* ===== Custom brand bar (replaces ReadMe's header on this page only —
+     the Global Landing Page HTML only renders on the landing page) ===== */
+  const brandCSS = BB.enabled
+    ? `
+  .rm-Header { display: none !important; }
+  .bnk-brand {
+    display: flex; align-items: center; justify-content: space-between; gap: 18px;
+    flex-wrap: wrap; padding: 4px 0 0;
+  }
+  .bnk-brand__name {
+    display: inline-flex; align-items: baseline; gap: 8px; text-decoration: none;
+    font-family: ${F.display}; font-size: 24px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--bnk-accent) !important;
+  }
+  .bnk-brand__name small {
+    font-family: ${F.body}; font-size: 13px; font-weight: 600; letter-spacing: 0.05em;
+    text-transform: uppercase; color: var(--bnk-ink-2) !important;
+  }
+  .bnk-brand__name img { height: 30px; width: auto; display: block; align-self: center; }
+  .bnk-brand__nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; font-size: 14.5px; font-weight: 600; }
+  .bnk-brand__nav a { text-decoration: none; color: var(--bnk-ink-1) !important; transition: color 150ms ease; }
+  .bnk-brand__nav a:hover { color: var(--bnk-accent) !important; }
+  .bnk-brand__nav a.bnk-brand__btn {
+    padding: 7px 14px; border-radius: 8px; background: var(--card-bg);
+    border: 1.5px solid var(--card-border); color: var(--bnk-heading) !important;
+  }
+  .bnk-brand__nav a.bnk-brand__btn:hover { border-color: var(--bnk-accent); color: var(--bnk-accent) !important; }
+  .bnk-brand__search { display: flex; align-items: center; gap: 10px; }
+  .bnk-brand__search .rm-Header-search { display: flex !important; }
+  .bnk-brand__search .rm-SearchToggle {
+    min-width: 240px !important;
+    border: 1px solid color-mix(in srgb, currentColor 28%, transparent) !important;
+  }
+  @media (max-width: 720px) {
+    .bnk-brand__nav a:not(.bnk-brand__btn) { display: none; }
+    .bnk-brand__search .rm-SearchToggle { min-width: 0 !important; }
+  }
+`
+    : "";
+
+  /* ===== Subtle full-bleed background pattern ===== */
+  const patternSvg = (stroke) =>
+    `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23${stroke}' stroke-opacity='0.045' stroke-width='1.2'%3E%3Ccircle cx='24' cy='24' r='9'/%3E%3Crect x='70' y='14' width='24' height='18' rx='3'/%3E%3Cpath d='M18 84h22M29 73v22'/%3E%3Cpath d='M78 96l12-14 12 14z'/%3E%3Cpath d='M60 52l6 6-6 6-6-6z'/%3E%3C/g%3E%3C/svg%3E")`;
+  const patternCSS = theme.pattern
+    ? `
+  .bnk-landing { isolation: isolate; }
+  .bnk-landing::before {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 50%;
+    width: 100vw; transform: translateX(-50%); z-index: -1; pointer-events: none;
+    background-image: ${patternSvg("18181B")};
+  }
+${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${patternSvg("FFFFFF")};`)}
+`
+    : "";
 
   const tickerCSS = cfg.ticker.enabled
     ? `
@@ -1076,6 +1317,22 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
   .bnk-card__go--plain { padding: 0; border: 0; background: transparent; color: var(--accent) !important; font-size: 12.5px; }
   .bnk-card__go:hover .rm-arrow { transform: translateX(4px); }
 
+  .bnk-card__head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .bnk-card__head .bnk-card__icon { width: 36px; height: 36px; font-size: 17px; border-radius: 9px; margin: 0; flex: none; }
+  .bnk-card__head .bnk-card__title { margin: 0; }
+
+  .bnk-card__links { display: flex; flex-direction: column; margin-top: 6px; }
+  .bnk-card__link {
+    display: grid; grid-template-columns: 16px 1fr; gap: 12px; align-items: start;
+    padding: 9px 8px; margin: 0 -8px; border-radius: 6px; text-decoration: none;
+    font-size: 14.5px; line-height: 1.45; color: var(--card-title) !important;
+    transition: background-color 150ms ease;
+  }
+  .bnk-card__link:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  .bnk-chev { width: 16px; height: 16px; margin-top: 3px; color: var(--accent); }
+  .bnk-card__note { display: block; margin-top: 14px; font-size: 13.5px; line-height: 1.5; color: var(--bnk-ink-1) !important; }
+  .bnk-card__note a { color: var(--accent) !important; text-decoration: underline; text-underline-offset: 2px; }
+
   .bnk-card__arrow { margin-top: 18px; align-self: flex-end; color: var(--accent) !important; font-size: 16px; }
 
   .bnk-card:hover { transform: translateY(-3px); background-color: #F4F4F5 !important; border-color: color-mix(in srgb, var(--accent) 45%, #D4D4D8) !important; }
@@ -1098,7 +1355,21 @@ ${pad}border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.18)
   .bnk-sec--bg-subtle, .bnk-sec--bg-accent { padding: 30px 32px; border-radius: 16px; }
   .bnk-sec--bg-subtle { background: color-mix(in srgb, var(--bnk-heading) 4%, transparent); }
   .bnk-sec--bg-accent { background: color-mix(in srgb, var(--bnk-accent) 7%, transparent); }
-  .bnk-sec--bg-subtle .bnk-section, .bnk-sec--bg-accent .bnk-section { margin-top: 0; }
+  .bnk-sec--divider-accent::before { height: 2px; background: var(--bnk-accent); }
+  /* dark panel (e.g. a support strip) — re-maps the text/card variables inside it */
+  .bnk-sec--bg-dark {
+    padding: 30px 32px; border-radius: 16px; background: #23262D;
+    --bnk-heading: #FFFFFF; --bnk-ink-1: rgba(255,255,255,.78); --bnk-ink-2: rgba(255,255,255,.6);
+    --card-bg: rgba(255,255,255,.04); --card-border: rgba(255,255,255,.1); --card-title: #FFFFFF;
+    --card-divider: rgba(255,255,255,.12); --card-shadow: none;
+  }
+${darkBlock(".bnk-sec--bg-dark", "  ", (pad) => `${pad}background: rgba(255,255,255,.05);
+${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
+  /* lift accent-colored links so they stay readable on the charcoal panel */
+  .bnk-sec--bg-dark .bnk-col__cta:not(.bnk-col__cta--filled),
+  .bnk-sec--bg-dark .bnk-card__go--plain,
+  .bnk-sec--bg-dark .bnk-card__note a { color: color-mix(in srgb, var(--bnk-accent) 45%, #FFFFFF) !important; }
+  .bnk-sec--bg-subtle .bnk-section, .bnk-sec--bg-accent .bnk-section, .bnk-sec--bg-dark .bnk-section { margin-top: 0; }
   .bnk-section { margin: 0 0 20px; }
   .bnk-section__title {
     margin: 0 0 8px;
@@ -1149,8 +1420,8 @@ ${pad}border-color: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,0.18)
       const st = effStyle(sec);
       const cls =
         `bnk-sec bnk-sec-${i} bnk-sec--${sec.align === "left" ? "left" : "center"}` +
-        (sec.layout.divider ? " bnk-sec--divider" : "") +
-        (sec.layout.bg === "subtle" ? " bnk-sec--bg-subtle" : sec.layout.bg === "accent" ? " bnk-sec--bg-accent" : "") +
+        (sec.layout.divider ? " bnk-sec--divider" + (sec.layout.dividerStyle === "accent" ? " bnk-sec--divider-accent" : "") : "") +
+        (["subtle", "accent", "dark"].includes(sec.layout.bg) ? " bnk-sec--bg-" + sec.layout.bg : "") +
         (!isCols && st.bar ? " bnk-sec--bar" : "") +
         (!isCols && st.mono ? " bnk-sec--mono" : "") +
         (!isCols && sec.layout.bento ? " bnk-sec--bento" : "");
@@ -1210,20 +1481,39 @@ ${heading}${body}
   </div>\n`
     : "";
 
+  const brandLinks = (BB.links || []).filter((l) => (l.label || "").trim());
+  const brandMarkup = BB.enabled
+    ? `  <div class="bnk-brand">
+    <a class="bnk-brand__name" href="/">${
+      (BB.logoUrl || "").trim()
+        ? `<img src="${esc(BB.logoUrl)}" alt="${esc(BB.name || "Home")}">`
+        : `${esc(BB.name)}${(BB.tag || "").trim() ? ` <small>${esc(BB.tag)}</small>` : ""}`
+    }</a>
+${sm === "brand" ? '    <div class="bnk-brand__search" id="rm-brand-search"></div>\n' : ""}    <nav class="bnk-brand__nav" aria-label="Documentation">
+${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}">${esc(l.label)}</a>`).join("\n")}${
+        BB.button && BB.button.enabled && (BB.button.label || "").trim()
+          ? `\n      <a class="bnk-brand__btn" href="${esc(normPath(BB.button.href || "/"))}">${esc(BB.button.label)}</a>`
+          : ""
+      }
+    </nav>
+  </div>
+`
+    : "";
+
   /* ---------- injected script: relocate search / Ask AI ---------- */
-  const needsScript = cfg.searchMode !== "native";
+  const needsScript = sm !== "native";
   const script = needsScript
     ? `
 <script>
   /* Theming is handled entirely in CSS above. This script only relocates
      ReadMe's native search + Ask AI controls out of the header. */
   (function () {
-    var MODE = ${JSON.stringify(cfg.searchMode)};
+    var MODE = ${JSON.stringify(sm)};
     function place() {
       var search = document.querySelector(".rm-Header-search");
       var askai = document.querySelector(".rm-AskAi");
-      if (MODE === "hero") {
-        var actions = document.getElementById("rm-actions");
+      if (MODE === "hero" || MODE === "brand") {
+        var actions = document.getElementById(MODE === "hero" ? "rm-actions" : "rm-brand-search");
         if (actions) {
           if (search && search.parentElement !== actions) actions.appendChild(search);
           if (askai && askai.parentElement !== actions) actions.appendChild(askai);
@@ -1266,7 +1556,7 @@ ${
     - Same-as-system  : @media (prefers-color-scheme: dark) + [data-color-mode="system"]
 -->
 <style>${F.importUrl ? `\n  @import url('${F.importUrl}');` : ""}
-${headerCSS}${heroImageCSS}${headerCenterCSS}
+${headerCSS}${brandCSS}${heroImageCSS}${headerCenterCSS}
   /* ===== GLOBAL THEME MAP — LIGHT / DEFAULT ===== */
   .bnk-landing {
     --bnk-ink-1: #52525B;
@@ -1344,7 +1634,7 @@ ${chipCSS}
     color: var(--bnk-heading) !important;
   }
   .bnk-hero__sub { margin: 0 ${heroLeft ? "0" : "auto"}; max-width: 660px; font-size: ${heroSubSize}px; line-height: 1.5; color: var(--bnk-ink-2) !important; }
-${heroButtonsCSS}${actionsCSS}${sectionCSS}${gridRules}
+${heroButtonsCSS}${actionsCSS}${patternCSS}${sectionCSS}${gridRules}
 ${cardCSS}
 ${accentRules}
   .rm-arrow { display: inline-block; transition: transform 200ms ease; }
@@ -1362,11 +1652,11 @@ ${bannerCSS}
 </style>
 
 <div class="bnk-landing" id="rm-root">
-${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${tickerMarkup}  <div class="bnk-hero">
+${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}  <div class="bnk-hero">
 ${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title">${esc(cfg.hero.title)}</h1>
     <p class="bnk-hero__sub">${esc(cfg.hero.subtitle)}</p>
 ${heroButtons}  </div>
-${cfg.searchMode === "hero" ? '\n  <div class="bnk-actions" id="rm-actions"></div>\n' : ""}
+${sm === "hero" ? `\n  <div class="bnk-actions" id="rm-actions"></div>\n${cfg.hero.searchHint && cfg.hero.searchHint.trim() ? `  <p class="bnk-search-hint">${esc(cfg.hero.searchHint)}</p>\n` : ""}` : ""}
 ${sectionsMarkup}
 ${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer">${esc(cfg.footer)}</p>` : ""}
 </div>
@@ -1793,6 +2083,8 @@ const APP_CSS = `
 
   .glp-peekitem { display: flex; gap: 6px; margin-bottom: 6px; }
   .glp-peekitem .glp-input { flex: 1; }
+  .glp-linkrow .glp-input { min-width: 0; }
+  .glp-linkrow .glp-input:first-child { flex: 1.4; }
 
   .glp-add {
     width: 100%; border: 1px dashed var(--line-2); background: transparent;
@@ -2330,6 +2622,36 @@ function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain
   );
 }
 
+/* ---------- shared: editable list of { label, href } rows ---------- */
+function LinkListEditor({ links, onChange, max = 8, labelPh = "Link text", hrefPh = "/path", addLabel = "+ Add link" }) {
+  const list = links || [];
+  const setRow = (i, p) => onChange(list.map((l, j) => (j === i ? { ...l, ...p } : l)));
+  const move = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= list.length) return;
+    const arr = [...list];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    onChange(arr);
+  };
+  return (
+    <>
+      {list.map((l, i) => (
+        <div className="glp-peekitem glp-linkrow" key={i}>
+          <input className="glp-input" value={l.label} placeholder={labelPh} onChange={(e) => setRow(i, { label: e.target.value })} />
+          <input className="glp-input" value={l.href} placeholder={hrefPh} onChange={(e) => setRow(i, { href: normPath(e.target.value) })} />
+          <button className="glp-iconbtn" type="button" title="Move up" disabled={i === 0} onClick={() => move(i, -1)}>&#8593;</button>
+          <button className="glp-iconbtn" type="button" title="Remove" onClick={() => onChange(list.filter((_, j) => j !== i))}>&#10005;</button>
+        </div>
+      ))}
+      {list.length < max && (
+        <button className="glp-add glp-add--sm" type="button" onClick={() => onChange([...list, { label: "", href: "" }])}>
+          {addLabel}
+        </button>
+      )}
+    </>
+  );
+}
+
 function CardEditor({ card, index, count, style, hideAccents, open, onToggle, onChange, onMove, onRemove, onDuplicate, dragHandleProps, dropRowProps, dragOver }) {
   const acc = cardAccent(card);
   const set = (patch) => onChange({ ...card, ...patch });
@@ -2367,9 +2689,28 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
               <input className="glp-input" value={card.href} onChange={(e) => set({ href: normPath(e.target.value) })} placeholder="my-project" />
             </Field>
           </div>
-          <Field label="Description">
+          <Field label={style.links ? "Description (blank to hide)" : "Description"}>
             <textarea className="glp-textarea" value={card.blurb} onChange={(e) => set({ blurb: e.target.value })} />
           </Field>
+
+          {style.links && (
+            <>
+              <Field label="Links (wrap a word in *asterisks* for italics)">
+                <LinkListEditor links={card.links} onChange={(links) => set({ links })} labelPh="Are you building with…?" />
+              </Field>
+              <Field label="Footnote (blank to hide)">
+                <input className="glp-input" value={card.note} onChange={(e) => set({ note: e.target.value })} placeholder="Don't have access yet?" />
+              </Field>
+              <div className="glp-row2">
+                <Field label="Footnote link text">
+                  <input className="glp-input" value={card.noteLinkLabel} onChange={(e) => set({ noteLinkLabel: e.target.value })} placeholder="Apply here" />
+                </Field>
+                <Field label="Footnote link">
+                  <input className="glp-input" value={card.noteHref} onChange={(e) => set({ noteHref: normPath(e.target.value) })} placeholder="https://…" />
+                </Field>
+              </div>
+            </>
+          )}
 
           {style.icon && <IconField label="Icon" obj={card} onChange={set} />}
           {style.badge && (
@@ -2520,6 +2861,8 @@ function CardStyleControls({ style: st, setStyle }) {
         <StyleCheck checked={!!st.peek} label="Preview list" onChange={(v) => setStyle({ peek: v })} />
         <StyleCheck checked={!!st.anchor} label="Whole card links" onChange={(v) => setStyle({ anchor: v })} />
         <StyleCheck checked={!!st.mono} label="Mono / uppercase" onChange={(v) => setStyle({ mono: v })} />
+        <StyleCheck checked={!!st.links} label="Link list" onChange={(v) => setStyle({ links: v })} />
+        <StyleCheck checked={!!st.iconInline} label="Icon beside title" onChange={(v) => setStyle(v ? { iconInline: true, icon: true } : { iconInline: false })} />
       </div>
       {/* NB: this "button" value means "a styled CTA is shown" (filled or ghost, chosen
           elsewhere) — a different axis from ColumnEditor's per-CTA style Seg below, whose
@@ -2732,9 +3075,21 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
             checked={!!section.layout.divider}
             onChange={(v) => setLay({ divider: v })}
             label="Divider line above"
-            hint="A hairline centered in the space above this section."
+            hint="A line centered in the space above this section."
             style={{ paddingTop: 0 }}
           />
+          {section.layout.divider && (
+            <Field label="Divider style">
+              <Seg
+                value={section.layout.dividerStyle === "accent" ? "accent" : "hairline"}
+                onChange={(v) => setLay({ dividerStyle: v })}
+                options={[
+                  { value: "hairline", label: "Hairline" },
+                  { value: "accent", label: "Accent rule" },
+                ]}
+              />
+            </Field>
+          )}
           <Field label="Section background">
             <Seg
               value={section.layout.bg || "none"}
@@ -2743,6 +3098,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                 { value: "none", label: "None" },
                 { value: "subtle", label: "Subtle" },
                 { value: "accent", label: "Accent" },
+                { value: "dark", label: "Dark" },
               ]}
             />
           </Field>
@@ -3033,6 +3389,7 @@ function App() {
   const setTicker = (p) => setConfig((c) => ({ ...c, ticker: { ...c.ticker, ...p } }));
   const setLayout = (p) => setConfig((c) => ({ ...c, layout: { ...c.layout, ...p } }));
   const setBanner = (p) => setConfig((c) => ({ ...c, banner: { ...c.banner, ...p } }));
+  const setBrandBar = (p) => setConfig((c) => ({ ...c, brandBar: { ...c.brandBar, ...p } }));
   const setHeaderImage = (p) => setConfig((c) => ({ ...c, headerImage: { ...c.headerImage, ...p } }));
   const setTheme = (p) => setConfig((c) => ({ ...c, theme: { ...c.theme, ...p } }));
   const setCardStyle = (p) => setConfig((c) => ({ ...c, cardStyle: { ...(c.cardStyle || DEFAULT_STYLE), ...p } }));
@@ -3258,16 +3615,17 @@ function App() {
     try { localStorage.setItem(CURRENT_KEY, id); } catch (e) {}
   };
 
-  const newPage = () => {
-    const d = makeDesign(uniqueName("Untitled page"), DEFAULT_CONFIG, "");
+  const newPage = (template) => {
+    const cfg = template ? template.build() : DEFAULT_CONFIG;
+    const d = makeDesign(uniqueName(template ? template.label : "Untitled page"), cfg, "");
     const ds = [...designs, d];
     setDesigns(ds);
     setSaveState(persistDesigns(ds, d.id) ? "saved" : "error");
-    setConfig(DEFAULT_CONFIG);
+    setConfig(cfg);
     setOverride(null);
     setCurrentId(d.id);
     setSharedView(false);
-    setOpenSection(DEFAULT_CONFIG.sections[0].id);
+    setOpenSection(cfg.sections[0].id);
     setOpenCard(null);
     setPagesOpen(false);
     setRenaming(false);
@@ -3515,12 +3873,21 @@ function App() {
                       </button>
                     </div>
                   ) : (
+                    <>
                     <div className="glp-pages__actions">
-                      <button className="glp-smallbtn" type="button" onClick={newPage}>+ New</button>
+                      <button className="glp-smallbtn" type="button" onClick={() => newPage()}>+ New</button>
                       <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={() => setRenaming(true)}>Rename</button>
                       <button className="glp-smallbtn" type="button" onClick={duplicateCurrent}>Duplicate</button>
                       <button className="glp-smallbtn" type="button" disabled={sharedView || !currentId} onClick={deleteCurrent}>Delete</button>
                     </div>
+                    <div className="glp-pages__actions">
+                      {PAGE_TEMPLATES.map((t) => (
+                        <button key={t.key} className="glp-smallbtn" type="button" title={t.hint} onClick={() => newPage(t)}>
+                          + New from template: {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    </>
                   )}
                 </div>
               </>
@@ -3575,6 +3942,16 @@ function App() {
                   ))}
                 </div>
 
+                <div className="glp-sub">Page templates</div>
+                <div className="glp-presets">
+                  {PAGE_TEMPLATES.map((t) => (
+                    <button key={t.key} type="button" className="glp-preset" title={t.hint} onClick={() => newPage(t)}>
+                      <b>{t.label}</b>
+                      <span>{t.hint}. Opens as a new page.</span>
+                    </button>
+                  ))}
+                </div>
+
                 <div className="glp-sub">Global card style</div>
                 <div className="glp-note" style={{ marginBottom: 12 }}>
                   The default look for every card section set to <b>Global</b>. Individual sections can override it by switching to <b>Custom</b>.
@@ -3624,6 +4001,13 @@ function App() {
                   </>
                 )}
 
+                <Toggle
+                  checked={!!config.theme.pattern}
+                  onChange={(v) => setTheme({ pattern: v })}
+                  label="Subtle background pattern"
+                  hint="A faint full-width line-art pattern behind the whole landing page (adapts to light/dark)."
+                />
+
                 <div className="glp-sub">Page width</div>
                 <Field label="Maximum content width">
                   <Seg
@@ -3640,34 +4024,89 @@ function App() {
 
               <NavSection id="headerFooter" label="Header & Footer" openNav={openNav} setOpenNav={setOpenNav}>
                 <div className="glp-sub" style={{ marginTop: 4 }}>Header</div>
-                <Field label="Search &amp; Ask AI placement (Ask AI always sits beside search)">
-                  <Seg
-                    value={config.searchMode}
-                    onChange={(v) => patch({ searchMode: v })}
-                    options={[
-                      { value: "native", label: "Native header" },
-                      { value: "header", label: "Centered in header" },
-                      { value: "hero", label: "Under hero" },
-                    ]}
-                  />
-                </Field>
                 <Field label="Header style">
                   <Seg
-                    value={config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native"}
+                    value={config.brandBar.enabled ? "brand" : config.headerImage.enabled ? "image" : config.flattenHeader ? "transparent" : "native"}
                     onChange={(v) =>
-                      setConfig((c) => ({
-                        ...c,
-                        flattenHeader: v !== "native",
-                        headerImage: { ...c.headerImage, enabled: v === "image" },
-                      }))
+                      setConfig((c) => {
+                        const brand = v === "brand";
+                        /* the brand bar hides ReadMe's header, so search must move out of it */
+                        const searchMode = brand
+                          ? c.searchMode === "brand" || c.searchMode === "hero" ? c.searchMode : "hero"
+                          : c.searchMode === "brand" ? "native" : c.searchMode;
+                        return {
+                          ...c,
+                          searchMode,
+                          flattenHeader: v === "transparent" || v === "image",
+                          headerImage: { ...c.headerImage, enabled: v === "image" },
+                          brandBar: { ...c.brandBar, enabled: brand },
+                        };
+                      })
                     }
                     options={[
                       { value: "native", label: "Native" },
                       { value: "transparent", label: "Transparent" },
-                      { value: "image", label: "Transparent + image" },
+                      { value: "image", label: "Image" },
+                      { value: "brand", label: "Brand bar" },
                     ]}
                   />
                 </Field>
+                <Field label="Search &amp; Ask AI placement (Ask AI always sits beside search)">
+                  <Seg
+                    value={effSearchMode(config)}
+                    onChange={(v) => patch({ searchMode: v })}
+                    options={
+                      config.brandBar.enabled
+                        ? [
+                            { value: "hero", label: "Under hero" },
+                            { value: "brand", label: "In brand bar" },
+                          ]
+                        : [
+                            { value: "native", label: "Native header" },
+                            { value: "header", label: "Centered in header" },
+                            { value: "hero", label: "Under hero" },
+                          ]
+                    }
+                  />
+                </Field>
+                {config.brandBar.enabled && (
+                  <>
+                    <div className="glp-note" style={{ marginBottom: 12 }}>
+                      Replaces ReadMe's header <b>on the landing page only</b> with your own logo and links. ReadMe's real search and Ask AI are moved into the page, so they keep working. No Custom CSS or JS needed.
+                    </div>
+                    <div className="glp-row2">
+                      <Field label="Wordmark">
+                        <input className="glp-input" value={config.brandBar.name} onChange={(e) => setBrandBar({ name: e.target.value })} />
+                      </Field>
+                      <Field label="Tag (small caps, optional)">
+                        <input className="glp-input" value={config.brandBar.tag} onChange={(e) => setBrandBar({ tag: e.target.value })} placeholder="Developers" />
+                      </Field>
+                    </div>
+                    <Field label="Logo image URL (replaces the wordmark; optional)">
+                      <input className="glp-input" value={config.brandBar.logoUrl} onChange={(e) => setBrandBar({ logoUrl: e.target.value })} placeholder="https://files.readme.io/…/logo.svg" />
+                    </Field>
+                    <Field label="Nav links">
+                      <LinkListEditor links={config.brandBar.links} onChange={(links) => setBrandBar({ links })} max={7} labelPh="Guides" hrefPh="/guides" />
+                    </Field>
+                    <Toggle
+                      checked={config.brandBar.button.enabled}
+                      onChange={(v) => setBrandBar({ button: { ...config.brandBar.button, enabled: v } })}
+                      label="Outlined button at the end"
+                      hint='e.g. "Log in" or "Contact sales". Stays visible on mobile when the other links collapse.'
+                      style={{ paddingTop: 0 }}
+                    />
+                    {config.brandBar.button.enabled && (
+                      <div className="glp-row2">
+                        <Field label="Button label">
+                          <input className="glp-input" value={config.brandBar.button.label} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, label: e.target.value } })} />
+                        </Field>
+                        <Field label="Button link">
+                          <input className="glp-input" value={config.brandBar.button.href} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, href: normPath(e.target.value) } })} />
+                        </Field>
+                      </div>
+                    )}
+                  </>
+                )}
                 {config.headerImage.enabled && (
                   <>
                     <Field label="Image URL">
@@ -3767,6 +4206,16 @@ function App() {
                     ]}
                   />
                 </Field>
+                {effSearchMode(config) === "hero" && (
+                  <Field label="Line under the search row (blank to hide)">
+                    <input
+                      className="glp-input"
+                      value={config.hero.searchHint}
+                      onChange={(e) => setHero({ searchHint: e.target.value })}
+                      placeholder="Search covers every doc set below. Ask AI answers with links to its sources."
+                    />
+                  </Field>
+                )}
                 <NumberField label="Vertical padding (space above &amp; below the hero text)" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
                 <Toggle
                   checked={config.hero.buttons}
