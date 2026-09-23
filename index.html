@@ -1204,7 +1204,7 @@ function buildCard(v, style) {
   if (style.badge) body += `\n        <span class="bnk-card__eyebrow">${v.badgeHtml}${v.eyebrow}</span>`;
   const iconHtml = `<span class="bnk-card__icon" aria-hidden="true">${v.icon}</span>`;
   const edf = v.ed || (() => "");
-  const titleHtml = `<span class="bnk-card__title"${edf("title")}>${v.title}</span>`;
+  const titleHtml = `<span class="bnk-card__title"${edf("title")}${v.titleW || ""}>${v.title}</span>`;
   if (style.icon && style.iconInline) body += `\n        <span class="bnk-card__head">${iconHtml}${titleHtml}</span>`;
   else {
     if (style.icon) body += `\n        ${iconHtml}`;
@@ -1240,6 +1240,8 @@ let _editable = false;
 const HEADING_PATH_RE = /(^hero\.title$|\.heading$|\.title$)/;
 const ed = (path, rich) =>
   _editable ? ` data-glp="${path}"${rich ? " data-glp-rich" : ""}${HEADING_PATH_RE.test(path) ? " data-glp-heading" : ""}` : "";
+/* a heading's own weight (its "<field>Weight" sibling, e.g. hero.titleWeight), overriding the global heading weight */
+const hwAttr = (w) => (HEADING_WEIGHTS.includes(Number(w)) ? ` style="font-weight: ${Number(w)}"` : "");
 /* config paths the preview may write — anything else posted back is ignored */
 const EDITABLE_PATH_RE =
   /^(hero\.(eyebrow|title|subtitle|searchHint|btnPrimary\.label|btnSecondary\.label)|footer|banner\.(title|text)|brandBar\.(links\.\d+\.label|button\.label)|hero\.panel\.(title|links\.\d+\.label)|banner\.btn2Label|sections\.\d+\.(heading|intro|eyebrow|cards\.\d+\.(title|blurb|peekLabel|peekItems\.\d+|links\.\d+\.label)|columns\.\d+\.(heading|body)))$/;
@@ -1296,7 +1298,8 @@ function sectionCards(sec, palette, style, si) {
             eyebrow: esc(c.eyebrow),
             badgeHtml: c.badge === "lock" ? LOCK_SVG : '<span class="bnk-dot"></span>',
             icon: iconMarkup(c),
-            title: esc(c.title),
+            title: inlineEm(c.title),
+            titleW: hwAttr(c.titleWeight),
             blurb: inlineEm(c.blurb),
             num: String(i + 1).padStart(2, "0"),
             meta: esc(c.meta || ""),
@@ -1355,7 +1358,7 @@ function sectionColumns(sec, si) {
   return cols
     .map((col, i) => {
       const parts = [];
-      if ((col.heading || "").trim()) parts.push(`      <h3 class="bnk-col__title"${ed(`sections.${si}.columns.${i}.heading`)}>${esc(col.heading)}</h3>`);
+      if ((col.heading || "").trim()) parts.push(`      <h3 class="bnk-col__title"${ed(`sections.${si}.columns.${i}.heading`)}${hwAttr(col.headingWeight)}>${inlineEm(col.heading)}</h3>`);
       if ((col.body || "").trim()) parts.push(`      <p class="bnk-col__text"${ed(`sections.${si}.columns.${i}.body`, true)}>${inlineEm(col.body)}</p>`);
       const ctas = (col.ctas || []).filter((c) => (c.label || "").trim());
       if (ctas.length) {
@@ -2068,7 +2071,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
       const heading =
         sec.heading.trim() || sec.intro.trim() || (sec.eyebrow || "").trim()
           ? `    <div class="bnk-section">
-${(sec.eyebrow || "").trim() ? `      <p class="bnk-section__eyebrow"${ed(`sections.${i}.eyebrow`)}>${esc(sec.eyebrow)}</p>\n` : ""}${sec.heading.trim() ? `      <h2 class="bnk-section__title"${ed(`sections.${i}.heading`)}>${esc(sec.heading)}</h2>\n` : ""}${
+${(sec.eyebrow || "").trim() ? `      <p class="bnk-section__eyebrow"${ed(`sections.${i}.eyebrow`)}>${esc(sec.eyebrow)}</p>\n` : ""}${sec.heading.trim() ? `      <h2 class="bnk-section__title"${ed(`sections.${i}.heading`)}${hwAttr(sec.headingWeight)}>${inlineEm(sec.heading)}</h2>\n` : ""}${
               sec.intro.trim() ? `      <p class="bnk-section__text"${ed(`sections.${i}.intro`, true)}>${inlineEm(sec.intro)}</p>\n` : ""
             }    </div>\n`
           : "";
@@ -2130,14 +2133,14 @@ ${heading}${body}
   const panelLinks = panelOn ? (H.panel.links || []).map((l, j) => ({ ...l, j })).filter((l) => (l.label || "").trim()) : [];
   const panelMarkup = panelOn
     ? `    <aside class="bnk-panel">
-${sm === "hero" ? "    " + actionsMarkup.trim() + "\n" : ""}      <p class="bnk-panel__title"${ed("hero.panel.title")}>${esc(H.panel.title)}</p>
+${sm === "hero" ? "    " + actionsMarkup.trim() + "\n" : ""}      <p class="bnk-panel__title"${ed("hero.panel.title")}${hwAttr(H.panel.titleWeight)}>${inlineEm(H.panel.title)}</p>
 ${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l.href || "/"))}"><span${ed(`hero.panel.links.${l.j}.label`)}>${esc(l.label)}</span>${(l.meta || "").trim() ? `<span class="bnk-panel__meta">${esc(l.meta)}</span>` : ""}</a>`).join("\n")}
     </aside>\n`
     : "";
   const bannerCenter = cfg.banner.align === "center";
   const bannerMarkup = cfg.banner.enabled && bannerCenter
     ? `\n  <div class="bnk-banner bnk-banner--center${cfg.banner.glow ? " bnk-banner--glow" : ""}">
-    <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
+    <h2 class="bnk-banner__title"${ed("banner.title")}${hwAttr(cfg.banner.titleWeight)}>${inlineEm(cfg.banner.title)}</h2>
     <p class="bnk-banner__text"${ed("banner.text", true)}>${inlineEm(cfg.banner.text)}</p>
     <div class="bnk-banner__btns">
       <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>${
@@ -2148,7 +2151,7 @@ ${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l
     : cfg.banner.enabled
     ? `\n  <div class="bnk-banner">
     <div class="bnk-banner__copy">
-      <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
+      <h2 class="bnk-banner__title"${ed("banner.title")}${hwAttr(cfg.banner.titleWeight)}>${inlineEm(cfg.banner.title)}</h2>
       <p class="bnk-banner__text"${ed("banner.text", true)}>${inlineEm(cfg.banner.text)}</p>
     </div>
     <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>
@@ -2338,7 +2341,7 @@ ${bannerCSS}
 
 <div class="bnk-landing" id="rm-root"${_editable ? ` data-glp-hw="${HW}"` : ""}>
 ${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${H.bg === "glow" ? '  <div class="bnk-heroglow" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}${panelOn ? '  <div class="bnk-herogrid">\n' : ""}  <div class="bnk-hero">
-${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title"${ed("hero.title")}>${esc(cfg.hero.title)}</h1>
+${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title"${ed("hero.title")}${hwAttr(cfg.hero.titleWeight)}>${inlineEm(cfg.hero.title)}</h1>
 ${cfg.hero.subtitle.trim() ? `    <p class="bnk-hero__sub"${ed("hero.subtitle", true)}>${inlineEm(cfg.hero.subtitle)}</p>\n` : ""}${heroButtons}  </div>
 ${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}
 ${sectionsMarkup}
@@ -2439,18 +2442,22 @@ const PREVIEW_EDIT_SCRIPT = `
   function arm(el) {
     if (el.__glp) return;
     el.__glp = true;
-    if (el.hasAttribute("data-glp-rich")) el.contentEditable = "true";
+    if (el.hasAttribute("data-glp-rich") || el.hasAttribute("data-glp-heading")) el.contentEditable = "true";
     else { try { el.contentEditable = "plaintext-only"; } catch (e) {} if (el.contentEditable !== "plaintext-only") el.contentEditable = "true"; }
     el.spellcheck = false;
     el.addEventListener("focus", function () { el.__orig = text(el); el.__origHtml = el.innerHTML; showBar(el); });
     /* rich fields: paste as plain text; Cmd/Ctrl+B and +I format the selection */
-    if (el.hasAttribute("data-glp-rich")) el.addEventListener("paste", function (e) {
+    if (el.hasAttribute("data-glp-rich") || el.hasAttribute("data-glp-heading")) el.addEventListener("paste", function (e) {
       e.preventDefault();
       document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain").replace(/\\s+/g, " "));
     });
     el.addEventListener("keydown", function (e) {
       if ((e.metaKey || e.ctrlKey) && el.hasAttribute("data-glp-rich") && (e.key === "b" || e.key === "i")) {
         e.preventDefault(); document.execCommand(e.key === "b" ? "bold" : "italic"); syncBar(); return;
+      }
+      /* headings: italic only (they're already bold) */
+      if ((e.metaKey || e.ctrlKey) && el.hasAttribute("data-glp-heading") && (e.key === "b" || e.key === "i")) {
+        e.preventDefault(); if (e.key === "i") { document.execCommand("italic"); syncBar(); } return;
       }
       if (e.key === "Enter") { e.preventDefault(); el.blur(); }
       if (e.key === "Escape") { el.__cancel = true; el.blur(); }
@@ -2489,13 +2496,23 @@ const PREVIEW_EDIT_SCRIPT = `
       });
     }
     if (head) {
-      var root = document.querySelector("[data-glp-hw]"), cur = root ? +root.getAttribute("data-glp-hw") : 600;
-      bar.appendChild(mk("span", { "class": "glp-edbar__label" }, "All headings"));
+      var ib = mk("button", { type: "button", "data-cmd": "italic", title: "Italic (Cmd+I)", "aria-label": "Italic (Cmd+I)" }, "<i>I</i>");
+      ib.addEventListener("click", function () { document.execCommand("italic"); syncBar(); });
+      bar.appendChild(ib);
+      var root = document.querySelector("[data-glp-hw]"), global = root ? +root.getAttribute("data-glp-hw") : 600;
+      var own = +el.style.fontWeight || 0, path = el.getAttribute("data-glp");
+      /* the weight change re-renders the preview, so save any typing in this heading first */
+      function commitNow() { var v = text(el); if (v !== el.__orig) { parent.postMessage({ type: "glp-edit", path: path, value: v }, "*"); el.__orig = v; } }
+      bar.appendChild(mk("span", { "class": "glp-edbar__label" }, "This heading"));
       [[400, "Regular"], [500, "Medium"], [600, "Semibold"], [700, "Bold"]].forEach(function (w) {
-        var b = mk("button", { type: "button", "class": w[0] === cur ? "on" : "", title: w[1] + " headings", style: "font-weight:" + w[0] }, w[1]);
-        b.addEventListener("click", function () { parent.postMessage({ type: "glp-heading-weight", value: w[0] }, "*"); });
+        var b = mk("button", { type: "button", "class": w[0] === own ? "on" : "", title: w[1] + " (this heading only)", style: "font-weight:" + w[0] }, w[1]);
+        b.addEventListener("click", function () { commitNow(); el.style.fontWeight = w[0]; parent.postMessage({ type: "glp-heading-weight", path: path, value: w[0] }, "*"); showBar(el); });
         bar.appendChild(b);
       });
+      var names = { 400: "Regular", 500: "Medium", 600: "Semibold", 700: "Bold" };
+      var d = mk("button", { type: "button", "class": own ? "" : "on", title: "Use the global heading weight (" + (names[global] || global) + ")" }, "Default");
+      d.addEventListener("click", function () { commitNow(); el.style.fontWeight = ""; parent.postMessage({ type: "glp-heading-weight", path: path, value: null }, "*"); showBar(el); });
+      bar.appendChild(d);
     }
     var r = el.getBoundingClientRect();
     bar.style.display = "flex";
@@ -5217,8 +5234,8 @@ function App() {
       const fromPreview = [...document.querySelectorAll("iframe.glp-frame")].some((f) => f.contentWindow === e.source);
       if (!fromPreview) return;
       if (d.type === "glp-preview-mode" && (d.mode === "light" || d.mode === "dark")) { setMode(d.mode); return; }
-      if (d.type === "glp-heading-weight" && HEADING_WEIGHTS.includes(d.value)) {
-        setConfig((c) => ({ ...c, typeface: { ...c.typeface, headingWeight: d.value } }));
+      if (d.type === "glp-heading-weight" && typeof d.path === "string" && EDITABLE_PATH_RE.test(d.path) && HEADING_PATH_RE.test(d.path) && (d.value === null || HEADING_WEIGHTS.includes(d.value))) {
+        setConfig((c) => setAtPath(c, (d.path + "Weight").split("."), d.value === null ? undefined : d.value));
         return;
       }
       if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
