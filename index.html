@@ -10,7 +10,7 @@
   html, body { margin: 0; padding: 0; height: 100%; background: #F2F2F2; }
   #root { height: 100%; }
   .boot { height:100%; display:flex; align-items:center; justify-content:center; color:#4A5670; font-family:-apple-system,"Segoe UI",sans-serif; font-size:14px; font-weight:500; }
-  @media (prefers-color-scheme: dark) { html, body { background: #0A0C18; } .boot { color: rgba(255,255,255,.72); } }
+  @media (prefers-color-scheme: dark) { html, body { background: #0A0B10; } .boot { color: rgba(255,255,255,.72); } }
 </style>
 <script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
@@ -76,6 +76,8 @@ const FONT_FAMILIES = {
 const BODY_FONTS = ["Literata", "Lora", "Merriweather", "DM Mono", "DM Sans", "Geist", "Geist Mono", "IBM Plex Mono", "IBM Plex Sans", "IBM Plex Serif", "Inter", "Space Grotesk", "Work Sans"];
 const HEADING_FONTS = ["Fraunces", "Syne", "Space Mono", "DM Mono", "DM Sans", "Geist", "Geist Mono", "IBM Plex Mono", "IBM Plex Sans", "IBM Plex Serif", "Inter", "Space Grotesk", "Work Sans"];
 /* the old one-click pairings, mapped for saved/shared pages */
+const HEADING_WEIGHTS = [400, 500, 600, 700];
+const HEADING_WEIGHT_LABELS = { 400: "Regular", 500: "Medium", 600: "Semibold", 700: "Bold" };
 const CODE_FONTS = ["DM Mono", "Geist Mono", "IBM Plex Mono", "Space Mono"];
 const LEGACY_FONT_PRESETS = {
   readme: { heading: "readme", body: "readme" },
@@ -302,7 +304,7 @@ const EMPTY_COLORS = () => ({
 
 /* ---------------- default config (fresh-install starter) ---------------- */
 const DEFAULT_CONFIG = {
-  typeface: { heading: "readme", body: "readme" },
+  typeface: { heading: "readme", body: "readme", headingWeight: 600 },
   hero: {
     eyebrow: "",
     chip: "",
@@ -700,7 +702,11 @@ ${indent}  }
 ${indent}}`;
 
 /* escape, then turn *word* into <em>word</em> (link-list labels) */
-const inlineEm = (s = "") => esc(s).replace(/\*([^*]+)\*/g, "<em>$1</em>");
+/* escape, then **bold** and *italic* (kept deliberately small: no nesting, no links) */
+const inlineEm = (s = "") =>
+  esc(s)
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>");
 
 /* the search placement that actually renders: the brand bar hides ReadMe's
    header, so "native"/"header" would leave search invisible → fall back to hero */
@@ -829,7 +835,7 @@ function sanitizeConfig(c) {
   const okFont = (n) => (n === "readme" || FONT_FAMILIES[n] ? n : "readme");
   return {
     ...c,
-    typeface: { custom: !!c.typeface.custom, heading: okFont(c.typeface.heading), body: okFont(c.typeface.body), ...(FONT_FAMILIES[c.typeface.mono] ? { mono: c.typeface.mono } : {}) },
+    typeface: { custom: !!c.typeface.custom, heading: okFont(c.typeface.heading), body: okFont(c.typeface.body), headingWeight: HEADING_WEIGHTS.includes(Number(c.typeface.headingWeight)) ? Number(c.typeface.headingWeight) : 600, ...(FONT_FAMILIES[c.typeface.mono] ? { mono: c.typeface.mono } : {}) },
     hero,
     footer: str(c.footer),
     banner: { ...c.banner, title: str(c.banner.title), text: str(c.banner.text), btnLabel: str(c.banner.btnLabel), btnHref: str(c.banner.btnHref),
@@ -931,9 +937,9 @@ function migrateConfig(loaded) {
   const base = {
     typeface: (() => {
       const t = loaded.typeface;
-      if (t && typeof t === "object") return { custom: !!t.custom || t.heading !== "readme" || t.body !== "readme", heading: str(t.heading, "readme"), body: str(t.body, "readme"), ...(t.mono ? { mono: str(t.mono) } : {}) };
+      if (t && typeof t === "object") return { custom: !!t.custom || t.heading !== "readme" || t.body !== "readme", heading: str(t.heading, "readme"), body: str(t.body, "readme"), headingWeight: Number(t.headingWeight) || 600, ...(t.mono ? { mono: str(t.mono) } : {}) };
       const lp = LEGACY_FONT_PRESETS[loaded.fonts] || LEGACY_FONT_PRESETS.readme;
-      return { custom: lp.heading !== "readme", ...lp };
+      return { custom: lp.heading !== "readme", headingWeight: 600, ...lp };
     })(),
     hero: { ...D.hero, ...(loaded.hero || {}), panel: { ...D.hero.panel, ...((loaded.hero && loaded.hero.panel) || {}) } },
     ticker: { ...D.ticker, ...(loaded.ticker || {}) },
@@ -1144,7 +1150,7 @@ function buildCard(v, style) {
     if (style.icon) body += `\n        ${iconHtml}`;
     body += `\n        ${titleHtml}`;
   }
-  if (v.blurb) body += `\n        <span class="bnk-card__blurb"${edf("blurb")}>${v.blurb}</span>`;
+  if (v.blurb) body += `\n        <span class="bnk-card__blurb"${edf("blurb", true)}>${v.blurb}</span>`;
   if (style.links && v.linksHtml) body += `\n${v.linksHtml}`;
   if (style.peek && v.peekHtml) body += `\n${v.peekHtml}`;
 
@@ -1171,7 +1177,9 @@ function buildCard(v, style) {
    contenteditable and posts edits back (see PREVIEW_EDIT_SCRIPT). Exported
    HTML never contains these attributes. */
 let _editable = false;
-const ed = (path) => (_editable ? ` data-glp="${path}"` : "");
+const HEADING_PATH_RE = /(^hero\.title$|\.heading$|\.title$)/;
+const ed = (path, rich) =>
+  _editable ? ` data-glp="${path}"${rich ? " data-glp-rich" : ""}${HEADING_PATH_RE.test(path) ? " data-glp-heading" : ""}` : "";
 /* config paths the preview may write — anything else posted back is ignored */
 const EDITABLE_PATH_RE =
   /^(hero\.(eyebrow|title|subtitle|searchHint|btnPrimary\.label|btnSecondary\.label)|footer|banner\.(title|text)|brandBar\.(links\.\d+\.label|button\.label)|hero\.panel\.(title|links\.\d+\.label)|banner\.btn2Label|sections\.\d+\.(heading|intro|eyebrow|cards\.\d+\.(title|blurb|peekLabel|peekItems\.\d+|links\.\d+\.label)|columns\.\d+\.(heading|body)))$/;
@@ -1199,7 +1207,7 @@ ${items
 function staticLinks(c, base) {
   const links = (c.links || []).map((l, j) => [l, j]).filter(([l]) => (l.label || "").trim());
   const rows = links
-    .map(([l, j]) => `          <a class="bnk-card__link" href="${esc(normPath(l.href || "/"))}">${CHEVRON_SVG}<span${ed(base + ".links." + j + ".label")}>${inlineEm(l.label)}</span></a>`)
+    .map(([l, j]) => `          <a class="bnk-card__link" href="${esc(normPath(l.href || "/"))}">${CHEVRON_SVG}<span${ed(base + ".links." + j + ".label", true)}>${inlineEm(l.label)}</span></a>`)
     .join("\n");
   const noteText = (c.note || "").trim();
   const noteLink = (c.noteLinkLabel || "").trim();
@@ -1229,12 +1237,12 @@ function sectionCards(sec, palette, style, si) {
             badgeHtml: c.badge === "lock" ? LOCK_SVG : '<span class="bnk-dot"></span>',
             icon: iconMarkup(c),
             title: esc(c.title),
-            blurb: esc(c.blurb),
+            blurb: inlineEm(c.blurb),
             num: String(i + 1).padStart(2, "0"),
             meta: esc(c.meta || ""),
             linksHtml: staticLinks(c, `sections.${si}.cards.${i}`),
             peekHtml: staticPeek(c, `sections.${si}.cards.${i}`),
-            ed: (f) => ed(`sections.${si}.cards.${i}.${f}`),
+            ed: (f, rich) => ed(`sections.${si}.cards.${i}.${f}`, rich),
             ctaText: esc(c.ctaText),
             ctaStyle: c.ctaStyle,
             comment: `Card ${i + 1}: ${esc(c.title)}`,
@@ -1288,7 +1296,7 @@ function sectionColumns(sec, si) {
     .map((col, i) => {
       const parts = [];
       if ((col.heading || "").trim()) parts.push(`      <h3 class="bnk-col__title"${ed(`sections.${si}.columns.${i}.heading`)}>${esc(col.heading)}</h3>`);
-      if ((col.body || "").trim()) parts.push(`      <p class="bnk-col__text"${ed(`sections.${si}.columns.${i}.body`)}>${esc(col.body)}</p>`);
+      if ((col.body || "").trim()) parts.push(`      <p class="bnk-col__text"${ed(`sections.${si}.columns.${i}.body`, true)}>${inlineEm(col.body)}</p>`);
       const ctas = (col.ctas || []).filter((c) => (c.label || "").trim());
       if (ctas.length) {
         const links = ctas
@@ -1319,6 +1327,8 @@ function generateHTML(cfg, opts) {
 
 function generateHTMLInner(cfg) {
   const F = resolveFonts(cfg);
+  /* one weight for every heading (hero, sections, cards, columns, banner) */
+  const HW = HEADING_WEIGHTS.includes(Number(cfg.typeface && cfg.typeface.headingWeight)) ? Number(cfg.typeface.headingWeight) : 600;
   const L = cfg.layout;
   const sections = cfg.sections;
   const heroLeft = cfg.hero.align === "left";
@@ -1775,7 +1785,7 @@ ${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  "
   .bnk-banner__title {
     margin: 0 0 7px;
     font-family: ${F.display};
-    font-weight: 600;
+    font-weight: ${HW};
     font-size: 22px;
     letter-spacing: -0.01em;
     color: var(--bnk-heading) !important;
@@ -1839,7 +1849,7 @@ ${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  "
     background: color-mix(in srgb, var(--accent) 11%, transparent); margin-bottom: 16px;
   }
   .bnk-card__title {
-    margin: 0 0 8px; font-family: var(--title-font, ${F.display}); font-weight: 600;
+    margin: 0 0 8px; font-family: var(--title-font, ${F.display}); font-weight: ${HW};
     font-size: var(--title-size, 21px); line-height: 1.15; letter-spacing: -0.01em;
     text-transform: var(--title-tt, none); color: var(--card-title) !important;
   }
@@ -1928,7 +1938,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   .bnk-section__title {
     margin: 0 0 8px;
     font-family: ${F.display};
-    font-weight: 600;
+    font-weight: ${HW};
     font-size: 25px;
     letter-spacing: -0.01em;
     color: var(--bnk-heading) !important;
@@ -1941,7 +1951,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   .bnk-col { display: flex; flex-direction: column; align-items: flex-start; }
   .bnk-sec--center .bnk-col { align-items: center; text-align: center; }
   .bnk-col__title {
-    margin: 0 0 9px; font-family: ${F.display}; font-weight: 600;
+    margin: 0 0 9px; font-family: ${F.display}; font-weight: ${HW};
     font-size: 18px; letter-spacing: -0.01em; color: var(--bnk-heading) !important;
   }
   .bnk-col__text { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--bnk-ink-1) !important; }
@@ -1993,7 +2003,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
         sec.heading.trim() || sec.intro.trim() || (sec.eyebrow || "").trim()
           ? `    <div class="bnk-section">
 ${(sec.eyebrow || "").trim() ? `      <p class="bnk-section__eyebrow"${ed(`sections.${i}.eyebrow`)}>${esc(sec.eyebrow)}</p>\n` : ""}${sec.heading.trim() ? `      <h2 class="bnk-section__title"${ed(`sections.${i}.heading`)}>${esc(sec.heading)}</h2>\n` : ""}${
-              sec.intro.trim() ? `      <p class="bnk-section__text"${ed(`sections.${i}.intro`)}>${esc(sec.intro)}</p>\n` : ""
+              sec.intro.trim() ? `      <p class="bnk-section__text"${ed(`sections.${i}.intro`, true)}>${inlineEm(sec.intro)}</p>\n` : ""
             }    </div>\n`
           : "";
       if (isCode) {
@@ -2049,7 +2059,7 @@ ${heading}${body}
     ? `  <div class="bnk-quick">${quickLinks.map((l) => `<a class="bnk-quick__link" href="${esc(normPath(l.href || "/"))}">${esc(l.label)}</a>`).join("")}</div>\n`
     : "";
   const actionsMarkup = sm === "hero"
-    ? `  <div class="bnk-actions${H.searchSize === "large" ? " bnk-actions--lg" : ""}${panelOn ? " bnk-actions--panel" : ""}" id="rm-actions"></div>\n${!panelOn && H.searchHint && H.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint")}>${esc(H.searchHint)}</p>\n` : ""}`
+    ? `  <div class="bnk-actions${H.searchSize === "large" ? " bnk-actions--lg" : ""}${panelOn ? " bnk-actions--panel" : ""}" id="rm-actions"></div>\n${!panelOn && H.searchHint && H.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint", true)}>${inlineEm(H.searchHint)}</p>\n` : ""}`
     : "";
   const panelLinks = panelOn ? (H.panel.links || []).map((l, j) => ({ ...l, j })).filter((l) => (l.label || "").trim()) : [];
   const panelMarkup = panelOn
@@ -2062,7 +2072,7 @@ ${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l
   const bannerMarkup = cfg.banner.enabled && bannerCenter
     ? `\n  <div class="bnk-banner bnk-banner--center${cfg.banner.glow ? " bnk-banner--glow" : ""}">
     <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
-    <p class="bnk-banner__text"${ed("banner.text")}>${esc(cfg.banner.text)}</p>
+    <p class="bnk-banner__text"${ed("banner.text", true)}>${inlineEm(cfg.banner.text)}</p>
     <div class="bnk-banner__btns">
       <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>${
         (cfg.banner.btn2Label || "").trim() ? `\n      <a class="bnk-banner__btn bnk-banner__btn--ghost" href="${esc(normPath(cfg.banner.btn2Href || "/"))}"${ed("banner.btn2Label")}>${esc(cfg.banner.btn2Label)}</a>` : ""
@@ -2073,7 +2083,7 @@ ${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l
     ? `\n  <div class="bnk-banner">
     <div class="bnk-banner__copy">
       <h2 class="bnk-banner__title"${ed("banner.title")}>${esc(cfg.banner.title)}</h2>
-      <p class="bnk-banner__text"${ed("banner.text")}>${esc(cfg.banner.text)}</p>
+      <p class="bnk-banner__text"${ed("banner.text", true)}>${inlineEm(cfg.banner.text)}</p>
     </div>
     <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>
   </div>\n`
@@ -2233,7 +2243,7 @@ ${chipCSS}
     margin: 0 0 20px;
     text-wrap: balance;
     font-family: ${F.display};
-    font-weight: 600;
+    font-weight: ${HW};
     font-size: ${heroTitleSize}px;
     letter-spacing: -0.01em;
     color: var(--bnk-heading) !important;
@@ -2243,6 +2253,7 @@ ${heroButtonsCSS}${actionsCSS}${extrasCSS}${patternCSS}${sectionCSS}${gridRules}
 ${cardCSS}
 ${accentRules}
   .rm-arrow { display: inline-block; transition: transform 200ms ease; }
+  .bnk-landing strong { font-weight: 700; color: inherit; }
 ${bannerCSS}
   /* ===== Footer ===== */
   .bnk-footer { text-align: center; margin: 34px 0 0; font-size: 13px; color: var(--bnk-ink-2) !important; }
@@ -2256,13 +2267,13 @@ ${bannerCSS}
   }
 </style>
 
-<div class="bnk-landing" id="rm-root">
+<div class="bnk-landing" id="rm-root"${_editable ? ` data-glp-hw="${HW}"` : ""}>
 ${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${H.bg === "glow" ? '  <div class="bnk-heroglow" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}${panelOn ? '  <div class="bnk-herogrid">\n' : ""}  <div class="bnk-hero">
 ${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title"${ed("hero.title")}>${esc(cfg.hero.title)}</h1>
-${cfg.hero.subtitle.trim() ? `    <p class="bnk-hero__sub"${ed("hero.subtitle")}>${esc(cfg.hero.subtitle)}</p>\n` : ""}${heroButtons}  </div>
+${cfg.hero.subtitle.trim() ? `    <p class="bnk-hero__sub"${ed("hero.subtitle", true)}>${inlineEm(cfg.hero.subtitle)}</p>\n` : ""}${heroButtons}  </div>
 ${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}
 ${sectionsMarkup}
-${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer"${ed("footer")}>${esc(cfg.footer)}</p>` : ""}
+${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer"${ed("footer", true)}>${inlineEm(cfg.footer)}</p>` : ""}
 </div>
 ${script}
 `;
@@ -2324,34 +2335,110 @@ const PREVIEW_EDIT_SCRIPT = `
   [data-glp] { cursor: text; border-radius: 3px; outline: 1px dashed transparent; outline-offset: 3px; transition: outline-color 120ms ease; }
   [data-glp]:hover { outline-color: rgba(33,58,255,.55); }
   [data-glp]:focus { outline: 2px solid #213AFF; outline-offset: 3px; }
+  .glp-edbar {
+    position: absolute; z-index: 99998; display: none; align-items: center; gap: 2px; padding: 4px;
+    background: #16181f; border-radius: 9px; box-shadow: 0 8px 24px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.08);
+    font: 500 12.5px/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .glp-edbar button {
+    border: 0; background: transparent; color: #d7dae3; cursor: pointer; padding: 6px 9px; border-radius: 6px; font: inherit;
+  }
+  .glp-edbar button b, .glp-edbar button i { font-size: 14px; font-family: Georgia, serif; }
+  .glp-edbar button:hover { background: rgba(255,255,255,.08); color: #fff; }
+  .glp-edbar button.on { background: rgba(120,140,255,.28); color: #fff; }
+  .glp-edbar__label { padding: 0 6px 0 4px; color: #8f94a3; font-size: 11.5px; }
   [data-glp-auto] { cursor: help; }
   [data-glp-auto]:hover { outline: 1px dashed rgba(33,58,255,.55); outline-offset: 3px; }
 </style>
 <script>
 (function () {
-  function text(el) {
-    var c = el.cloneNode(true);
-    c.querySelectorAll("em").forEach(function (m) { m.replaceWith("*" + m.textContent + "*"); });
-    return c.textContent.replace(/\\s+/g, " ").trim();
+  function ser(node) {
+    var out = "";
+    node.childNodes.forEach(function (n) {
+      if (n.nodeType === 3) { out += n.nodeValue; return; }
+      if (n.nodeType !== 1) return;
+      var t = n.tagName, inner = ser(n);
+      var w = n.style && n.style.fontWeight;
+      if (t === "B" || t === "STRONG" || w === "bold" || +w >= 600) out += inner.trim() ? "**" + inner + "**" : inner;
+      else if (t === "I" || t === "EM" || (n.style && n.style.fontStyle === "italic")) out += inner.trim() ? "*" + inner + "*" : inner;
+      else if (t === "BR") out += " ";
+      else out += inner;
+    });
+    return out;
   }
+  function text(el) { return ser(el).replace(/\\*\\*\\*\\*/g, "").replace(/\\s+/g, " ").trim(); }
   function arm(el) {
     if (el.__glp) return;
     el.__glp = true;
-    try { el.contentEditable = "plaintext-only"; } catch (e) {}
-    if (el.contentEditable !== "plaintext-only") el.contentEditable = "true";
+    if (el.hasAttribute("data-glp-rich")) el.contentEditable = "true";
+    else { try { el.contentEditable = "plaintext-only"; } catch (e) {} if (el.contentEditable !== "plaintext-only") el.contentEditable = "true"; }
     el.spellcheck = false;
-    el.addEventListener("focus", function () { el.__orig = text(el); el.__origHtml = el.innerHTML; });
+    el.addEventListener("focus", function () { el.__orig = text(el); el.__origHtml = el.innerHTML; showBar(el); });
+    /* rich fields: paste as plain text; Cmd/Ctrl+B and +I format the selection */
+    if (el.hasAttribute("data-glp-rich")) el.addEventListener("paste", function (e) {
+      e.preventDefault();
+      document.execCommand("insertText", false, (e.clipboardData || window.clipboardData).getData("text/plain").replace(/\\s+/g, " "));
+    });
     el.addEventListener("keydown", function (e) {
+      if ((e.metaKey || e.ctrlKey) && el.hasAttribute("data-glp-rich") && (e.key === "b" || e.key === "i")) {
+        e.preventDefault(); document.execCommand(e.key === "b" ? "bold" : "italic"); syncBar(); return;
+      }
       if (e.key === "Enter") { e.preventDefault(); el.blur(); }
       if (e.key === "Escape") { el.__cancel = true; el.blur(); }
       e.stopPropagation();
     });
     el.addEventListener("blur", function () {
+      hideBar();
       if (el.__cancel) { el.__cancel = false; el.innerHTML = el.__origHtml; return; }
       var v = text(el);
       if (v !== el.__orig) parent.postMessage({ type: "glp-edit", path: el.getAttribute("data-glp"), value: v }, "*");
     });
   }
+  /* floating toolbar: B / I on rich text, heading weight on headings */
+  var bar = null, barFor = null;
+  function mk(tag, attrs, html) { var e = document.createElement(tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (html) e.innerHTML = html; return e; }
+  function ensureBar() {
+    if (bar) return bar;
+    bar = mk("div", { "class": "glp-edbar", role: "toolbar", "aria-label": "Text formatting" });
+    bar.addEventListener("mousedown", function (e) { e.preventDefault(); }); /* keep focus + selection */
+    document.body.appendChild(bar);
+    return bar;
+  }
+  function syncBar() {
+    if (!bar || !barFor) return;
+    bar.querySelectorAll("[data-cmd]").forEach(function (b) { b.classList.toggle("on", document.queryCommandState(b.getAttribute("data-cmd"))); });
+  }
+  function showBar(el) {
+    var rich = el.hasAttribute("data-glp-rich"), head = el.hasAttribute("data-glp-heading");
+    if (!rich && !head) return;
+    ensureBar(); barFor = el; bar.innerHTML = "";
+    if (rich) {
+      [["bold", "<b>B</b>", "Bold (Cmd+B)"], ["italic", "<i>I</i>", "Italic (Cmd+I)"]].forEach(function (c) {
+        var b = mk("button", { type: "button", "data-cmd": c[0], title: c[2], "aria-label": c[2] }, c[1]);
+        b.addEventListener("click", function () { document.execCommand(c[0]); syncBar(); });
+        bar.appendChild(b);
+      });
+    }
+    if (head) {
+      var root = document.querySelector("[data-glp-hw]"), cur = root ? +root.getAttribute("data-glp-hw") : 600;
+      bar.appendChild(mk("span", { "class": "glp-edbar__label" }, "All headings"));
+      [[400, "Regular"], [500, "Medium"], [600, "Semibold"], [700, "Bold"]].forEach(function (w) {
+        var b = mk("button", { type: "button", "class": w[0] === cur ? "on" : "", title: w[1] + " headings", style: "font-weight:" + w[0] }, w[1]);
+        b.addEventListener("click", function () { parent.postMessage({ type: "glp-heading-weight", value: w[0] }, "*"); });
+        bar.appendChild(b);
+      });
+    }
+    var r = el.getBoundingClientRect();
+    bar.style.display = "flex";
+    var top = r.top + window.scrollY - bar.offsetHeight - 10;
+    if (top < window.scrollY + 4) top = r.bottom + window.scrollY + 10;
+    bar.style.top = top + "px";
+    bar.style.left = Math.max(8, Math.min(r.left + window.scrollX, window.scrollX + innerWidth - bar.offsetWidth - 8)) + "px";
+    syncBar();
+  }
+  function hideBar() { if (bar) bar.style.display = "none"; barFor = null; }
+  document.addEventListener("selectionchange", syncBar);
+
   function armAll() {
     document.querySelectorAll("[data-glp]").forEach(arm);
     /* stop link drag-ghosts from hijacking clicks on text inside cards/links */
@@ -2620,12 +2707,12 @@ const APP_CSS = `
     overflow: hidden;
   }
   .glp[data-ui="midnight"] {
-    /* dark with a gentle blue tint: between the old saturated navy (too
-       bright over a long session) and plain near-black */
-    --bg: rgb(10 12 24);
-    --panel: rgb(15 18 33);
-    --panel-2: rgb(21 25 44);
-    --field: rgb(11 13 25);
+    /* near-black with a hint of blue (Benak's pick after trying saturated
+       navy and a stronger blue tint) */
+    --bg: rgb(10 11 16);
+    --panel: rgb(15 17 24);
+    --panel-2: rgb(21 24 33);
+    --field: rgb(11 12 17);
     --line: rgb(255 255 255 / 0.08);
     --line-2: rgb(255 255 255 / 0.14);
     --hairline: inset 0 0 0 1px rgb(255 255 255 / 0.1);
@@ -2636,7 +2723,7 @@ const APP_CSS = `
     --accent-fill: rgb(48 60 150);
     --accent-hover: rgb(58 72 172);
     --accent-ink: rgb(255 255 255);
-    --accent-soft: rgb(28 34 70);
+    --accent-soft: rgb(28 33 58);
     --focus: 0 0 0 3px rgb(140 154 230 / 0.6);
     --focus-soft: 0 0 0 3px rgb(140 154 230 / 0.25);
     --ok: rgb(110 220 125);
@@ -2648,7 +2735,7 @@ const APP_CSS = `
     --danger: rgb(255 140 150);
     --danger-line: rgb(130 50 70);
     --dot: rgb(255 255 255 / 0.07);
-    --code-bg: rgb(9 11 21);
+    --code-bg: rgb(9 10 14);
     --code-ink: rgb(220 226 255);
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
@@ -4883,6 +4970,10 @@ function App() {
       const fromPreview = [...document.querySelectorAll("iframe.glp-frame")].some((f) => f.contentWindow === e.source);
       if (!fromPreview) return;
       if (d.type === "glp-preview-mode" && (d.mode === "light" || d.mode === "dark")) { setMode(d.mode); return; }
+      if (d.type === "glp-heading-weight" && HEADING_WEIGHTS.includes(d.value)) {
+        setConfig((c) => ({ ...c, typeface: { ...c.typeface, headingWeight: d.value } }));
+        return;
+      }
       if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
         const sec = configRef.current.sections[d.index];
         if (sec) { setOpenNav("sections"); setOpenSection(sec.id); }
@@ -5729,6 +5820,13 @@ function App() {
                     { value: "custom", label: "Custom", sub: "Pick fonts", preview: <span className="glp-choice__aa" style={{ fontFamily: "var(--font-display)", fontStyle: "italic" }}>Aa</span> },
                   ]}
                 />
+                <Field label="Heading weight" inline>
+                  <Seg
+                    value={config.typeface.headingWeight || 600}
+                    onChange={(v) => setConfig((c) => ({ ...c, typeface: { ...c.typeface, headingWeight: v } }))}
+                    options={HEADING_WEIGHTS.map((w) => ({ value: w, label: HEADING_WEIGHT_LABELS[w] }))}
+                  />
+                </Field>
                 {config.typeface.custom && (
                   <SettingsGroup>
                     <SettingsRow label="Headings">

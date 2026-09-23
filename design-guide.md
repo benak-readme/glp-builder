@@ -18,6 +18,9 @@ The builder turns this JSON into the final HTML, so describe the page's **conten
   Body: "Literata" | "Lora" | "Merriweather" | "DM Mono" | "DM Sans" | "Geist" | "Geist Mono" | "IBM Plex Mono" |
   "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans". Optional `mono` (labels, small buttons):
   "DM Mono" | "Geist Mono" | "IBM Plex Mono" | "Space Mono". Pick the closest match to the source page.
+  `headingWeight`: 400 | 500 | 600 (default) | 700 applies to every heading.
+- Text formatting: in descriptions, intros, the hero subtitle, column text, link labels, banner text and the footer,
+  `**word**` renders bold and `*word*` italic.
 - `brandBar`: custom header that replaces ReadMe's header on the landing page.
   `{ enabled, name, tag, logoUrl, links: [{label, href}], button: {enabled, label, href} }`.
   Use it when the page has its own logo row / top nav. `logoUrl` (an absolute image URL) replaces the wordmark.
