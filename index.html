@@ -2666,8 +2666,10 @@ const PREVIEW_EDIT_SCRIPT = `
       msg = { type: "glp-focus", area: "section", index: Number(m[1]) };
       var item = t.closest(".bnk-card, .bnk-col");
       if (item && sec.contains(item)) msg.item = [].indexOf.call(sec.querySelectorAll(item.classList.contains("bnk-col") ? ".bnk-col" : ".bnk-card"), item);
-    } else if (t.closest(".bnk-brand, .bnk-banner, .bnk-footer, .bnk-ticker")) {
-      msg = { type: "glp-focus", area: "appearance" };
+    } else if (t.closest(".bnk-brand, .bnk-ticker")) {
+      msg = { type: "glp-focus", area: "appearance", group: "ap-header" };
+    } else if (t.closest(".bnk-banner, .bnk-footer")) {
+      msg = { type: "glp-focus", area: "appearance", group: "ap-footer" };
     } else if (t.closest(".bnk-top, .bnk-hero, .bnk-herogrid, .bnk-actions, .bnk-search-hint, .bnk-quick, .bnk-panel")) {
       msg = { type: "glp-focus", area: "hero" };
     }
@@ -3024,6 +3026,13 @@ const APP_CSS = `
   .glp-copy.done { background: var(--ok); color: var(--accent-ink); }
 
   .glp-main { flex: 1; display: flex; min-height: 0; }
+  /* a sidebar row opened by clicking the preview */
+  .glp-rowflash { animation: glpRowFlash 1.3s ease; }
+  @keyframes glpRowFlash {
+    0%, 35% { box-shadow: 0 0 0 2px var(--accent); }
+    100% { box-shadow: 0 0 0 2px transparent; }
+  }
+  @media (prefers-reduced-motion: reduce) { .glp-rowflash { animation: none; box-shadow: 0 0 0 2px var(--accent); } }
 
   .glp-navhead {
     position: sticky; top: -20px; z-index: 6;
@@ -5292,6 +5301,8 @@ function App() {
     jumpLock.current = Date.now() + 900; /* keep the clicked link lit while the smooth scroll runs */
     side.scrollTo({ top: Math.max(0, groupTop(el) - stickyH() - 4), behavior: "smooth" });
   };
+  const jumpToRef = useRef(jumpTo);
+  jumpToRef.current = jumpTo;
   const onSideScroll = () => {
     const side = sideRef.current;
     if (!side || Date.now() < jumpLock.current) return;
@@ -5317,6 +5328,8 @@ function App() {
     try { localStorage.setItem("glp-builder:nav", id); } catch (e) {}
     if (sideRef.current) sideRef.current.scrollTop = 0;
   };
+  const openNavRef = useRef(openNav);
+  openNavRef.current = openNav;
   const [openSection, setOpenSection] = useState(boot.current.config.sections[0].id);
   /* preview light/dark: the user's last pick in the preview (remembered across
      reloads); until they've picked one, it follows the machine's setting */
@@ -5349,6 +5362,29 @@ function App() {
   const configRef = useRef(config);
   configRef.current = config;
   const previewFocusAt = useRef(0);
+  /* briefly outline a sidebar row so it's obvious which one a preview click opened */
+  const flashRow = (el) => {
+    if (!el) return;
+    el.classList.remove("glp-rowflash");
+    void el.offsetWidth;
+    el.classList.add("glp-rowflash");
+    setTimeout(() => { try { el.classList.remove("glp-rowflash"); } catch (e) {} }, 1400);
+  };
+  /* scroll the sidebar so the opened section's header sits just under the sticky tab bar;
+     if the clicked card/column would still be off-screen, line up that row instead */
+  const revealRow = (rowId, itemId) => {
+    const side = sideRef.current;
+    const row = document.querySelector(`[data-sec-id="${rowId}"]`);
+    if (!side || !row) return;
+    const item = itemId ? document.querySelector(`[data-item-id="${itemId}"]`) : null;
+    const top = (el) => el.getBoundingClientRect().top - side.getBoundingClientRect().top + side.scrollTop;
+    const head = side.querySelector(".glp-navhead");
+    const offset = (head ? head.offsetHeight : 0) + 8;
+    let target = row;
+    if (item && top(item) + Math.min(item.offsetHeight, 220) - top(row) > side.clientHeight - offset) target = item;
+    side.scrollTo({ top: Math.max(0, top(target) - offset), behavior: "smooth" });
+    flashRow(item || row);
+  };
 
   /* edits committed inside the preview iframe come back as { path, value } */
   useEffect(() => {
@@ -5365,25 +5401,27 @@ function App() {
       if (d.type === "glp-focus") {
         /* the click came from the preview, so don't scroll the preview back to the section's top */
         previewFocusAt.current = Date.now();
+        if (d.area === "appearance") {
+          if (openNavRef.current !== "theme") setOpenNav("theme");
+          const g = d.group === "ap-footer" ? "ap-footer" : "ap-header";
+          setTimeout(() => { jumpToRef.current(g); flashRow(document.getElementById(g)); }, 60);
+          return;
+        }
         let rowId = null, itemId = null;
-        if (d.area === "hero") { setOpenNav("sections"); setOpenSection("__hero"); rowId = "__hero"; }
-        else if (d.area === "appearance") setOpenNav("theme");
+        if (d.area === "hero") { setOpenSection("__hero"); rowId = "__hero"; }
         else if (d.area === "section" && Number.isInteger(d.index)) {
           const sec = configRef.current.sections[d.index];
-          if (sec) {
-            setOpenNav("sections");
-            setOpenSection(sec.id);
-            rowId = sec.id;
-            const items = sec.type === "columns" ? sec.columns : sec.type !== "code" && sec.source !== "liquid" ? sec.cards : null;
-            const it = items && Number.isInteger(d.item) ? items[d.item] : null;
-            if (it) { setOpenCard(it.id); itemId = it.id; }
-          }
+          if (!sec) return;
+          setOpenSection(sec.id);
+          rowId = sec.id;
+          const items = sec.type === "columns" ? sec.columns : sec.type !== "code" && sec.source !== "liquid" ? sec.cards : null;
+          const it = items && Number.isInteger(d.item) ? items[d.item] : null;
+          if (it) { setOpenCard(it.id); itemId = it.id; }
         }
-        /* bring the opened row into view in the sidebar */
-        setTimeout(() => {
-          const el = (itemId && document.querySelector(`[data-item-id="${itemId}"]`)) || (rowId && document.querySelector(`[data-sec-id="${rowId}"]`));
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        }, 80);
+        if (!rowId) return;
+        /* stay on the Sections tab if already there (switching tabs resets the sidebar to the top) */
+        if (openNavRef.current !== "sections") setOpenNav("sections");
+        setTimeout(() => revealRow(rowId, itemId), 60);
         return;
       }
       if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
