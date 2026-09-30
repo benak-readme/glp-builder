@@ -64,7 +64,8 @@ Name the page after the source, e.g. "Unbranded developer.acme.com".
   `bg` (hex) gives the bar its own solid full-width color; text and links flip to white or near-black to stay
   readable, so a white logo works on a dark bar. Leave it out when the bar sits on the hero color (see `hero.bgColor`).
 - `searchMode`: where ReadMe's search + Ask AI sit. "native" (normal header) | "header" (centered in header)
-  | "hero" (row under the hero) | "brand" (inside the brand bar). With `brandBar.enabled`, use "hero" or "brand".
+  | "hero" (row under the hero) | "brand" (inside the brand bar) | "off" (no search or Ask AI on this
+  page, and Cmd+K is blocked). With `brandBar.enabled`, use "hero", "brand" or "off".
 - `hero`: `{ eyebrow, title, subtitle, align: "center"|"left", titleSize (px|null), subtitleSize (px|null),
   chip, chipHref, buttons (bool), btnPrimary: {label, href}, btnSecondary: {label, href}, searchHint }`.
   `searchHint` is a small line under the search row (only shown when searchMode is "hero").

@@ -953,7 +953,8 @@ const inlineEm = (s = "") =>
 /* the search placement that actually renders: the brand bar hides ReadMe's
    header, so "native"/"header" would leave search invisible → fall back to hero */
 const effSearchMode = (cfg) =>
-  cfg.brandBar && cfg.brandBar.enabled
+  cfg.searchMode === "off" ? "off"
+  : cfg.brandBar && cfg.brandBar.enabled
     ? cfg.searchMode === "brand" || cfg.searchMode === "hero" ? cfg.searchMode : "hero"
     : cfg.searchMode === "brand" ? "native" : cfg.searchMode;
 
@@ -1029,7 +1030,7 @@ const decodeConfig = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
    unescaped (colors, numbers, enums) is coerced here. Strings are escaped at
    generation time by esc(). */
 const FA_STYLES = ["solid", "regular", "light", "thin", "duotone", "brands"];
-const SEARCH_MODES = ["native", "header", "hero", "brand"];
+const SEARCH_MODES = ["native", "header", "hero", "brand", "off"];
 const safeHex = (v, d) => (typeof v === "string" && /^#[0-9a-f]{3,8}$/i.test(v.trim()) ? v.trim() : d);
 /* readable text color on a solid background: white on dark colors, near-black on light ones */
 function textOn(hex) {
@@ -1733,6 +1734,16 @@ function generateHTMLInner(cfg) {
 ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,${(cfg.headerImage.tint / 100).toFixed(2)}); }\n` : ""}  .bnk-landing > *:not(.bnk-herobg) { position: relative; z-index: 1; }
 `
     : "";
+
+  /* ===== Search and Ask AI off on this page =====
+     the buttons and ReadMe's search window are hidden, and the script below blocks
+     the Cmd+K shortcut, so search can't be opened here at all */
+  const searchOffCSS =
+    sm === "off"
+      ? `
+  .rm-Header :is(.rm-SearchToggle, .rm-Header-search, [class*="Header-search"], .rm-AskAi, .rm-AskAi-button, [class*="Header-ask-ai-button"]), #hub-search-results { display: none !important; }
+`
+      : "";
 
   const headerCenterCSS =
     sm === "header"
@@ -2628,6 +2639,21 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
   })();
 <\/script>`;
 
+  /* search off: stop ReadMe's search shortcuts before they reach it (capture phase on
+     window runs ahead of ReadMe's own listeners) */
+  const searchOffScript = sm === "off" && !_editable ? `
+<script>
+  (function () {
+    window.addEventListener("keydown", function (e) {
+      var k = (e.key || "").toLowerCase(), a = document.activeElement;
+      var typing = a && (a.isContentEditable || /^(input|textarea|select)$/i.test(a.tagName));
+      if (((e.metaKey || e.ctrlKey) && k === "k") || (k === "/" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey)) {
+        e.preventDefault(); e.stopImmediatePropagation();
+      }
+    }, true);
+  })();
+<\/script>` : "";
+
   return `<!--
   Global Landing Page, generated with GLP Builder
   Fonts: ${F.label} · ${sections.length} section${sections.length === 1 ? "" : "s"}${hasLiquid ? " · Liquid cards (auto from child projects)" : ""}
@@ -2648,7 +2674,7 @@ ${
     - Same-as-system  : @media (prefers-color-scheme: dark) + [data-color-mode="system"]
 -->
 <style>${F.importUrl ? `\n  @import url('${F.importUrl}');` : ""}
-${headerCSS}${brandCSS}${heroImageCSS}${headerCenterCSS}${proxyCSS}
+${headerCSS}${brandCSS}${heroImageCSS}${headerCenterCSS}${searchOffCSS}${proxyCSS}
   /* ===== GLOBAL THEME MAP — LIGHT / DEFAULT ===== */
   /* Text and borders follow the hub's own ReadMe variables (so the page matches
      the default theme or a customer's custom one), falling back to ReadMe's
@@ -2762,7 +2788,7 @@ ${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}${he
 ${sectionsMarkup}
 ${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer"${ed("footer", true)}>${inlineEm(cfg.footer)}</p>` : ""}
 </div>
-${script}${modeScript}
+${script}${modeScript}${searchOffScript}
 `;
 }
 
@@ -6073,7 +6099,7 @@ function InspectBrandBar({ config, setBrandBar, patch }) {
       </div>
       {tab === "links" && (
         <Field label="Search & Ask AI" inline>
-          <Seg value={effSearchMode(config)} onChange={(v) => patch({ searchMode: v })} options={[{ value: "brand", label: "In brand bar" }, { value: "hero", label: "Under hero" }]} />
+          <Seg value={effSearchMode(config)} onChange={(v) => patch({ searchMode: v })} options={[{ value: "brand", label: "In brand bar" }, { value: "hero", label: "Under hero" }, { value: "off", label: "Off" }]} />
         </Field>
       )}
       <BrandBarFields config={config} setBrandBar={setBrandBar} part={tab} />
@@ -7887,15 +7913,22 @@ function App() {
                         ? [
                             { value: "hero", label: "Under hero" },
                             { value: "brand", label: "In brand bar" },
+                            { value: "off", label: "Off" },
                           ]
                         : [
                             { value: "native", label: "Native header" },
                             { value: "header", label: "Centered in header" },
                             { value: "hero", label: "Under hero" },
+                            { value: "off", label: "Off" },
                           ]
                     }
                   />
                 </Field>
+                {effSearchMode(config) === "off" && (
+                  <div className="glp-note" style={{ marginBottom: 12 }}>
+                    No search or Ask AI on this page: the buttons are gone and Cmd+K does nothing. Other pages of the hub keep theirs.
+                  </div>
+                )}
                 {config.brandBar.enabled && (
                   <>
                     <div className="glp-note" style={{ marginBottom: 12 }}>
