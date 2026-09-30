@@ -5027,7 +5027,7 @@ function LiquidControls({ section, st, setLiq, toggleLiqAccent, hideAccents }) {
 }
 
 /* ---------- reusable card-style switches (used by a section in "custom"
-   mode and by the global card style in Appearance → Card style) ---------- */
+   mode and by the global card style, Card style at the top of the Sections tab) ---------- */
 function CardStyleControls({ style: st, setStyle, liquid = false }) {
   return (
     <>
@@ -5411,7 +5411,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
                 <CardStyleControls style={section.style} setStyle={setStyle} liquid={liquidOn} />
               ) : (
                 <div className="glp-note">
-                  Using the <b>global card style</b>, shared by every Global section. Change it in <b>Appearance → Card style</b>, or pick a look in <b>Appearance → Card templates</b>. Switch to <b>Custom</b> to change just this section.
+                  Using the <b>global card style</b>, shared by every Global section. Change it in <b>Card style</b> at the top of this tab. Switch to <b>Custom</b> to change just this section.
                 </div>
               )}
             </>
@@ -5641,14 +5641,13 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
 const NAV_TABS = [
   { id: "templates", label: "Templates", icon: "fa-shapes" },
   { id: "theme", label: "Appearance", icon: "fa-palette" },
-  { id: "sections", label: "Sections", icon: "fa-layer-group" },
+  { id: "sections", label: "Card style & Sections", icon: "fa-layer-group" },
 ];
 
 /* jump links for the long Appearance panel (scroll-spied) */
 const APPEARANCE_GROUPS = [
   { id: "ap-typography", label: "Typography" },
   { id: "ap-colors", label: "Colors" },
-  { id: "ap-cards", label: "Cards" },
   { id: "ap-background", label: "Background" },
   { id: "ap-header", label: "Header" },
   { id: "ap-footer", label: "Footer" },
@@ -7020,26 +7019,6 @@ function App() {
                   </>
                 )}
 
-                <div className="glp-sub" id="ap-cards">Card templates</div>
-                <p className="glp-hint" style={{ margin: "0 0 10px" }}>One-click looks for every card section set to <b>Global</b>. Fine-tune them in Card style below.</p>
-                <div className="glp-choices glp-choices--4">
-                  {PRESETS.map((p) => {
-                    const cur = config.cardStyle || DEFAULT_STYLE;
-                    const on = Object.keys(p.style).every((k) => cur[k] === p.style[k]);
-                    return (
-                      <button key={p.key} type="button" className={"glp-choice" + (on ? " on" : "")} aria-pressed={on} title={p.hint} onClick={() => applyPreset(p)}>
-                        <span className="glp-choice__preview"><CardSketch kind={p.key} /></span>
-                        <span className="glp-choice__label">{p.label}</span>
-                        <span className="glp-choice__sub">{p.hint}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="glp-sub">Card style</div>
-                <p className="glp-hint" style={{ margin: "0 0 10px" }}>Used by every section set to <b>Global</b>. A section can switch to <b>Custom</b> in its Card style tab.</p>
-                <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
-
                 <div className="glp-sub" id="ap-background">Background &amp; width</div>
                 <SettingsGroup>
                   <SettingsRow label="Background pattern" hint="Full width, behind everything">
@@ -7217,7 +7196,32 @@ function App() {
                 </Field>
               </NavSection>
 
-              <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
+              <NavSection id="sections" label="Card style & Sections" openNav={openNav} setOpenNav={setOpenNav}>
+                {/* the global card look, pinned above the sections that use it (collapsed by
+                    default so it doesn't push the sections down) */}
+                <FixedRow rowId="__cards" title="Card style" icon="fa-table-cells-large"
+                  meta={(() => { const cur = config.cardStyle || DEFAULT_STYLE; const pr = PRESETS.find((pp) => Object.keys(pp.style).every((k) => cur[k] === pp.style[k])); return pr ? pr.label : "custom"; })()}
+                  open={openSection === "__cards"} onToggle={() => setOpenSection(openSection === "__cards" ? null : "__cards")}>
+                  <div className="glp-sub" style={{ marginTop: 0 }}>Card templates</div>
+                  <p className="glp-hint" style={{ margin: "0 0 10px" }}>One-click looks for every card section set to <b>Global</b>. Fine-tune them below.</p>
+                  <div className="glp-choices glp-choices--4">
+                    {PRESETS.map((p) => {
+                      const cur = config.cardStyle || DEFAULT_STYLE;
+                      const on = Object.keys(p.style).every((k) => cur[k] === p.style[k]);
+                      return (
+                        <button key={p.key} type="button" className={"glp-choice" + (on ? " on" : "")} aria-pressed={on} title={p.hint} onClick={() => applyPreset(p)}>
+                          <span className="glp-choice__preview"><CardSketch kind={p.key} /></span>
+                          <span className="glp-choice__label">{p.label}</span>
+                          <span className="glp-choice__sub">{p.hint}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="glp-sub">Details</div>
+                  <p className="glp-hint" style={{ margin: "0 0 10px" }}>Used by every section set to <b>Global</b>. A section can switch to <b>Custom</b> in its Card style tab.</p>
+                  <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
+                </FixedRow>
                 <FixedRow rowId="__hero" title="Hero" icon="fa-image" meta={config.hero.bg === "glow" ? "glow" : ""} open={openSection === "__hero"} onToggle={() => setOpenSection(openSection === "__hero" ? null : "__hero")}>
                 <Field label="Eyebrow (blank to hide)">
                   <input
