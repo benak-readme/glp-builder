@@ -283,6 +283,113 @@ const DEFAULT_COLUMNS = () => [
   makeColumn({ heading: "Support", body: "Talk to our team or browse community answers." }),
 ];
 
+/* ---------- structural edits shared by the sidebar and the preview's edit mode ---------- */
+const LIMITS = { sections: 6, cards: 12, columns: 4 };
+/* a fresh section of one kind: "liquid" (one card per child project, the sidebar's
+   default), "cards" (cards you write), "columns" or "code" */
+function newSection(kind) {
+  const k = ["cards", "columns", "code"].includes(kind) ? kind : "liquid";
+  return {
+    id: uid(),
+    type: k === "columns" || k === "code" ? k : "cards",
+    label: "",
+    eyebrow: "",
+    code: { ...DEFAULT_CODE },
+    heading: "New section",
+    intro: "",
+    align: "center",
+    source: k === "cards" ? "static" : "liquid",
+    styleMode: "global",
+    style: { ...DEFAULT_STYLE },
+    layout: { ...DEFAULT_SECTION_LAYOUT },
+    liquid: { ...DEFAULT_LIQUID },
+    columns: DEFAULT_COLUMNS(),
+    cards: k === "cards" ? [1, 2, 3].map((n) => ({ ...CARD_DEFAULTS, id: uid(), title: "Card " + n })) : [{ ...CARD_DEFAULTS, id: uid() }],
+  };
+}
+function cloneSection(src) {
+  return {
+    ...src,
+    id: uid(),
+    style: { ...src.style },
+    layout: { ...src.layout },
+    liquid: { ...src.liquid, accents: [...(src.liquid.accents || [])] },
+    columns: src.columns.map((col) => ({ ...col, id: uid(), ctas: (col.ctas || []).map((c) => ({ ...c })) })),
+    cards: src.cards.map((k) => ({ ...k, id: uid(), peekItems: [...(k.peekItems || [])], links: (k.links || []).map((l) => ({ ...l })) })),
+  };
+}
+/* the editable items of a section (cards you wrote, or columns); null when it has none
+   (code samples, auto-from-projects cards) */
+const sectionItems = (sec) => (sec.type === "columns" ? "columns" : sec.type === "cards" && sec.source !== "liquid" ? "cards" : null);
+const cloneItem = (key, it) =>
+  key === "columns" ? { ...it, id: uid(), ctas: (it.ctas || []).map((c) => ({ ...c })) } : { ...it, id: uid(), peekItems: [...(it.peekItems || [])], links: (it.links || []).map((l) => ({ ...l })) };
+
+/* apply one preview edit-mode operation; returns { config, focus } or null if it doesn't apply */
+function applyCanvasOp(cfg, d) {
+  const secs = cfg.sections;
+  const si = secs.findIndex((s) => s.id === d.sid);
+  const put = (arr) => ({ ...cfg, sections: arr });
+  if (d.op === "sec-add") {
+    if (secs.length >= LIMITS.sections) return null;
+    const ns = newSection(d.kind);
+    const at = Math.max(0, Math.min(Number.isInteger(d.at) ? d.at : secs.length, secs.length));
+    const arr = [...secs];
+    arr.splice(at, 0, ns);
+    return { config: put(arr), focus: { section: ns.id } };
+  }
+  if (si < 0) return null;
+  const sec = secs[si];
+  if (d.op === "sec-move") {
+    const j = si + (d.dir < 0 ? -1 : 1);
+    if (j < 0 || j >= secs.length) return null;
+    const arr = [...secs];
+    [arr[si], arr[j]] = [arr[j], arr[si]];
+    return { config: put(arr) };
+  }
+  if (d.op === "sec-dup") {
+    if (secs.length >= LIMITS.sections) return null;
+    const copy = cloneSection(sec);
+    const arr = [...secs];
+    arr.splice(si + 1, 0, copy);
+    return { config: put(arr), focus: { section: copy.id } };
+  }
+  if (d.op === "sec-del") {
+    if (secs.length <= 1) return null;
+    return { config: put(secs.filter((s) => s.id !== sec.id)) };
+  }
+  const key = sectionItems(sec);
+  if (!key) return null;
+  const list = sec[key];
+  const max = key === "columns" ? LIMITS.columns : LIMITS.cards;
+  const setList = (next) => put(secs.map((s) => (s.id === sec.id ? { ...s, [key]: next } : s)));
+  if (d.op === "item-add") {
+    if (list.length >= max) return null;
+    const it = key === "columns" ? makeColumn() : { ...CARD_DEFAULTS, id: uid() };
+    return { config: setList([...list, it]), focus: { section: sec.id, item: it.id } };
+  }
+  const ii = Number.isInteger(d.index) ? d.index : -1;
+  if (ii < 0 || ii >= list.length) return null;
+  if (d.op === "item-move") {
+    const j = ii + (d.dir < 0 ? -1 : 1);
+    if (j < 0 || j >= list.length) return null;
+    const arr = [...list];
+    [arr[ii], arr[j]] = [arr[j], arr[ii]];
+    return { config: setList(arr) };
+  }
+  if (d.op === "item-dup") {
+    if (list.length >= max) return null;
+    const copy = cloneItem(key, list[ii]);
+    const arr = [...list];
+    arr.splice(ii + 1, 0, copy);
+    return { config: setList(arr), focus: { section: sec.id, item: copy.id } };
+  }
+  if (d.op === "item-del") {
+    if (list.length <= 1) return null;
+    return { config: setList(list.filter((_, k) => k !== ii)) };
+  }
+  return null;
+}
+
 const HERO_SUB_DEFAULT = 15;
 
 /* customizable color roles on the generated page (ReadMe-style Appearance list) */
@@ -2170,7 +2277,7 @@ ${(sec.eyebrow || "").trim() ? `      <p class="bnk-section__eyebrow"${ed(`secti
       if (isCode) {
         const code = sec.code || DEFAULT_CODE;
         const langs = (code.langs || "").split(",").map((x) => x.trim()).filter(Boolean);
-        return `  <div class="${cls}" style="${styleVars}">
+        return `  <div class="${cls}" style="${styleVars}"${_editable ? ` data-glp-sid="${esc(sec.id)}" data-glp-kind="${isCode ? "code" : isCols ? "columns" : sec.source === "liquid" ? "liquid" : "cards"}"` : ""}>
     <div class="bnk-codesec">
       <div class="bnk-codesec__copy">
 ${heading.replace(/^/gm, "  ")}${langs.length ? `        <div class="bnk-codesec__langs">${langs.map((l, k) => `<span class="bnk-codesec__lang${k === 0 ? " on" : ""}">${esc(l)}</span>`).join("")}</div>\n` : ""}      </div>
@@ -2188,7 +2295,7 @@ ${sectionColumns(sec, i)}
         : `    <div class="bnk-grid">
 ${sectionCards(sec, palettes[i], st, i)}
     </div>`;
-      return `  <div class="${cls}" style="${styleVars}">
+      return `  <div class="${cls}" style="${styleVars}"${_editable ? ` data-glp-sid="${esc(sec.id)}" data-glp-kind="${isCode ? "code" : isCols ? "columns" : sec.source === "liquid" ? "liquid" : "cards"}"` : ""}>
 ${heading}${body}
   </div>`;
     })
@@ -2702,6 +2809,203 @@ const PREVIEW_EDIT_SCRIPT = `
 })();
 <\/script>`;
 
+/* ============================================================
+   PREVIEW EDIT MODE: hover toolbars + "+" buttons over sections, cards and columns.
+   Builder-only (injected into the editable preview, never into exported HTML); every
+   action posts a { type: "glp-canvas", op } message and the builder applies it.
+   ============================================================ */
+/* live mode: the page exactly as exported; links stay put so the preview never navigates away */
+const PREVIEW_LIVE_SCRIPT = `<script>
+  document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
+<\/script>`;
+const PREVIEW_CANVAS_SCRIPT = `
+<style>
+  .glp-cv, .glp-cv-menu { position: absolute; z-index: 99990; display: none; font: 500 12px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  .glp-cv { align-items: center; gap: 1px; padding: 3px; border-radius: 9px; background: #15171F; box-shadow: 0 6px 20px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.06); }
+  .glp-cv button, .glp-cv-menu button { all: unset; box-sizing: border-box; cursor: pointer; }
+  .glp-cv button { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #E6E8F0; font-size: 12px; }
+  .glp-cv button:hover { background: rgba(255,255,255,.13); }
+  .glp-cv button:focus-visible { outline: 2px solid #8E9BFF; }
+  .glp-cv button[disabled] { opacity: .32; cursor: default; background: none; }
+  .glp-cv button.glp-cv__del:hover { background: #C93434; color: #fff; }
+  .glp-cv__tag { padding: 0 7px 0 7px; color: #9AA0B4; font-size: 11px; white-space: nowrap; }
+  .glp-cv__sep { width: 1px; height: 16px; margin: 0 3px; background: rgba(255,255,255,.14); }
+  .glp-cv-out { position: absolute; z-index: 99980; display: none; pointer-events: none; border: 1.5px solid rgba(44,62,200,.9); border-radius: 12px; }
+  .glp-cv-out--item { border: 1.5px dashed rgba(44,62,200,.75); border-radius: 10px; }
+  .glp-cv-add {
+    all: unset; box-sizing: border-box; position: absolute; z-index: 99991; display: none; cursor: pointer;
+    width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center;
+    background: rgb(44,62,200); color: #fff; font-size: 12px; border: 2px solid #fff; box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  }
+  .glp-cv-add:hover { background: rgb(33,50,180); transform: scale(1.08); }
+  .glp-cv-add:focus-visible { outline: 2px solid #8E9BFF; outline-offset: 2px; }
+  .glp-cv-menu { z-index: 99995; flex-direction: column; width: 272px; box-sizing: border-box; padding: 5px; border-radius: 11px; background: #15171F; box-shadow: 0 12px 32px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.06); }
+  .glp-cv-menu__title { padding: 7px 10px 5px; color: #9AA0B4; font-size: 11px; }
+  .glp-cv-menu button { display: flex; gap: 11px; align-items: flex-start; width: 100%; padding: 8px 10px; border-radius: 7px; color: #E6E8F0; font-size: 13px; }
+  .glp-cv-menu button:hover, .glp-cv-menu button:focus-visible { background: rgba(255,255,255,.1); }
+  .glp-cv-menu button i { width: 16px; margin-top: 2px; color: #A9B3FF; text-align: center; }
+  .glp-cv-menu button small { display: block; margin-top: 3px; color: #9AA0B4; font-size: 11.5px; }
+</style>
+<script>
+(function () {
+  var MAX = { sections: ${LIMITS.sections}, cards: ${LIMITS.cards}, columns: ${LIMITS.columns} };
+  var KIND_LABEL = { cards: "Cards", liquid: "Auto cards", columns: "Columns", code: "Code sample" };
+  function mk(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html) e.innerHTML = html; return e; }
+  function btn(icon, title, cls) { var b = mk("button", cls || "", '<i class="fa-solid fa-' + icon + '" aria-hidden="true"></i>'); b.type = "button"; b.title = title; b.setAttribute("aria-label", title); return b; }
+  function send(msg) { msg.type = "glp-canvas"; if (lastXY) { msg.x = lastXY[0]; msg.y = lastXY[1]; } parent.postMessage(msg, "*"); }
+
+  var secOut = mk("div", "glp-cv-out"), itemOut = mk("div", "glp-cv-out glp-cv-out--item");
+  var secBar = mk("div", "glp-cv"), itemBar = mk("div", "glp-cv");
+  var addAbove = btn("plus", "Add a section above", "glp-cv-add"), addBelow = btn("plus", "Add a section below", "glp-cv-add"), addItem = btn("plus", "Add", "glp-cv-add");
+  var menu = mk("div", "glp-cv-menu");
+  var parts = [secOut, itemOut, secBar, itemBar, addAbove, addBelow, addItem, menu];
+
+  var secTag = mk("span", "glp-cv__tag");
+  var sUp = btn("arrow-up", "Move section up"), sDown = btn("arrow-down", "Move section down"), sDup = btn("clone", "Duplicate section"), sDel = btn("trash-can", "Delete section", "glp-cv__del"), sSet = btn("sliders", "Section settings");
+  [secTag, sUp, sDown, sDup, sDel, mk("span", "glp-cv__sep"), sSet].forEach(function (b) { secBar.appendChild(b); });
+  var itemTag = mk("span", "glp-cv__tag");
+  var iPrev = btn("arrow-left", "Move left"), iNext = btn("arrow-right", "Move right"), iDup = btn("clone", "Duplicate"), iDel = btn("trash-can", "Delete", "glp-cv__del");
+  [itemTag, iPrev, iNext, iDup, iDel].forEach(function (b) { itemBar.appendChild(b); });
+
+  var KINDS = [
+    ["cards", "table-cells-large", "Cards", "Cards you write, each with its own link"],
+    ["liquid", "diagram-project", "Auto from projects", "One card per child project, filled in by ReadMe"],
+    ["columns", "table-columns", "Columns", "Text, images and links side by side"],
+    ["code", "code", "Code sample", "A code window beside a heading"]
+  ];
+  menu.appendChild(mk("div", "glp-cv-menu__title", "Add a section"));
+  KINDS.forEach(function (k) {
+    var b = mk("button", "", '<i class="fa-solid fa-' + k[1] + '" aria-hidden="true"></i><span>' + k[2] + "<small>" + k[3] + "</small></span>");
+    b.type = "button";
+    b.addEventListener("click", function () { var at = menu.__at; hideMenu(); send({ op: "sec-add", kind: k[0], at: at }); });
+    menu.appendChild(b);
+  });
+
+  var cur = null, curItem = null, hideT = null;
+  function secs() { return [].slice.call(document.querySelectorAll(".bnk-landing .bnk-sec[data-glp-sid]")); }
+  function itemsOf(sec) {
+    var kind = sec.getAttribute("data-glp-kind");
+    var sel = kind === "columns" ? ".bnk-cols > .bnk-col" : kind === "cards" ? ".bnk-grid > .bnk-card" : null;
+    return sel ? { key: kind, list: [].slice.call(sec.querySelectorAll(sel)) } : null;
+  }
+  function box(el) { var r = el.getBoundingClientRect(); return { t: r.top + scrollY, l: r.left + scrollX, w: r.width, h: r.height, b: r.bottom + scrollY, r: r.right + scrollX }; }
+  function place(el, t, l) { el.style.top = Math.round(t) + "px"; el.style.left = Math.round(Math.max(4, l)) + "px"; }
+  function show(el, disp) { el.style.display = disp || "flex"; }
+  function hide(el) { el.style.display = "none"; }
+  function frame(out, b, pad) { out.style.top = b.t - pad + "px"; out.style.left = b.l - pad + "px"; out.style.width = b.w + pad * 2 + "px"; out.style.height = b.h + pad * 2 + "px"; show(out, "block"); }
+
+  function paint() {
+    if (!cur || !document.contains(cur)) { hideAll(); return; }
+    var all = secs(), i = all.indexOf(cur), n = all.length, b = box(cur), kind = cur.getAttribute("data-glp-kind");
+    frame(secOut, b, 8);
+    secTag.textContent = KIND_LABEL[kind] || "Section";
+    sUp.disabled = i <= 0; sDown.disabled = i >= n - 1; sDup.disabled = n >= MAX.sections; sDel.disabled = n <= 1;
+    show(secBar);
+    place(secBar, b.t - 8 - secBar.offsetHeight / 2, b.r + 8 - secBar.offsetWidth);
+    if (n < MAX.sections) {
+      show(addBelow); place(addBelow, b.b + 8 - 14, b.l + b.w / 2 - 14);
+      if (i === 0) { show(addAbove); place(addAbove, b.t - 8 - 14, b.l + b.w / 2 - 14); } else hide(addAbove);
+    } else { hide(addBelow); hide(addAbove); }
+    var its = itemsOf(cur);
+    if (its && its.list.length) {
+      var last = box(its.list[its.list.length - 1]);
+      var max = its.key === "columns" ? MAX.columns : MAX.cards;
+      addItem.title = its.key === "columns" ? "Add a column" : "Add a card";
+      addItem.setAttribute("aria-label", addItem.title);
+      if (its.list.length < max) { show(addItem); place(addItem, last.t + last.h / 2 - 14, last.r - 14); } else hide(addItem);
+    } else hide(addItem);
+    if (curItem && its && its.list.indexOf(curItem) >= 0) {
+      var k = its.list.indexOf(curItem), ib = box(curItem), cnt = its.list.length, maxI = its.key === "columns" ? MAX.columns : MAX.cards;
+      frame(itemOut, ib, 3);
+      itemTag.textContent = (its.key === "columns" ? "Column " : "Card ") + (k + 1);
+      iPrev.disabled = k <= 0; iNext.disabled = k >= cnt - 1; iDup.disabled = cnt >= maxI; iDel.disabled = cnt <= 1;
+      show(itemBar);
+      place(itemBar, ib.t + 6, ib.r - 6 - itemBar.offsetWidth);
+    } else { hide(itemBar); hide(itemOut); }
+  }
+  function hideAll() { [secOut, itemOut, secBar, itemBar, addAbove, addBelow, addItem].forEach(hide); }
+  function hideMenu() { hide(menu); menu.__at = null; }
+  function onUi(t) { return parts.some(function (p) { return p.contains(t); }); }
+
+  document.addEventListener("mousemove", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (onUi(t)) { clearTimeout(hideT); return; }
+    var sec = t.closest(".bnk-sec[data-glp-sid]");
+    if (sec) {
+      clearTimeout(hideT);
+      var its = itemsOf(sec), it = its && t.closest(its.key === "columns" ? ".bnk-col" : ".bnk-card");
+      if (sec !== cur || it !== curItem) { cur = sec; curItem = it && its.list.indexOf(it) >= 0 ? it : null; paint(); }
+    } else if (cur) {
+      clearTimeout(hideT);
+      hideT = setTimeout(function () { if (menu.style.display !== "flex") { cur = null; curItem = null; hideAll(); } }, 260);
+    }
+  });
+  window.addEventListener("scroll", function () { if (cur) paint(); if (menu.style.display === "flex") hideMenu(); }, { passive: true });
+  window.addEventListener("resize", function () { if (cur) paint(); });
+
+  function sid() { return cur && cur.getAttribute("data-glp-sid"); }
+  function idx() { var its = cur && itemsOf(cur); return its && curItem ? its.list.indexOf(curItem) : -1; }
+  sUp.addEventListener("click", function () { send({ op: "sec-move", sid: sid(), dir: -1 }); });
+  sDown.addEventListener("click", function () { send({ op: "sec-move", sid: sid(), dir: 1 }); });
+  sDup.addEventListener("click", function () { send({ op: "sec-dup", sid: sid() }); });
+  sDel.addEventListener("click", function () { send({ op: "sec-del", sid: sid() }); });
+  sSet.addEventListener("click", function () { var i = secs().indexOf(cur); if (i >= 0) parent.postMessage({ type: "glp-focus", area: "section", index: i }, "*"); });
+  iPrev.addEventListener("click", function () { send({ op: "item-move", sid: sid(), index: idx(), dir: -1 }); });
+  iNext.addEventListener("click", function () { send({ op: "item-move", sid: sid(), index: idx(), dir: 1 }); });
+  iDup.addEventListener("click", function () { send({ op: "item-dup", sid: sid(), index: idx() }); });
+  iDel.addEventListener("click", function () { send({ op: "item-del", sid: sid(), index: idx() }); });
+  addItem.addEventListener("click", function () { send({ op: "item-add", sid: sid() }); });
+  function openMenu(anchor, at) {
+    menu.__at = at;
+    show(menu);
+    var b = box(anchor), h = menu.offsetHeight;
+    /* open upward when there isn't room below (scrolling would close it) */
+    var top = b.b + 6 + h > scrollY + innerHeight - 8 && b.t - 6 - h >= scrollY + 8 ? b.t - 6 - h : b.b + 6;
+    place(menu, top, Math.min(b.l + b.w / 2 - menu.offsetWidth / 2, scrollX + innerWidth - menu.offsetWidth - 8));
+    var first = menu.querySelector("button"); if (first) first.focus({ preventScroll: true });
+  }
+  addBelow.addEventListener("click", function (e) { e.stopPropagation(); var i = secs().indexOf(cur); openMenu(addBelow, i + 1); });
+  addAbove.addEventListener("click", function (e) { e.stopPropagation(); openMenu(addAbove, 0); });
+  document.addEventListener("mousedown", function (e) { if (menu.style.display === "flex" && !menu.contains(e.target) && e.target !== addAbove && e.target !== addBelow && !addAbove.contains(e.target) && !addBelow.contains(e.target)) hideMenu(); }, true);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { hideMenu(); return; }
+    /* undo / redo while the preview has focus (text being typed keeps the browser's own undo) */
+    var a = document.activeElement;
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "z" || e.key === "Z" || e.key === "y") && !(a && a.isContentEditable)) {
+      e.preventDefault();
+      parent.postMessage({ type: "glp-history", redo: e.key === "y" || e.shiftKey }, "*");
+    }
+  });
+
+  /* the preview reloads after every change; the builder hands back where the pointer
+     was so the same toolbar comes straight back instead of waiting for a mouse move */
+  var lastXY = null;
+  document.addEventListener("mousemove", function (e) { lastXY = [e.clientX, e.clientY]; }, true);
+  window.addEventListener("message", function (e) {
+    var m = e.data;
+    if (e.source !== parent || !m || m.type !== "glp-cv-restore" || typeof m.x !== "number" || typeof m.y !== "number") return;
+    lastXY = [m.x, m.y];
+    /* the toolbars sit a little outside the section's edge, so match a section within 30px */
+    var hit = null;
+    if (typeof m.sid === "string") secs().forEach(function (sec) { if (sec.getAttribute("data-glp-sid") === m.sid) hit = sec; });
+    if (hit && typeof m.item === "number") {
+      var fl = itemsOf(hit);
+      clearTimeout(hideT);
+      cur = hit; curItem = fl && fl.list[m.item] ? fl.list[m.item] : null; paint();
+      return;
+    }
+    if (!hit) secs().forEach(function (sec) { var r = sec.getBoundingClientRect(); if (m.x >= r.left - 30 && m.x <= r.right + 30 && m.y >= r.top - 30 && m.y <= r.bottom + 30 && !hit) hit = sec; });
+    if (!hit) return;
+    var its = itemsOf(hit), it = null;
+    if (its) its.list.forEach(function (el) { var r = el.getBoundingClientRect(); if (m.x >= r.left && m.x <= r.right && m.y >= r.top && m.y <= r.bottom) it = el; });
+    clearTimeout(hideT);
+    cur = hit; curItem = it; paint();
+  });
+  parts.forEach(function (p) { document.body.appendChild(p); });
+})();
+<\/script>`;
+
 function buildPreviewDoc(userHtml, mode) {
   const dark = mode === "dark";
   return `<!doctype html>
@@ -2843,7 +3147,7 @@ function buildPreviewDoc(userHtml, mode) {
     </div>
   </div>
   ${userHtml}
-${userHtml.includes("data-glp=") ? PREVIEW_EDIT_SCRIPT : ""}
+${userHtml.includes("data-glp=") ? PREVIEW_EDIT_SCRIPT + PREVIEW_CANVAS_SCRIPT : PREVIEW_LIVE_SCRIPT}
 </body>
 </html>`;
 }
@@ -4969,7 +5273,7 @@ function CodeEditor({ value, onChange }) {
   );
 }
 
-function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex, previewFocusAt }) {
+function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex, previewFocusAt, canvasMode, setCanvasMode, hasOverride, canvasPointer }) {
   const editable = html.includes("data-glp=");
   /* Double-buffered preview: render the new doc into the hidden iframe and
      only reveal it once it has finished loading, so the visible frame never
@@ -5024,6 +5328,13 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
     if (i === activeRef.current || !slotsRef.current[i]) return; // only react to the freshly-loaded back buffer
     restoreScroll(i); // restore the captured scroll onto the incoming frame before revealing it
     setActive(i);
+    /* after a preview edit-mode action, bring that toolbar straight back in the new frame */
+    const cp = canvasPointer && canvasPointer.current;
+    if (cp && Date.now() - cp.t < 4000) {
+      canvasPointer.current = null;
+      const f = frames.current[i];
+      setTimeout(() => { try { f.contentWindow.postMessage({ type: "glp-cv-restore", x: cp.x, y: cp.y, sid: cp.sid, item: cp.item }, "*"); } catch (e) {} }, 30);
+    }
   };
   /* when a section is selected in the builder, scroll the preview to it and flash it */
   useEffect(() => {
@@ -5046,7 +5357,17 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
   return (
     <div className="glp-view">
       <div className="glp-view__bar">
-        <span className="glp-view__label">Live preview</span>
+        <span className="glp-view__label">Preview</span>
+        {setCanvasMode && (
+          <Seg
+            value={hasOverride ? "live" : canvasMode}
+            onChange={(v) => { if (!hasOverride) setCanvasMode(v); }}
+            options={[
+              { value: "edit", label: <span title={hasOverride ? "Turned off while this page has manual code edits" : "Edit text, add, move and delete sections and cards right in the preview"}><i className="fa-solid fa-pen" aria-hidden="true"></i> Edit</span> },
+              { value: "live", label: <span title="Exactly the page ReadMe will show, with no editing controls"><i className="fa-solid fa-eye" aria-hidden="true"></i> Live</span> },
+            ]}
+          />
+        )}
         <Seg
           value={mode}
           onChange={setMode}
@@ -5064,7 +5385,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
           ]}
         />
         {(() => {
-          const note = (editable ? "Click any text to edit it. " : "") + (liquidNote ? "Showing 3 sample projects (ReadMe fills in your real ones)" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
+          const note = (editable ? "Click text to edit it. Hover a section or card to move, copy or delete it. " : hasOverride ? "Manual code edits are on, so the preview is read-only. " : "") + (liquidNote ? "Showing 3 sample projects (ReadMe fills in your real ones)" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
           return <span className="glp-view__note" title={note}>{note}</span>;
         })()}
       </div>
@@ -5393,6 +5714,12 @@ function App() {
   const configRef = useRef(config);
   configRef.current = config;
   const previewFocusAt = useRef(0);
+  const histRef = useRef(null);
+  const canvasPointer = useRef(null);
+  /* preview mode: "edit" (click-to-edit text, hover toolbars, + buttons) or "live"
+     (exactly the exported page); remembered across reloads */
+  const [canvasMode, setCanvasModeRaw] = useState(() => { try { return localStorage.getItem("glp-builder:canvas") === "live" ? "live" : "edit"; } catch (e) { return "edit"; } });
+  const setCanvasMode = (m) => { setCanvasModeRaw(m); try { localStorage.setItem("glp-builder:canvas", m); } catch (e) {} };
   /* briefly outline a sidebar row so it's obvious which one a preview click opened */
   const flashRow = (el) => {
     if (!el) return;
@@ -5435,6 +5762,24 @@ function App() {
       if (d.type === "glp-preview-mode" && (d.mode === "light" || d.mode === "dark")) { setMode(d.mode); return; }
       if (d.type === "glp-heading-weight" && typeof d.path === "string" && EDITABLE_PATH_RE.test(d.path) && HEADING_PATH_RE.test(d.path) && (d.value === null || HEADING_WEIGHTS.includes(d.value))) {
         setConfig((c) => setAtPath(c, (d.path + "Weight").split("."), d.value === null ? undefined : d.value));
+        return;
+      }
+      if (d.type === "glp-history") { const h = histRef.current; if (h) (d.redo ? h.redo : h.undo)(); return; }
+      if (d.type === "glp-canvas" && typeof d.op === "string") {
+        const res = applyCanvasOp(configRef.current, d);
+        if (!res) return;
+        /* moves keep the toolbar on the thing that moved, so repeated clicks keep working */
+        const follow = d.op === "sec-move" ? { sid: d.sid } : d.op === "item-move" ? { sid: d.sid, item: d.index + (d.dir < 0 ? -1 : 1) } : null;
+        if (typeof d.x === "number" && typeof d.y === "number") canvasPointer.current = { x: d.x, y: d.y, t: Date.now(), ...(follow || {}) };
+        /* adding scrolls the preview to the new section; moves and deletes keep it still */
+        if (!(res.focus && res.focus.section && !res.focus.item && d.op !== "sec-dup")) previewFocusAt.current = Date.now();
+        setConfig(res.config);
+        if (res.focus) {
+          if (openNavRef.current !== "sections") setOpenNav("sections");
+          setOpenSection(res.focus.section);
+          if (res.focus.item) setOpenCard(res.focus.item);
+          setTimeout(() => revealRow(res.focus.section, res.focus.item || null), 90);
+        }
         return;
       }
       if (d.type === "glp-focus") {
@@ -5550,6 +5895,8 @@ function App() {
     applyHistory(future.current.pop());
   };
   const canUndo = past.current.length > 0 || config !== snapRef.current;
+  /* the preview forwards ⌘Z / ⌘⇧Z here; always call the latest undo/redo */
+  histRef.current = { undo, redo };
   const canRedo = future.current.length > 0;
 
   /* intentionally no dependency array: undo/redo/canUndo/canRedo close over `config` and
@@ -5584,43 +5931,17 @@ function App() {
   const removeSection = (id) => setConfig((c) => (c.sections.length > 1 ? { ...c, sections: c.sections.filter((s) => s.id !== id) } : c));
   const addSection = () =>
     setConfig((c) => {
-      if (c.sections.length >= 6) return c;
-      const id = uid();
-      const ns = {
-        id,
-        type: "cards",
-        label: "",
-        eyebrow: "",
-        code: { ...DEFAULT_CODE },
-        heading: "New section",
-        intro: "",
-        align: "center",
-        source: "liquid",
-        styleMode: "global",
-        style: { ...DEFAULT_STYLE },
-        layout: { ...DEFAULT_SECTION_LAYOUT },
-        liquid: { ...DEFAULT_LIQUID },
-        columns: DEFAULT_COLUMNS(),
-        cards: [{ ...CARD_DEFAULTS, id: uid() }],
-      };
-      setOpenSection(id);
+      if (c.sections.length >= LIMITS.sections) return c;
+      const ns = newSection("liquid");
+      setOpenSection(ns.id);
       return { ...c, sections: [...c.sections, ns] };
     });
   const duplicateSection = (id) =>
     setConfig((c) => {
-      if (c.sections.length >= 6) return c;
+      if (c.sections.length >= LIMITS.sections) return c;
       const i = c.sections.findIndex((s) => s.id === id);
       if (i < 0) return c;
-      const src = c.sections[i];
-      const copy = {
-        ...src,
-        id: uid(),
-        style: { ...src.style },
-        layout: { ...src.layout },
-        liquid: { ...src.liquid, accents: [...src.liquid.accents] },
-        columns: src.columns.map((col) => ({ ...col, id: uid(), ctas: (col.ctas || []).map((c) => ({ ...c })) })),
-        cards: src.cards.map((k) => ({ ...k, id: uid(), peekItems: [...k.peekItems] })),
-      };
+      const copy = cloneSection(c.sections[i]);
       const arr = [...c.sections];
       arr.splice(i + 1, 0, copy);
       setOpenSection(copy.id);
@@ -6834,7 +7155,7 @@ function App() {
               </NavSection>
 
             </div>
-            <Preview html={override !== null ? generated : previewHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} previewFocusAt={previewFocusAt} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
+            <Preview html={override !== null || canvasMode === "live" ? generated : previewHtml} canvasMode={canvasMode} setCanvasMode={setCanvasMode} hasOverride={override !== null} canvasPointer={canvasPointer} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} previewFocusAt={previewFocusAt} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
           </>
         ) : (
           <>
