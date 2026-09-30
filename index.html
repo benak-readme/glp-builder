@@ -2668,7 +2668,12 @@ const PREVIEW_EDIT_SCRIPT = `
       var item = t.closest(".bnk-card, .bnk-col");
       if (item && sec.contains(item)) msg.item = [].indexOf.call(sec.querySelectorAll(item.classList.contains("bnk-col") ? ".bnk-col" : ".bnk-card"), item);
     } else if (t.closest(".bnk-brand, .bnk-ticker")) {
-      msg = { type: "glp-focus", area: "appearance", group: "ap-header" };
+      /* land on the exact brand bar field: a nav link's row, the button, or the wordmark/logo */
+      var bl = t.closest(".bnk-brand__nav a"), g = "ap-header", li = null;
+      if (bl && bl.classList.contains("bnk-brand__btn")) g = "bb-button";
+      else if (bl) { g = "bb-links"; var lm = /brandBar\\.links\\.(\\d+)/.exec(bl.getAttribute("data-glp") || ""); if (lm) li = Number(lm[1]); }
+      else if (t.closest(".bnk-brand__name")) g = "bb-name";
+      msg = { type: "glp-focus", area: "appearance", group: g, item: li };
     } else if (t.closest(".bnk-banner, .bnk-footer")) {
       msg = { type: "glp-focus", area: "appearance", group: "ap-footer" };
     } else if (t.closest(".bnk-top, .bnk-hero, .bnk-herogrid, .bnk-actions, .bnk-search-hint, .bnk-quick, .bnk-panel")) {
@@ -5386,6 +5391,14 @@ function App() {
     side.scrollTo({ top: Math.max(0, top(target) - offset), behavior: "smooth" });
     flashRow(item || row);
   };
+  /* scroll any sidebar element to just under the sticky tab bar */
+  const revealEl = (el) => {
+    const side = sideRef.current;
+    if (!side || !el) return;
+    const head = side.querySelector(".glp-navhead");
+    const y = el.getBoundingClientRect().top - side.getBoundingClientRect().top + side.scrollTop - (head ? head.offsetHeight : 0) - 8;
+    side.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+  };
 
   /* edits committed inside the preview iframe come back as { path, value } */
   useEffect(() => {
@@ -5404,8 +5417,16 @@ function App() {
         previewFocusAt.current = Date.now();
         if (d.area === "appearance") {
           if (openNavRef.current !== "theme") setOpenNav("theme");
-          const g = d.group === "ap-footer" ? "ap-footer" : "ap-header";
-          setTimeout(() => { jumpToRef.current(g); flashRow(document.getElementById(g)); }, 60);
+          const g = ["ap-footer", "bb-links", "bb-button", "bb-name"].includes(d.group) ? d.group : "ap-header";
+          setTimeout(() => {
+            const box = g.startsWith("bb-") && document.getElementById(g);
+            if (!box) { jumpToRef.current(g.startsWith("bb-") ? "ap-header" : g); flashRow(document.getElementById(g.startsWith("bb-") ? "ap-header" : g)); return; }
+            const row = g === "bb-links" && Number.isInteger(d.item) ? box.querySelectorAll(".glp-linkrow")[d.item] : null;
+            setApActive("ap-header");
+            jumpLock.current = Date.now() + 900;
+            revealEl(row || box);
+            flashRow(row || box);
+          }, 60);
           return;
         }
         let rowId = null, itemId = null;
@@ -6497,6 +6518,7 @@ function App() {
                     <div className="glp-note" style={{ marginBottom: 12 }}>
                       Replaces ReadMe's header on this page only. Search and Ask AI keep working.
                     </div>
+                    <div id="bb-name">
                     <div className="glp-row2">
                       <Field label="Wordmark">
                         <input className="glp-input" value={config.brandBar.name} onChange={(e) => setBrandBar({ name: e.target.value })} />
@@ -6508,15 +6530,19 @@ function App() {
                     <Field label="Logo URL (optional, replaces wordmark)">
                       <input className="glp-input" value={config.brandBar.logoUrl} onChange={(e) => setBrandBar({ logoUrl: e.target.value })} placeholder="https://files.readme.io/…/logo.svg" />
                     </Field>
+                    </div>
                     <Field label="Bar color" inline>
                       <ColorValue value={config.brandBar.bg || ""} onChange={(v) => setBrandBar({ bg: v })} label="Bar color" />
                     </Field>
                     <div className="glp-note" style={{ marginBottom: 12 }}>
                       A solid bar behind the logo and links. Text turns white or dark to stay readable, so a white logo works on a dark color.
                     </div>
+                    <div id="bb-links">
                     <Field label="Nav links">
                       <LinkListEditor links={config.brandBar.links} onChange={(links) => setBrandBar({ links })} max={7} labelPh="Guides" hrefPh="/guides" />
                     </Field>
+                    </div>
+                    <div id="bb-button">
                     <Toggle
                       checked={config.brandBar.button.enabled}
                       onChange={(v) => setBrandBar({ button: { ...config.brandBar.button, enabled: v } })}
@@ -6534,6 +6560,7 @@ function App() {
                         </Field>
                       </div>
                     )}
+                    </div>
                   </>
                 )}
                 {config.headerImage.enabled && (
