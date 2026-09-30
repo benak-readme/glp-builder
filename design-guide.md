@@ -114,7 +114,12 @@ rows, title | description | count), autoH: true }`.
   with `langs` (comma-separated) shown as chips. Use when the source page shows a quickstart snippet.
 
 ### Text-column section: `"type": "columns"`
-- `columns` (1-4): `{ heading, body, ctas: [{label, href, style: "plain"|"button"|"filled"}] }`.
+- `columns` (1-4): `{ heading, body, image, imageSize, icon, ctas: [{label, href, style: "plain"|"button"|"filled"}] }`.
+  `image` (absolute URL) shows an illustration above the heading, `imageSize` its height in px (default 88);
+  `icon` (Font Awesome name) shows an icon tile instead when there's no image.
+- **Icon or illustration + short text in a row, with no card borders or backgrounds** (a "Benefits" or "Why us" strip):
+  use a columns section, not cards. Keep the source's illustration URLs as `image`, set `align: "center"` if the
+  source centers them, and leave `heading` blank when the source has only text under each graphic.
 - Great for help/support strips; pair with `layout.bg: "dark"`.
 
 ## Mapping tips

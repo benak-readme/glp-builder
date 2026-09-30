@@ -254,6 +254,10 @@ const DEFAULT_CODE = { file: "quickstart.ts", langs: "TypeScript, Python, Go, Ru
 const COLUMN_DEFAULTS = {
   heading: "Column heading",
   body: "A short line of supporting text for this column.",
+  /* optional graphic above the heading: an illustration image (wins) or a Font Awesome icon */
+  image: "",
+  imageSize: 88,
+  icon: "",
 };
 const CTA_DEFAULTS = { label: "Learn more", href: "/", style: "plain" };
 const makeCta = (over) => {
@@ -959,7 +963,8 @@ function sanitizeConfig(c) {
         peekCount: safeNum(sec.liquid.peekCount, 3, 1, 10),
         accents: Array.isArray(sec.liquid.accents) && sec.liquid.accents.length ? sec.liquid.accents.map((a) => str(a)) : ["green"],
       },
-      columns: sec.columns.map((col) => ({ ...col, heading: str(col.heading), body: str(col.body), ctas: col.ctas.map((ct) => ({ ...ct, label: str(ct.label), href: str(ct.href) })) })),
+      columns: sec.columns.map((col) => ({ ...col, heading: str(col.heading), body: str(col.body),
+        image: str(col.image), imageSize: safeNum(col.imageSize, 88, 24, 240), icon: str(col.icon).replace(/[^a-z0-9-]/gi, ""), ctas: col.ctas.map((ct) => ({ ...ct, label: str(ct.label), href: str(ct.href) })) })),
     })),
   };
 }
@@ -1375,6 +1380,8 @@ function sectionColumns(sec, si) {
   return cols
     .map((col, i) => {
       const parts = [];
+      if ((col.image || "").trim()) parts.push(`      <img class="bnk-col__img" src="${esc(col.image.trim())}" alt="" style="height: ${Number(col.imageSize) || 88}px;">`);
+      else if ((col.icon || "").trim()) parts.push(`      <span class="bnk-col__icon" aria-hidden="true">${iconMarkup({ iconType: "fa", icon: col.icon.trim() })}</span>`);
       if ((col.heading || "").trim()) parts.push(`      <h3 class="bnk-col__title"${ed(`sections.${si}.columns.${i}.heading`)}${hwAttr(col.headingWeight)}>${inlineEm(col.heading)}</h3>`);
       if ((col.body || "").trim()) parts.push(`      <p class="bnk-col__text"${ed(`sections.${si}.columns.${i}.body`, true)}>${inlineEm(col.body)}</p>`);
       const ctas = (col.ctas || []).filter((c) => (c.label || "").trim());
@@ -2075,6 +2082,12 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   /* ---------- text columns ---------- */
   .bnk-col { display: flex; flex-direction: column; align-items: flex-start; }
   .bnk-sec--center .bnk-col { align-items: center; text-align: center; }
+  .bnk-col__img { display: block; width: auto; max-width: 100%; object-fit: contain; margin: 0 0 24px; }
+  .bnk-col__icon {
+    width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; flex: none;
+    font-size: 22px; line-height: 1; border-radius: 12px; margin: 0 0 16px;
+    color: var(--bnk-accent); background: color-mix(in srgb, var(--bnk-accent) 11%, transparent);
+  }
   .bnk-col__title {
     margin: 0 0 9px; font-family: ${F.display}; font-weight: ${HW};
     font-size: 18px; letter-spacing: -0.01em; color: var(--bnk-heading) !important;
@@ -4503,6 +4516,16 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
       </RowHead>
       {open && (
         <div className="glp-card__body">
+          <Field label="Image URL (optional, shown above the heading)">
+            <input className="glp-input" value={column.image || ""} onChange={(e) => set({ image: e.target.value })} placeholder="https://…/illustration.png" />
+          </Field>
+          {(column.image || "").trim() ? (
+            <NumberField label="Image height" value={column.imageSize || 88} min={24} max={240} step={4} onChange={(v) => set({ imageSize: v })} />
+          ) : (
+            <Field label="Icon (optional, a Font Awesome name like book)">
+              <input className="glp-input" value={column.icon || ""} onChange={(e) => set({ icon: e.target.value })} placeholder="No icon" />
+            </Field>
+          )}
           <Field label="Heading (blank to hide)">
             <input className="glp-input" value={column.heading} onChange={(e) => set({ heading: e.target.value })} />
           </Field>
