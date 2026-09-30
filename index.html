@@ -2536,6 +2536,7 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
 <script>
   (function () {
     var BRAND = ${BB.enabled ? "true" : "false"};
+    var padCache = window.WeakMap ? new WeakMap() : { get: function () {}, set: function () {} };
     function q(s) { return document.querySelector(s); }
     function nativeSearch() { return q(".rm-Header-search .rm-SearchToggle") || q(".rm-SearchToggle"); }
     function nativeAsk() { return q(".rm-AskAi-button") || q('[class*="Header-ask-ai-button"]'); }
@@ -2564,11 +2565,23 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
       /* a text-style last control (no fill, no border) hangs its padding past the bar's
          edge, so its text lines up with the end of the page like the bar's own items */
       var clear = function (c) { return c === "transparent" || c.replace(/ /g, "").slice(-3) === ",0)"; };
-      var hang = 0, last = ctls[ctls.length - 1];
-      if (last) {
-        var ls = getComputedStyle(last);
-        if (clear(ls.backgroundColor) && (clear(ls.borderRightColor) || parseFloat(ls.borderRightWidth) === 0)) hang = parseFloat(ls.paddingRight) || 0;
-      }
+      /* a text-style control (no fill, no border) is measured to its text. Measured at rest
+         and remembered: hovered, ReadMe gives it a faint border, and re-measuring then
+         shifted everything and pushed the bar's links onto a second row */
+      var textPad = function (el, side) {
+        var c = padCache.get(el) || {};
+        /* measured once (its hover border also fades out, so a later read can catch it mid-fade) */
+        if (c[side] !== undefined || el.matches(":hover, :active, :focus-visible") || el.getAttribute("aria-expanded") === "true") return c[side];
+        var cs = getComputedStyle(el);
+        c[side] = clear(cs.backgroundColor) && (clear(cs["border" + side + "Color"]) || parseFloat(cs["border" + side + "Width"]) === 0) ? parseFloat(cs["padding" + side]) || 0 : 0;
+        padCache.set(el, c);
+        return c[side];
+      };
+      var last = ctls[ctls.length - 1], first = ctls[0];
+      var hang = last ? textPad(last, "Right") : 0, lead = first ? textPad(first, "Left") : 0;
+      /* hovered before it was ever measured: leave things where they are for now (it
+         lines up once the pointer leaves) */
+      if (hang === undefined || lead === undefined) return;
       if (right) {
         /* put the controls' right edge on the bar's right edge (ReadMe's header row and the
            page can use different widths and padding) */
@@ -2580,12 +2593,8 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
       }
       /* same 22px gap as between the bar's links, measured to the first control's text when
          it is text-style */
-      var lead = 0, first = ctls[0];
-      if (first) {
-        var fs = getComputedStyle(first);
-        if (clear(fs.backgroundColor) && (clear(fs.borderLeftColor) || parseFloat(fs.borderLeftWidth) === 0)) lead = parseFloat(fs.paddingLeft) || 0;
-      }
-      if (bar) bar.style.paddingRight = right ? Math.ceil(right.getBoundingClientRect().width - hang + Math.max(8, 22 - lead)) + "px" : "";
+      var pad = right ? Math.ceil(right.getBoundingClientRect().width - hang + Math.max(8, 22 - lead)) + "px" : "";
+      if (bar && bar.style.paddingRight !== pad) bar.style.paddingRight = pad;
       /* line ReadMe's controls up with the center of the bar's first line (the logo), so it
          still lines up when a crowded bar wraps. The controls, not the header row: ReadMe
          pads them lower than the middle of the row */
@@ -2607,6 +2616,8 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
       watch(); window.addEventListener("load", watch);
     }
     var n = 0, iv = setInterval(function () { sync(); if (++n > 24) clearInterval(iv); }, 250);
+    /* a control hovered before it was measured gets measured once the pointer leaves it */
+    if (BRAND) document.addEventListener("mouseout", function (e) { if (e.target.closest && e.target.closest(".rm-Header-right")) setTimeout(sync, 400); });
   })();
 <\/script>`
     : "";
