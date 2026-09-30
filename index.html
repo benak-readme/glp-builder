@@ -2612,9 +2612,16 @@ const PREVIEW_EDIT_SCRIPT = `
   /* editable text: a soft tint on hover (no outline, so moving across the page doesn't
      flash boxes everywhere) and a single ring while typing; currentColor keeps both
      visible on light pages, dark pages and colored bands */
-  [data-glp] { cursor: text; border-radius: 4px; transition: background-color 120ms ease, box-shadow 120ms ease; }
-  [data-glp]:hover { background-color: color-mix(in srgb, currentColor 8%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 8%, transparent); }
-  [data-glp]:focus { outline: none; background-color: color-mix(in srgb, currentColor 5%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 5%, transparent), 0 0 0 4.5px color-mix(in srgb, currentColor 45%, transparent); }
+  /* editable text: a soft tint that extends 8px past the text (drawn as a box-shadow, so
+     the page layout never shifts), plus a thin ring while typing. No transition: the
+     tint and its halo appear together in one step (fading them read as a highlight that
+     then grew, since the browser fades the fill but snaps the halo on at the end).
+     currentColor keeps it visible on light pages, dark pages and colored bands. */
+  [data-glp] { cursor: text; border-radius: 3px; box-shadow: 0 0 0 8px transparent; }
+  [data-glp]:hover { background-color: color-mix(in srgb, currentColor 7%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, currentColor 7%, transparent); }
+  /* while typing: an even fill plus a true 1px ring at the fill's edge (a second, wider
+     box-shadow painted a solid band under the fill and made the edge look heavy) */
+  [data-glp]:focus { background-color: color-mix(in srgb, currentColor 5%, transparent); box-shadow: 0 0 0 8px color-mix(in srgb, currentColor 5%, transparent); outline: 1px solid color-mix(in srgb, currentColor 30%, transparent); outline-offset: 8px; }
   .glp-edbar {
     position: absolute; z-index: 99998; display: none; align-items: center; gap: 2px; padding: 4px;
     background: #16181f; border-radius: 9px; box-shadow: 0 8px 24px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.08);
