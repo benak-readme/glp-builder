@@ -128,6 +128,7 @@ function resolveFonts(cfg) {
    peek    : preview list section
    cta     : CTA button/link shown
    ctaPlain: CTA is a plain text link
+   ctaFill : outlined | filled, how CTA buttons look (a card's own ctaStyle can override)
    mono    : mono, uppercase titles (terminal aesthetic)
    radius  : corner radius (px)
    density : roomy | comfortable | compact (padding + title size)
@@ -142,6 +143,7 @@ const DEFAULT_STYLE = {
   peek: false,
   cta: false,
   ctaPlain: false,
+  ctaFill: "outlined",
   mono: false,
   links: false,
   iconInline: false,
@@ -208,7 +210,8 @@ const CARD_DEFAULTS = {
   peekItems: ["First highlight", "Second highlight"],
   peekArrows: false,
   ctaText: "View docs",
-  ctaStyle: "ghost",
+  /* auto = follow the card style's Button fill; filled / outline override it for this card */
+  ctaStyle: "auto",
   primary: false,
   /* small count/label on the card, e.g. "913 pages" */
   meta: "",
@@ -230,7 +233,7 @@ const DEFAULT_LIQUID = {
   peekLabel: "Inside",
   peekCount: 3,
   ctaText: "View docs",
-  ctaStyle: "ghost",
+  ctaStyle: "auto",
   accents: ["green", "purple", "amber"],
 };
 
@@ -878,6 +881,9 @@ const safeLinks = (arr) =>
   Array.isArray(arr) ? arr.filter((l) => l && typeof l === "object").map((l) => ({ label: str(l.label), href: str(l.href) })) : [];
 
 const CARD_STR_FIELDS = ["icon", "title", "blurb", "href", "eyebrow", "peekLabel", "ctaText", "note", "noteLinkLabel", "noteHref", "meta"];
+/* a card's button fill: "filled" / "outline" override the style, anything else
+   (including the old default "ghost") follows the card style's Button fill */
+const normCtaStyle = (v) => (v === "filled" || v === "outline" ? v : "auto");
 const normCard = (c) => {
   const o = { ...CARD_DEFAULTS, ...(c && typeof c === "object" ? c : {}) };
   CARD_STR_FIELDS.forEach((k) => { o[k] = str(o[k], CARD_DEFAULTS[k]); });
@@ -888,6 +894,7 @@ const normCard = (c) => {
     customDark: safeHex(o.customDark, CARD_DEFAULTS.customDark),
     peekItems: Array.isArray(o.peekItems) ? o.peekItems.map((x) => str(x)) : [],
     links: safeLinks(o.links),
+    ctaStyle: normCtaStyle(o.ctaStyle),
     id: o.id || uid(),
   };
 };
@@ -989,7 +996,7 @@ const normSection = (s) => ({
   styleMode: s.styleMode === "global" ? "global" : "custom",
   style: { ...DEFAULT_STYLE, ...(s.style || {}), file: false },
   layout: { ...DEFAULT_SECTION_LAYOUT, ...(s.layout || {}) },
-  liquid: { ...DEFAULT_LIQUID, ...(s.liquid || {}) },
+  liquid: (() => { const q = { ...DEFAULT_LIQUID, ...(s.liquid || {}) }; return { ...q, ctaStyle: normCtaStyle(q.ctaStyle) }; })(),
   columns: (Array.isArray(s.columns) && s.columns.length ? s.columns.slice(0, 4) : DEFAULT_COLUMNS()).map(normColumn),
   cards: (Array.isArray(s.cards) && s.cards.length ? s.cards : DEFAULT_CONFIG.sections[0].cards).map(normCard),
 });
@@ -1242,7 +1249,7 @@ function buildCard(v, style) {
   if (style.cta) {
     const ctaCls = style.ctaPlain
       ? "bnk-card__go bnk-card__go--plain"
-      : `bnk-card__go bnk-card__go--${v.ctaStyle === "filled" ? "filled" : "ghost"}`;
+      : `bnk-card__go bnk-card__go--${(v.ctaStyle === "filled" || v.ctaStyle === "outline" ? v.ctaStyle === "filled" : style.ctaFill === "filled") ? "filled" : "ghost"}`;
     foot = style.anchor
       ? `\n      <span class="${ctaCls}">${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></span>`
       : `\n      <a class="${ctaCls}" href="${v.href}">${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>`;
@@ -1406,7 +1413,9 @@ function sectionColumns(sec, si) {
     .join("\n\n");
 }
 
-const densityPad = (d) => (d === "compact" ? "19px 20px 18px" : d === "comfortable" ? "26px 26px 24px" : "25px 25px 23px");
+/* comfortable sits between compact and roomy (it used to pad wider than roomy, which
+   wrapped CTAs that roomy fit); roomy's extra room is mostly its larger titles */
+const densityPad = (d) => (d === "compact" ? "19px 20px 18px" : d === "comfortable" ? "22px 22px 21px" : "25px 25px 23px");
 const densityTitle = (d) => (d === "compact" ? "16.5px" : d === "comfortable" ? "21px" : "30px");
 
 function generateHTML(cfg, opts) {
@@ -2002,12 +2011,15 @@ ${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  "
   .bnk-card__peek-item:last-child { margin-bottom: 0; }
   .bnk-card__peek-item .bnk-tick { flex: none; color: var(--accent) !important; font-family: ${F.mono}; font-size: 11px; }
 
+  /* inline-block, not inline-flex: if a long label has to wrap, the arrow follows the
+     last word instead of the text box stretching and parking the arrow at the far edge */
   .bnk-card__go {
-    display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; margin-top: 18px;
+    display: inline-block; max-width: 100%; text-wrap: balance; align-self: flex-start; margin-top: 18px;
     font-family: ${F.mono}; font-size: 13.5px; letter-spacing: 0.05em;
     padding: 10px 18px; border-radius: 9px; text-decoration: none;
     transition: border-color 200ms ease;
   }
+  .bnk-card__go .rm-arrow { margin-left: 8px; }
   .bnk-card__go--filled { background: var(--accent); color: var(--bnk-cta-on) !important; }
   .bnk-card__go--ghost { border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); color: var(--accent) !important; }
   .bnk-card__go--ghost:hover, .bnk-card:hover .bnk-card__go--ghost { border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
@@ -2106,11 +2118,11 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   .bnk-col__ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; }
   .bnk-sec--center .bnk-col__ctas { justify-content: center; }
   .bnk-col__cta {
-    display: inline-flex; align-items: center; gap: 7px;
+    display: inline-block; max-width: 100%; text-wrap: balance;
     font-family: ${F.mono}; font-size: 13px; letter-spacing: 0.04em; text-decoration: none;
     color: var(--bnk-accent) !important;
   }
-  .bnk-col__cta .rm-arrow { transition: transform 200ms ease; }
+  .bnk-col__cta .rm-arrow { margin-left: 7px; transition: transform 200ms ease; }
   .bnk-col__cta:hover .rm-arrow { transform: translateX(4px); }
   .bnk-col__cta--btn {
     padding: 10px 18px; border-radius: 9px;
@@ -4047,11 +4059,12 @@ function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain
       </Field>
       <Field label="Button style">
         <Seg
-          value={ctaStyle}
+          value={normCtaStyle(ctaStyle)}
           onChange={onStyleChange}
           options={[
+            { value: "auto", label: "Card style" },
             { value: "filled", label: "Filled" },
-            { value: "ghost", label: "Outlined" },
+            { value: "outline", label: "Outlined" },
           ]}
         />
       </Field>
@@ -4531,6 +4544,18 @@ function CardStyleControls({ style: st, setStyle, liquid = false }) {
           ]}
         />
       </Field>
+      {st.cta && !st.ctaPlain && (
+        <Field label="Button fill" inline>
+          <Seg
+            value={st.ctaFill === "filled" ? "filled" : "outlined"}
+            onChange={(v) => setStyle({ ctaFill: v })}
+            options={[
+              { value: "outlined", label: "Outlined" },
+              { value: "filled", label: "Filled" },
+            ]}
+          />
+        </Field>
+      )}
       <Field label="Density" inline>
         <Seg
           value={st.density}
@@ -5664,8 +5689,14 @@ function App() {
     ? "Shared design"
     : ((designs.find((d) => d.id === currentId) || {}).name || "Untitled page");
 
+  /* leave the shared link behind once its design is a saved page (or another page is
+     opened), so a reload opens that page instead of the shared view: drops an inline
+     #c= fragment and a /g/<code> short-link path */
   const stripHash = () => {
-    try { window.history.replaceState(null, "", window.location.pathname + window.location.search); } catch (e) {}
+    try {
+      const path = window.location.pathname.replace(/\/g\/[a-z0-9]{4,16}\/?$/i, "/");
+      window.history.replaceState(null, "", path + window.location.search);
+    } catch (e) {}
   };
   /* excludeId lets renameCurrent check uniqueness against every OTHER page without
      tripping over the current page's own (soon-to-be-replaced) name */
