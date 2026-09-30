@@ -2847,13 +2847,13 @@ const PREVIEW_CANVAS_SCRIPT = `
   .glp-cv button.glp-cv__del:hover { background: #C93434; color: #fff; }
   .glp-cv__tag { padding: 0 7px 0 7px; color: #9AA0B4; font-size: 11px; white-space: nowrap; }
   .glp-cv__sep { width: 1px; height: 16px; margin: 0 3px; background: rgba(255,255,255,.14); }
-  /* outlines: only the card/column you're on; a section is outlined just while its
-     toolbar is hovered, to show what those buttons act on */
-  .glp-cv-out { position: absolute; z-index: 99980; display: none; pointer-events: none; box-sizing: border-box; border: 1.5px solid rgba(23,24,29,.38); border-radius: 12px; }
-  .glp-cv-out--item { border-color: rgba(23,24,29,.5); border-radius: 10px; }
+  /* dotted outlines: only the card/column you're on; a section is outlined just while
+     its toolbar is hovered, to show what those buttons act on */
+  .glp-cv-out { position: absolute; z-index: 99980; display: none; pointer-events: none; box-sizing: border-box; border: 2px dotted rgba(23,24,29,.42); border-radius: 12px; }
+  .glp-cv-out--item { border-color: rgba(23,24,29,.55); border-radius: 10px; }
   /* lighter lines on dark pages */
-  html[data-color-mode="dark"] .glp-cv-out { border-color: rgba(255,255,255,.34); }
-  html[data-color-mode="dark"] .glp-cv-out--item { border-color: rgba(255,255,255,.5); }
+  html[data-color-mode="dark"] .glp-cv-out { border-color: rgba(255,255,255,.4); }
+  html[data-color-mode="dark"] .glp-cv-out--item { border-color: rgba(255,255,255,.55); }
   html[data-color-mode="dark"] .glp-cv, html[data-color-mode="dark"] .glp-cv-menu { box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.14); }
   /* edit mode holds cards still: no hover lift or recolored border while you work on them
      (Live shows the real hover) */
