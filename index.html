@@ -283,6 +283,9 @@ const DEFAULT_COLUMNS = () => [
   makeColumn({ heading: "Support", body: "Talk to our team or browse community answers." }),
 ];
 
+/* brand bar logo heights offered in the builder */
+const LOGO_SIZES = [24, 32, 40];
+
 /* ---------- structural edits shared by the sidebar and the preview's edit mode ---------- */
 const LIMITS = { sections: 6, cards: 12, columns: 4 };
 /* a fresh section of one kind: "liquid" (one card per child project, the sidebar's
@@ -467,6 +470,8 @@ const DEFAULT_CONFIG = {
     button: { enabled: true, label: "Log in", href: "/login" },
     /* solid bar color ("" = none, the bar sits on the page); text flips to white or near-black to stay readable */
     bg: "",
+    /* logo image height in px: 24 | 32 | 40 */
+    logoSize: 32,
   },
   /* native = ReadMe's own default search/Ask AI placement, no relocation.
      header = centered in the header, hero = row under the hero,
@@ -1060,7 +1065,7 @@ function sanitizeConfig(c) {
     },
     cardStyle: { ...c.cardStyle, radius: safeNum(c.cardStyle.radius, 16, 0, 48) },
     layout: { maxW: safeNum(c.layout.maxW, 1120, 640, 1920) },
-    brandBar: { ...bb, name: str(bb.name), tag: str(bb.tag), logoUrl: str(bb.logoUrl), bg: safeHex(bb.bg, ""), links: safeLinks(bb.links),
+    brandBar: { ...bb, name: str(bb.name), tag: str(bb.tag), logoUrl: str(bb.logoUrl), bg: safeHex(bb.bg, ""), logoSize: LOGO_SIZES.includes(Number(bb.logoSize)) ? Number(bb.logoSize) : 32, links: safeLinks(bb.links),
       button: { enabled: !!bb.button.enabled, label: str(bb.button.label), href: str(bb.button.href) } },
     sections: c.sections.map((sec) => ({
       ...sec,
@@ -1770,7 +1775,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
     font-family: ${F.body}; font-size: 13px; font-weight: 600; letter-spacing: 0.05em;
     text-transform: uppercase; color: var(--bnk-ink-2) !important;
   }
-  .bnk-brand__name img { height: 30px; width: auto; display: block; align-self: center; }
+  .bnk-brand__name img { height: ${LOGO_SIZES.includes(Number(BB.logoSize)) ? Number(BB.logoSize) : 32}px; width: auto; display: block; align-self: center; }
   .bnk-brand__nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; font-size: 14.5px; font-weight: 600; }
   .bnk-brand__nav a { text-decoration: none; color: var(--bnk-ink-1) !important; transition: color 150ms ease; }
   .bnk-brand__nav a:hover { color: var(--bnk-accent) !important; }
@@ -7109,6 +7114,15 @@ function App() {
                       <input className="glp-input" value={config.brandBar.logoUrl} onChange={(e) => setBrandBar({ logoUrl: e.target.value })} placeholder="https://files.readme.io/…/logo.svg" />
                     </Field>
                     </div>
+                    {(config.brandBar.logoUrl || "").trim() && (
+                      <Field label="Logo size" inline>
+                        <Seg
+                          value={LOGO_SIZES.includes(Number(config.brandBar.logoSize)) ? Number(config.brandBar.logoSize) : 32}
+                          onChange={(v) => setBrandBar({ logoSize: v })}
+                          options={LOGO_SIZES.map((n) => ({ value: n, label: n + "px" }))}
+                        />
+                      </Field>
+                    )}
                     <Field label="Bar color" inline>
                       <ColorValue value={config.brandBar.bg || ""} onChange={(v) => setBrandBar({ bg: v })} label="Bar color" />
                     </Field>
