@@ -1741,7 +1741,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
     border: 1px solid color-mix(in srgb, var(--bnk-heading, currentColor) 22%, transparent) !important;
   }
   .bnk-actions .rm-AskAi { display: flex !important; align-items: stretch !important; }
-  .bnk-actions .rm-AskAi-button {
+  .bnk-actions :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
     height: 48px !important;
     border-radius: 12px !important;
     padding: 0 18px !important;
@@ -1757,12 +1757,29 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
 `
       : "";
 
+  const brandFg = BB.enabled && (BB.bg || cfg.hero.bgColor) ? textOn(BB.bg || cfg.hero.bgColor) : "";
   /* ===== Custom brand bar (replaces ReadMe's header on this page only —
      the Global Landing Page HTML only renders on the landing page) ===== */
   const brandCSS = BB.enabled
     ? `
-  .rm-Header { display: none !important; }
-  .bnk-brand {
+  /* Brand bar. ReadMe's header is a live React app: moving its buttons out of it makes
+     React throw on its next update (and can blank the page), and hiding it whole hides
+     the search window that renders inside it. So nothing is moved or removed. The header
+     stays in place, transparent and click-through, showing only its right-hand controls
+     (log in / user menu, light-dark toggle, language picker, whatever ReadMe puts there),
+     lined up with the end of the brand bar, which the script below slides up under that
+     row. Search and Ask AI in the bar are our own buttons that press ReadMe's. */
+  .rm-Header { background: transparent !important; box-shadow: none !important; border: 0 !important; pointer-events: none; }
+  .rm-Header .rm-Header-bottom, .rm-Header .rm-Header-left, .rm-Header .rm-Header-brand, .rm-Header .rm-Header-center { display: none !important; }
+  .rm-Header .rm-Header-top {
+    display: flex !important; justify-content: flex-end !important; box-sizing: border-box;
+    width: 100% !important; max-width: ${L.maxW}px; margin: 0 auto; padding: 0 48px !important;
+    background: transparent !important; border: 0 !important; box-shadow: none !important;
+  }
+  .rm-Header .rm-Header-top > .rm-Container { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; justify-content: flex-end !important; }
+  .rm-Header .rm-Header-right { pointer-events: auto; flex: 0 0 auto !important; margin-left: auto !important; }
+  .rm-Header .rm-JumpTo, .rm-Header #hub-search-results { pointer-events: auto; }
+${brandFg ? `  .rm-Header .rm-Header-right :is(a, button, span, i) { color: ${brandFg} !important; }\n` : ""}  .bnk-brand {
     display: flex; align-items: center; justify-content: space-between; gap: 18px;
     flex-wrap: wrap; padding: 4px 0 0;
   }
@@ -1827,6 +1844,10 @@ ${bandVars(heroBand, "    ")}
     padding: 20px 0 44px;
   }
   .bnk-top .bnk-actions .rm-Header-search .rm-SearchToggle { border-color: color-mix(in srgb, var(--bnk-heading) 35%, transparent) !important; }
+  .bnk-top :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
+    color: var(--bnk-heading) !important; border-color: color-mix(in srgb, var(--bnk-heading) 40%, transparent) !important;
+    background: color-mix(in srgb, var(--bnk-heading) 10%, transparent) !important;
+  }
 ` : "") + (brandBand ? `
   /* brand bar band */
   .bnk-brand {
@@ -1834,7 +1855,32 @@ ${bandVars(brandBand, "    ")}
     margin-top: -20px;
     padding: 14px 0;
   }
+  .bnk-brand :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
+    color: var(--bnk-heading) !important; border-color: color-mix(in srgb, var(--bnk-heading) 40%, transparent) !important;
+    background: color-mix(in srgb, var(--bnk-heading) 10%, transparent) !important;
+  }
 ` : "");
+
+  /* ===== Search / Ask AI buttons (ours; they open ReadMe's search and Ask AI) ===== */
+  const proxyCSS = sm === "hero" || sm === "brand" ? `
+  .bnk-search, .bnk-askai {
+    all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    font-family: ${F.body}; font-size: 14px; line-height: 1; height: 40px; border-radius: 10px; white-space: nowrap;
+    border: 1px solid color-mix(in srgb, var(--bnk-heading) 20%, transparent); transition: border-color 150ms ease;
+  }
+  .bnk-search { min-width: 240px; padding: 0 12px; color: var(--bnk-ink-2) !important; background: var(--bnk-solid); }
+  .bnk-search__label { flex: 1; }
+  .bnk-search__kbd { font-family: ${F.mono}; font-size: 11px; padding: 3px 6px; border-radius: 5px; border: 1px solid color-mix(in srgb, var(--bnk-heading) 18%, transparent); color: var(--bnk-ink-2); }
+  .bnk-askai { padding: 0 14px; color: var(--bnk-heading) !important; background: color-mix(in srgb, var(--bnk-heading) 6%, var(--bnk-solid)); }
+  .bnk-search:hover, .bnk-askai:hover { border-color: color-mix(in srgb, var(--bnk-heading) 38%, transparent); }
+  .bnk-search:focus-visible, .bnk-askai:focus-visible { outline: 2px solid var(--bnk-accent); outline-offset: 2px; }
+  .bnk-askai[hidden] { display: none !important; }
+  .bnk-actions .bnk-search { flex: 0 1 380px; height: 48px; border-radius: 12px; padding: 0 16px; font-size: 14.5px; }
+  .bnk-actions .bnk-askai { height: 48px; border-radius: 12px; padding: 0 18px; }
+  .bnk-actions--lg .bnk-search, .bnk-actions--lg .bnk-askai { height: 58px; border-radius: 14px; font-size: 16px; }
+  .bnk-panel .bnk-actions--panel .bnk-search { flex: 1 1 auto; min-width: 0; }
+  @media (max-width: 720px) { .bnk-search { min-width: 0; } .bnk-search__label, .bnk-search__kbd { display: none; } }
+` : "";
 
   /* ===== Full-width background pattern (dots / grid / diagonal / shapes) ===== */
   const patternKind = normPattern(theme.pattern);
@@ -1895,7 +1941,7 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-quick__link:hover { border-color: var(--bnk-accent); color: var(--bnk-accent) !important; }
   .bnk-actions--lg .rm-Header-search { flex: 1 1 640px !important; max-width: 660px; }
   .bnk-actions--lg .rm-Header-search .rm-SearchToggle { height: 58px !important; font-size: 16px !important; border-radius: 14px !important; padding: 0 20px !important; }
-  .bnk-actions--lg .rm-AskAi-button { height: 58px !important; border-radius: 14px !important; }
+  .bnk-actions--lg :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) { height: 58px !important; border-radius: 14px !important; }
   .bnk-section__eyebrow {
     display: flex; align-items: center; gap: 10px; margin: 0 0 10px;
     font-family: ${F.mono}; font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
@@ -1946,7 +1992,7 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
      through otherwise); --card-blur is only set in dark mode */
   .bnk-panel, .bnk-quick__link, .bnk-codesec__lang, .bnk-banner, .bnk-btn--secondary, .bnk-banner__btn--ghost,
   .bnk-sec--bg-subtle, .bnk-sec--bg-accent, .bnk-sec--bg-dark,
-  .bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button {
+  .bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
     -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
   }
   /* outline buttons and pills sit on a solid fill (their tint, if any, layered over the page color) */
@@ -1955,7 +2001,7 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-quick__link { background: linear-gradient(var(--card-bg), var(--card-bg)), var(--bnk-solid); }
   .bnk-codesec__lang.on { background: linear-gradient(color-mix(in srgb, var(--bnk-accent) 12%, transparent), color-mix(in srgb, var(--bnk-accent) 12%, transparent)), var(--bnk-solid); }
   .bnk-sec--bg-dark .bnk-col__cta--btn, .bnk-sec--bg-accent .bnk-col__cta--btn { background-color: transparent; }
-${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  ", (pad) => `${pad}background-color: rgba(var(--color-bg-page-rgb, 11, 12, 13), 0.92) !important;`)}
+${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [class*="Header-ask-ai-button"])', "  ", (pad) => `${pad}background-color: rgba(var(--color-bg-page-rgb, 11, 12, 13), 0.92) !important;`)}
   @media (max-width: 860px) {
     .bnk-herogrid, .bnk-codesec { grid-template-columns: 1fr; }
     .bnk-sec--list .bnk-card__body { flex-direction: column; gap: 6px; }
@@ -2345,8 +2391,10 @@ ${heading}${body}
   const quickMarkup = quickLinks.length
     ? `  <div class="bnk-quick">${quickLinks.map((l) => `<a class="bnk-quick__link" href="${esc(normPath(l.href || "/"))}"${lk(`hero.quickLinks.${l.j}.href`, l.href, `hero.quickLinks.${l.j}.label`, l.label)}>${esc(l.label)}</a>`).join("")}</div>\n`
     : "";
+  /* our own Search and Ask AI buttons; the script makes them press ReadMe's native ones */
+  const proxyButtons = `<button type="button" class="bnk-search" data-bnk-proxy="search" aria-label="Search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="bnk-search__label">Search</span><kbd class="bnk-search__kbd">&#8984;K</kbd></button><button type="button" class="bnk-askai" data-bnk-proxy="askai"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i><span>Ask AI</span></button>`;
   const actionsMarkup = sm === "hero"
-    ? `  <div class="bnk-actions${H.searchSize === "large" ? " bnk-actions--lg" : ""}${panelOn ? " bnk-actions--panel" : ""}" id="rm-actions"></div>\n${!panelOn && H.searchHint && H.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint", true)}>${inlineEm(H.searchHint)}</p>\n` : ""}`
+    ? `  <div class="bnk-actions${H.searchSize === "large" ? " bnk-actions--lg" : ""}${panelOn ? " bnk-actions--panel" : ""}" id="rm-actions">${proxyButtons}</div>\n${!panelOn && H.searchHint && H.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint", true)}>${inlineEm(H.searchHint)}</p>\n` : ""}`
     : "";
   const panelLinks = panelOn ? (H.panel.links || []).map((l, j) => ({ ...l, j })).filter((l) => (l.label || "").trim()) : [];
   const panelMarkup = panelOn
@@ -2384,7 +2432,7 @@ ${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l
         ? `<img src="${esc(BB.logoUrl)}" alt="${esc(BB.name || "Home")}">`
         : `${esc(BB.name)}${(BB.tag || "").trim() ? ` <small>${esc(BB.tag)}</small>` : ""}`
     }</a>
-${sm === "brand" ? '    <div class="bnk-brand__search" id="rm-brand-search"></div>\n' : ""}    <nav class="bnk-brand__nav" aria-label="Documentation">
+${sm === "brand" ? `    <div class="bnk-brand__search" id="rm-brand-search">${proxyButtons}</div>\n` : ""}    <nav class="bnk-brand__nav" aria-label="Documentation">
 ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`brandBar.links.${l.j}.label`)}${lk(`brandBar.links.${l.j}.href`, l.href)}>${esc(l.label)}</a>`).join("\n")}${
         BB.button && BB.button.enabled && (BB.button.label || "").trim()
           ? `\n      <a class="bnk-brand__btn" href="${esc(normPath(BB.button.href || "/"))}"${ed("brandBar.button.label")}${lk("brandBar.button.href", BB.button.href)}>${esc(BB.button.label)}</a>`
@@ -2395,38 +2443,58 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
 `
     : "";
 
-  /* ---------- injected script: relocate search / Ask AI ---------- */
-  const needsScript = sm !== "native";
+  /* ---------- injected script: Search / Ask AI buttons + brand bar alignment ----------
+     Never moves or removes ReadMe's own elements (its header is a React app, and moving
+     its nodes made React throw on its next update). */
+  const needsScript = sm === "hero" || sm === "brand" || BB.enabled;
   const script = needsScript
     ? `
 <script>
-  /* Theming is handled entirely in CSS above. This script only relocates
-     ReadMe's native search + Ask AI controls out of the header. */
   (function () {
-    var MODE = ${JSON.stringify(sm)};
-    function place() {
-      var search = document.querySelector(".rm-Header-search");
-      var askai = document.querySelector(".rm-AskAi");
-      if (MODE === "hero" || MODE === "brand") {
-        var actions = document.getElementById(MODE === "hero" ? "rm-actions" : "rm-brand-search");
-        if (actions) {
-          if (search && search.parentElement !== actions) actions.appendChild(search);
-          if (askai && askai.parentElement !== actions) actions.appendChild(askai);
-        }
-      } else if (MODE === "header") {
-        var top = document.querySelector(".rm-Header-top");
-        if (top) {
-          var box = top.querySelector(".bnk-header-center");
-          if (!box) { box = document.createElement("div"); box.className = "bnk-header-center"; top.appendChild(box); }
-          if (search && search.parentElement !== box) box.appendChild(search);
-          if (askai && askai.parentElement !== box) box.appendChild(askai);
-        }
-      }
+    var BRAND = ${BB.enabled ? "true" : "false"};
+    function q(s) { return document.querySelector(s); }
+    function nativeSearch() { return q(".rm-Header-search .rm-SearchToggle") || q(".rm-SearchToggle"); }
+    function nativeAsk() { return q(".rm-AskAi-button") || q('[class*="Header-ask-ai-button"]'); }
+    /* our Search / Ask AI buttons press ReadMe's (their windows and the Cmd+K shortcut stay ReadMe's) */
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest && e.target.closest("[data-bnk-proxy]");
+      if (!b) return;
+      e.preventDefault();
+      var t = b.getAttribute("data-bnk-proxy") === "askai" ? nativeAsk() : nativeSearch();
+      /* press ReadMe's button after this click finishes: pressed during it, ReadMe opened
+         its window and then treated this same click as a click outside and closed it */
+      if (t) setTimeout(function () { t.click(); }, 0);
+    });
+    function sync() {
+      /* hide our Ask AI button on hubs without Ask AI */
+      var hasAsk = !!nativeAsk();
+      document.querySelectorAll('[data-bnk-proxy="askai"]').forEach(function (b) { b.hidden = !hasAsk; });
+      if (!BRAND) return;
+      /* slide the whole landing page up under ReadMe's header row, so the header's own
+         controls sit at the brand bar's right end. (Pulling up just the bar or the hero band
+         got it clipped by the page's own full-width background.) */
+      var top = q(".rm-Header .rm-Header-top"), right = q(".rm-Header .rm-Header-right"), pull = q(".bnk-landing"), bar = q(".bnk-landing .bnk-brand");
+      if (!top || !pull) return;
+      if (bar) bar.style.paddingRight = right ? Math.ceil(right.getBoundingClientRect().width + 16) + "px" : "";
+      /* line the header row's center up with the center of the bar's first line (the logo),
+         so it still lines up when a crowded bar wraps */
+      pull.style.marginTop = "";
+      var natural = parseFloat(getComputedStyle(pull).marginTop) || 0;
+      var ref = (bar && bar.querySelector(".bnk-brand__name")) || bar || pull;
+      var rr = ref.getBoundingClientRect(), tr = top.getBoundingClientRect();
+      var delta = (rr.top + rr.height / 2) - (tr.top + tr.height / 2);
+      pull.style.marginTop = (natural - delta) + "px";
     }
-    place();
-    if (document.body) {
-      new MutationObserver(place).observe(document.body, { childList: true, subtree: true });
+    sync();
+    window.addEventListener("load", sync);
+    window.addEventListener("resize", sync);
+    /* ReadMe renders and updates its header on its own schedule (hydration, sign-in) */
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(sync);
+      var watch = function () { var r = q(".rm-Header .rm-Header-right"); if (r) ro.observe(r); var t = q(".rm-Header .rm-Header-top"); if (t) ro.observe(t); };
+      watch(); window.addEventListener("load", watch);
     }
+    var n = 0, iv = setInterval(function () { sync(); if (++n > 24) clearInterval(iv); }, 250);
   })();
 <\/script>`
     : "";
@@ -2451,7 +2519,7 @@ ${
     - Same-as-system  : @media (prefers-color-scheme: dark) + [data-color-mode="system"]
 -->
 <style>${F.importUrl ? `\n  @import url('${F.importUrl}');` : ""}
-${headerCSS}${brandCSS}${heroImageCSS}${headerCenterCSS}
+${headerCSS}${brandCSS}${heroImageCSS}${headerCenterCSS}${proxyCSS}
   /* ===== GLOBAL THEME MAP — LIGHT / DEFAULT ===== */
   /* Text and borders follow the hub's own ReadMe variables (so the page matches
      the default theme or a customer's custom one), falling back to ReadMe's
@@ -2558,7 +2626,7 @@ ${bannerCSS}
 </style>
 
 <div class="bnk-landing" id="rm-root"${_editable ? ` data-glp-hw="${HW}"` : ""}>
-${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${H.bg === "glow" ? '  <div class="bnk-heroglow" aria-hidden="true"></div>\n' : ""}${heroBand ? '  <div class="bnk-top">\n' : ""}${brandMarkup}${tickerMarkup}${panelOn ? '  <div class="bnk-herogrid">\n' : ""}  <div class="bnk-hero">
+${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${H.bg === "glow" ? '  <div class="bnk-heroglow" aria-hidden="true"></div>\n' : ""}${heroBand ? `  <div class="bnk-top${BB.enabled ? " bnk-pull" : ""}">\n` : ""}${heroBand ? brandMarkup : brandMarkup.replace('<div class="bnk-brand">', '<div class="bnk-brand bnk-pull">')}${tickerMarkup}${panelOn ? '  <div class="bnk-herogrid">\n' : ""}  <div class="bnk-hero">
 ${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title"${ed("hero.title")}${hwAttr(cfg.hero.titleWeight)}>${inlineEm(cfg.hero.title)}</h1>
 ${cfg.hero.subtitle.trim() ? `    <p class="bnk-hero__sub"${ed("hero.subtitle", true)}>${inlineEm(cfg.hero.subtitle)}</p>\n` : ""}${heroButtons}  </div>
 ${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}${heroBand ? "  </div>\n" : ""}
@@ -3289,7 +3357,7 @@ function buildPreviewDoc(userHtml, mode) {
     border-radius: 4px; padding: 1px 5px;
     font-family: ui-monospace, monospace;
   }
-  .rm-Header-link, .rm-Header-right, .rm-SearchToggle, .rm-AskAi-button { white-space: nowrap; }
+  .rm-Header-link, .rm-Header-right, .rm-SearchToggle, [class*="Header-ask-ai-button"] { white-space: nowrap; }
   /* narrower previews (code view, small windows, mobile): tighten instead of wrapping */
   @media (max-width: 1080px) {
     .rm-SearchToggle { min-width: 220px; }
@@ -3301,13 +3369,12 @@ function buildPreviewDoc(userHtml, mode) {
     .rm-Header-center { justify-content: center; min-width: 0; }
     .rm-SearchToggle { min-width: 0; flex: 1; }
     .rm-SearchToggle kbd, .rm-Header-right .fa-chevron-down { display: none; }
-    .rm-AskAi-button { padding: 7px 10px; }
+    [class*="Header-ask-ai-button"] { padding: 7px 10px; }
     .rm-Header-theme { margin-left: 0; }
     .rm-Header-bottom { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; gap: 20px; padding: 0 14px; }
   }
-  @media (max-width: 480px) { .rm-AskAi-text { display: none; } .rm-Header-center { gap: 6px; } }
-  .rm-AskAi { display: flex; }
-  .rm-AskAi-button {
+  @media (max-width: 480px) { [class*="Header-ask-ai-button"] .Button-label { display: none; } .rm-Header-center { gap: 6px; } }
+  [class*="Header-ask-ai-button"] {
     display: inline-flex; align-items: center; gap: 7px;
     border: 1px solid var(--color-border-default);
     background: var(--color-bg-page);
@@ -3333,7 +3400,7 @@ function buildPreviewDoc(userHtml, mode) {
       <span class="rm-Header-brand"><span class="brand-mark"><i class="fa-solid fa-book-open"></i></span></span>
       <div class="rm-Header-center">
         <div class="rm-Header-search"><button class="rm-SearchToggle"><i class="fa-solid fa-magnifying-glass"></i><span>Search</span><kbd>&#8984;K</kbd></button></div>
-        <div class="rm-AskAi"><button class="rm-AskAi-button"><i class="fa-solid fa-wand-magic-sparkles"></i><span class="rm-AskAi-text">Ask AI</span></button></div>
+        <button class="Button Button_sm Header-ask-ai-buttonwuBB0I2a5yRJ Button_secondary Button_secondary_outline" type="button"><i class="fa-solid fa-wand-magic-sparkles"></i><span class="Button-label">Ask AI</span></button>
       </div>
       <div class="rm-Header-right"><span>Your Name</span><i class="fa-solid fa-chevron-down"></i><button type="button" class="rm-Header-theme" title="Switch preview to ${dark ? "light" : "dark"} mode" aria-label="Switch preview to ${dark ? "light" : "dark"} mode" onclick="parent.postMessage({ type: 'glp-preview-mode', mode: '${dark ? "light" : "dark"}' }, '*')"><i class="fa-solid fa-circle-half-stroke"></i></button></div>
     </div>
