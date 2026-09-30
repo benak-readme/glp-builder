@@ -333,6 +333,9 @@ const cloneItem = (key, it) =>
   key === "columns" ? { ...it, id: uid(), ctas: (it.ctas || []).map((c) => ({ ...c })) } : { ...it, id: uid(), peekItems: [...(it.peekItems || [])], links: (it.links || []).map((l) => ({ ...l })) };
 
 /* apply one preview edit-mode operation; returns { config, focus } or null if it doesn't apply */
+/* the page's fixed parts that get a toolbar and settings in the preview */
+const PART_KINDS = ["hero", "brand", "banner"];
+
 function applyCanvasOp(cfg, d) {
   const secs = cfg.sections;
   const si = secs.findIndex((s) => s.id === d.sid);
@@ -345,6 +348,10 @@ function applyCanvasOp(cfg, d) {
     arr.splice(at, 0, ns);
     return { config: put(arr), focus: { section: ns.id } };
   }
+  /* the contact banner and the footer line, from their toolbars */
+  if (d.op === "part-off" && d.part === "banner") return cfg.banner.enabled ? { config: { ...cfg, banner: { ...cfg.banner, enabled: false } } } : null;
+  if (d.op === "part-on" && d.part === "banner") return !cfg.banner.enabled ? { config: { ...cfg, banner: { ...cfg.banner, enabled: true } } } : null;
+  if (d.op === "part-off" && d.part === "footer") return (cfg.footer || "").trim() ? { config: { ...cfg, footer: "" } } : null;
   if (si < 0) return null;
   const sec = secs[si];
   if (d.op === "sec-move") {
@@ -3362,6 +3369,85 @@ const PREVIEW_CANVAS_SCRIPT = `
   document.addEventListener("mousedown", function (e) { if (popFor && !linkPop.contains(e.target)) closeLink(); }, true);
   window.addEventListener("scroll", function () { if (curLink && !popFor) showPill(curLink); }, { passive: true });
 
+
+  /* ---- the page's fixed parts: brand bar, hero, contact banner, footer line ---- */
+  var PART = {
+    brand: { label: "Brand bar", hover: ".bnk-brand", box: ".bnk-brand", settings: "Brand bar settings" },
+    hero: { label: "Hero", hover: ".bnk-top, .bnk-ticker, .bnk-hero, .bnk-herogrid, .bnk-actions, .bnk-search-hint, .bnk-quick", box: ".bnk-ticker, .bnk-hero, .bnk-herogrid, .bnk-actions, .bnk-search-hint, .bnk-quick", settings: "Hero settings" },
+    banner: { label: "Banner", hover: ".bnk-banner", box: ".bnk-banner", settings: "Banner settings", del: "Remove the contact banner" },
+    footer: { label: "Footer", hover: ".bnk-footer", box: ".bnk-footer", del: "Remove the footer line" }
+  };
+  var ORDER = ["brand", "hero", "banner", "footer"];
+  var partOut = mk("div", "glp-cv-out"), partBar = mk("div", "glp-cv"), partTag = mk("span", "glp-cv__tag");
+  var pAdd = btn("bullhorn", "Add a contact banner"), pSep = mk("span", "glp-cv__sep"), pSet = btn("sliders", "Settings"), pDel = btn("trash-can", "Remove", "glp-cv__del");
+  [partTag, pAdd, pSep, pSet, pDel].forEach(function (b) { partBar.appendChild(b); });
+  parts.push(partOut, partBar);
+  var curPart = null, partT = null, onPartBar = false;
+  partBar.addEventListener("mouseenter", function () { onPartBar = true; paintPart(); });
+  partBar.addEventListener("mouseleave", function () { onPartBar = false; paintPart(); });
+  function inLanding(list) { return list.filter(function (el) { return el.closest(".bnk-landing") && el.getClientRects().length; }); }
+  function partEls(k) {
+    var els = inLanding([].slice.call(document.querySelectorAll(PART[k].box)));
+    /* the search row inside the side panel is already inside the panel's box */
+    return els.filter(function (el) { return !els.some(function (o) { return o !== el && o.contains(el); }); });
+  }
+  function partBox(k) {
+    var els = partEls(k); if (!els.length) return null;
+    var u = null;
+    els.forEach(function (el) { var b = box(el); u = u ? { t: Math.min(u.t, b.t), l: Math.min(u.l, b.l), b: Math.max(u.b, b.b), r: Math.max(u.r, b.r) } : b; });
+    u.w = u.r - u.l; u.h = u.b - u.t;
+    return u;
+  }
+  function partUnder(t) {
+    if (!t.closest(".bnk-landing") || t.closest(".bnk-sec")) return null;
+    for (var i = 0; i < ORDER.length; i++) if (t.closest(PART[ORDER[i]].hover)) return ORDER[i];
+    return null;
+  }
+  function hidePart() { hide(partBar); hide(partOut); }
+  function paintPart() {
+    var k = curPart, u = k && partBox(k);
+    if (!u) { hidePart(); return; }
+    var P = PART[k], PPAD = 14;
+    partTag.textContent = P.label;
+    var canAdd = k === "footer" && !document.querySelector(".bnk-landing .bnk-banner");
+    pAdd.style.display = canAdd ? "" : "none";
+    pSet.style.display = P.settings ? "" : "none";
+    if (P.settings) { pSet.title = P.settings; pSet.setAttribute("aria-label", P.settings); }
+    pDel.style.display = P.del ? "" : "none";
+    if (P.del) { pDel.title = P.del; pDel.setAttribute("aria-label", P.del); }
+    pSep.style.display = canAdd || P.settings ? "" : "none";
+    if (onPartBar) frame(partOut, u, PPAD); else hide(partOut);
+    if (partEls(k).some(editingIn)) { hide(partBar); return; }
+    show(partBar);
+    var h = partBar.offsetHeight, top = u.t - PPAD - h / 2;
+    /* no room above (the brand bar at the top of the page): sit on the bottom edge instead */
+    if (top < scrollY + 4) top = u.b + PPAD - h / 2;
+    place(partBar, top, u.r + PPAD - 12 - partBar.offsetWidth);
+  }
+  document.addEventListener("mousemove", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (onUi(t)) { clearTimeout(partT); return; }
+    var k = partUnder(t);
+    if (k) { clearTimeout(partT); if (k !== curPart) { curPart = k; paintPart(); } }
+    else if (curPart) { clearTimeout(partT); partT = setTimeout(function () { curPart = null; onPartBar = false; hidePart(); }, 260); }
+  });
+  window.addEventListener("scroll", function () { if (curPart) paintPart(); }, { passive: true });
+  window.addEventListener("resize", function () { if (curPart) paintPart(); });
+  document.addEventListener("focusin", function () { if (curPart) paintPart(); });
+  document.addEventListener("focusout", function () { setTimeout(function () { if (curPart) paintPart(); }, 0); });
+  pSet.addEventListener("click", function () { if (curPart && PART[curPart].settings) parent.postMessage({ type: "glp-inspect", kind: curPart, rect: rectOf(partBar, true) }, "*"); });
+  pDel.addEventListener("click", function () { if (curPart && PART[curPart].del) send({ op: "part-off", part: curPart }); });
+  pAdd.addEventListener("click", function () { send({ op: "part-on", part: "banner" }); });
+  /* after a rebuild: the part whose box (plus the toolbar's reach) is under the pointer */
+  function partAt(x, y) {
+    for (var i = 0; i < ORDER.length; i++) {
+      var u = partBox(ORDER[i]); if (!u) continue;
+      var l = u.l - scrollX, t = u.t - scrollY;
+      if (x >= l - 30 && x <= l + u.w + 30 && y >= t - 30 && y <= t + u.h + 30) return ORDER[i];
+    }
+    return null;
+  }
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") { hideMenu(); parent.postMessage({ type: "glp-inspect", kind: "close" }, "*"); return; }
     /* undo / redo while the preview has focus (text being typed keeps the browser's own undo) */
@@ -3390,7 +3476,18 @@ const PREVIEW_CANVAS_SCRIPT = `
     if (!hit) {
       /* the toolbars sit a little outside the section's edge, so match a section within 30px */
       secs().forEach(function (sec) { var r = sec.getBoundingClientRect(); if (!hit && m.x >= r.left - 30 && m.x <= r.right + 30 && m.y >= r.top - 30 && m.y <= r.bottom + 30) hit = sec; });
-      if (!hit) return;
+      if (!hit) {
+        var pk = partAt(m.x, m.y);
+        if (!pk) return;
+        curPart = pk;
+        partBar.classList.add("glp-cv--instant");
+        paintPart();
+        var pe = document.elementFromPoint(m.x, m.y);
+        onPartBar = !!(pe && partBar.contains(pe));
+        paintPart();
+        setTimeout(function () { partBar.classList.remove("glp-cv--instant"); }, 200);
+        return;
+      }
       var its = itemsOf(hit);
       if (its) its.list.forEach(function (el) { var r = el.getBoundingClientRect(); if (m.x >= r.left && m.x <= r.right && m.y >= r.top && m.y <= r.bottom) it = el; });
     }
@@ -5717,6 +5814,310 @@ function CanvasPopover({ anchor, frameEl, stackEl, title, headerExtra, onClose, 
   );
 }
 
+/* ---------- hero, brand bar and banner settings ----------
+   shared by the sidebar and the preview's settings popovers, so the two can't drift */
+function HeroTopFields({ config, setHero }) {
+  return (
+    <>
+      <Field label="Eyebrow (blank to hide)">
+        <input
+          className="glp-input"
+          value={config.hero.eyebrow}
+          onChange={(e) => setHero({ eyebrow: e.target.value })}
+          placeholder="e.g. Documentation center"
+        />
+      </Field>
+      <div className="glp-row2">
+        <Field label="Announcement chip (blank to hide)">
+          <input
+            className="glp-input"
+            value={config.hero.chip}
+            onChange={(e) => setHero({ chip: e.target.value })}
+            placeholder="e.g. v2.4 is now available"
+          />
+        </Field>
+        <Field label="Chip link (optional)">
+          <input className="glp-input" value={config.hero.chipHref} onChange={(e) => setHero({ chipHref: e.target.value })} placeholder="/changelog" />
+        </Field>
+      </div>
+    </>
+  );
+}
+
+/* sizes: the popover shows title / subtitle size here (the sidebar has them beside the text) */
+function HeroLayoutFields({ config, setHero, sizes }) {
+  return (
+    <>
+      {sizes && (
+        <>
+          <NumberField label="Title size" value={config.hero.titleSize != null ? config.hero.titleSize : (config.hero.align === "left" ? 42 : 38)} min={22} max={72} onChange={(v) => setHero({ titleSize: v })} />
+          <NumberField label="Subtitle size" value={config.hero.subtitleSize != null ? config.hero.subtitleSize : HERO_SUB_DEFAULT} min={12} max={26} onChange={(v) => setHero({ subtitleSize: v })} />
+        </>
+      )}
+      <Field label="Alignment" inline>
+        <Seg
+          value={config.hero.align}
+          onChange={(v) => setHero({ align: v })}
+          options={[
+            { value: "center", label: "Centered" },
+            { value: "left", label: "Left" },
+          ]}
+        />
+      </Field>
+      {effSearchMode(config) === "hero" && (
+        <Field label="Search size" inline>
+          <Seg value={config.hero.searchSize} onChange={(v) => setHero({ searchSize: v })} options={[{ value: "normal", label: "Normal" }, { value: "large", label: "Large" }]} />
+        </Field>
+      )}
+      <Field label="Background" inline>
+        <Seg value={config.hero.bg} onChange={(v) => setHero({ bg: v })} options={[{ value: "none", label: "None" }, { value: "glow", label: "Glow" }]} />
+      </Field>
+      <Field label="Background color" inline>
+        <ColorValue value={config.hero.bgColor || ""} onChange={(v) => setHero({ bgColor: v })} label="Hero background color" />
+      </Field>
+      <NumberField label="Vertical padding" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
+    </>
+  );
+}
+
+function HeroExtrasFields({ config, setHero, setTicker }) {
+  return (
+    <>
+      {effSearchMode(config) === "hero" && (
+        <Field label="Line under the search row (blank to hide)">
+          <input
+            className="glp-input"
+            value={config.hero.searchHint}
+            onChange={(e) => setHero({ searchHint: e.target.value })}
+            placeholder="Search covers every doc set below. Ask AI answers with links to its sources."
+          />
+        </Field>
+      )}
+      <Field label="Quick links (pills under the hero)">
+        <LinkListEditor links={config.hero.quickLinks} onChange={(quickLinks) => setHero({ quickLinks })} max={8} labelPh="Get started" hrefPh="/guides" />
+      </Field>
+      <Toggle
+        checked={config.hero.panel.enabled}
+        onChange={(v) => setHero({ panel: { ...config.hero.panel, enabled: v }, ...(v ? { align: "left" } : {}) })}
+        label="Side panel"
+        hint="A card beside the hero with a titled list of links and counts. Holds the search box when search sits under the hero."
+      />
+      {config.hero.panel.enabled && (
+        <>
+          <Field label="Panel title">
+            <input className="glp-input" value={config.hero.panel.title} onChange={(e) => setHero({ panel: { ...config.hero.panel, title: e.target.value } })} />
+          </Field>
+          <Field label="Panel links">
+            <LinkListEditor withMeta links={config.hero.panel.links} onChange={(links) => setHero({ panel: { ...config.hero.panel, links } })} max={8} labelPh="Guides" hrefPh="/guides" />
+          </Field>
+        </>
+      )}
+      <Toggle
+        checked={config.hero.buttons}
+        onChange={(v) => setHero({ buttons: v })}
+        label="Hero buttons"
+        hint="Primary + secondary call-to-action under the subtitle."
+      />
+      {config.hero.buttons && (
+        <>
+          <div className="glp-row2">
+            <Field label="Primary label">
+              <input
+                className="glp-input"
+                value={config.hero.btnPrimary.label}
+                onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, label: e.target.value } })}
+              />
+            </Field>
+            <Field label="Primary link">
+              <input
+                className="glp-input"
+                value={config.hero.btnPrimary.href}
+                onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, href: e.target.value } })}
+              />
+            </Field>
+          </div>
+          <div className="glp-row2">
+            <Field label="Secondary label">
+              <input
+                className="glp-input"
+                value={config.hero.btnSecondary.label}
+                onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, label: e.target.value } })}
+              />
+            </Field>
+            <Field label="Secondary link">
+              <input
+                className="glp-input"
+                value={config.hero.btnSecondary.href}
+                onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, href: e.target.value } })}
+              />
+            </Field>
+          </div>
+        </>
+      )}
+      <Toggle
+        checked={config.ticker.enabled}
+        onChange={(v) => setTicker({ enabled: v })}
+        label="Announcement ticker"
+        hint="Scrolling marquee strip at the very top."
+      />
+      {config.ticker.enabled && (
+        <Field label="Ticker text (repeats automatically)">
+          <input className="glp-input" value={config.ticker.text} onChange={(e) => setTicker({ text: e.target.value })} />
+        </Field>
+      )}
+    </>
+  );
+}
+
+/* the hero popover: Layout (size, alignment, background) and Content (the parts you
+   can't type straight into the preview: toggles, links, the side panel) */
+function InspectHero({ config, setHero, setTicker }) {
+  const [tab, setTab] = useState("layout");
+  return (
+    <>
+      <div className="glp-subtabs" role="tablist" aria-label="Hero settings">
+        {[["layout", "Layout"], ["content", "Content"]].map(([k, l]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
+        ))}
+      </div>
+      {tab === "layout" ? (
+        <HeroLayoutFields config={config} setHero={setHero} sizes />
+      ) : (
+        <>
+          <HeroTopFields config={config} setHero={setHero} />
+          <HeroExtrasFields config={config} setHero={setHero} setTicker={setTicker} />
+        </>
+      )}
+    </>
+  );
+}
+
+/* part: "logo" (wordmark, logo, bar color), "links" (nav links, button), or both */
+function BrandBarFields({ config, setBrandBar, part }) {
+  /* the sidebar's rows carry ids for jumping to them from the preview; the popover's don't */
+  const id = (x) => (part ? undefined : x);
+  return (
+    <>
+      {part !== "links" && (
+        <>
+        <div id={id("bb-name")}>
+        <div className="glp-row2">
+          <Field label="Wordmark">
+            <input className="glp-input" value={config.brandBar.name} onChange={(e) => setBrandBar({ name: e.target.value })} />
+          </Field>
+          <Field label="Tag (optional)">
+            <input className="glp-input" value={config.brandBar.tag} onChange={(e) => setBrandBar({ tag: e.target.value })} placeholder="Developers" />
+          </Field>
+        </div>
+        <Field label="Logo URL (optional, replaces wordmark)">
+          <input className="glp-input" value={config.brandBar.logoUrl} onChange={(e) => setBrandBar({ logoUrl: e.target.value })} placeholder="https://files.readme.io/…/logo.svg" />
+        </Field>
+        </div>
+        {(config.brandBar.logoUrl || "").trim() && (
+          <Field label="Logo size" inline>
+            <Seg
+              value={LOGO_SIZES.includes(Number(config.brandBar.logoSize)) ? Number(config.brandBar.logoSize) : 32}
+              onChange={(v) => setBrandBar({ logoSize: v })}
+              options={LOGO_SIZES.map((n) => ({ value: n, label: n + "px" }))}
+            />
+          </Field>
+        )}
+        <Field label="Bar color" inline>
+          <ColorValue value={config.brandBar.bg || ""} onChange={(v) => setBrandBar({ bg: v })} label="Bar color" />
+        </Field>
+        <div className="glp-note" style={{ marginBottom: 12 }}>
+          A solid bar behind the logo and links. Text turns white or dark to stay readable, so a white logo works on a dark color.
+        </div>
+        </>
+      )}
+      {part !== "logo" && (
+        <>
+        <div id={id("bb-links")}>
+        <Field label="Nav links">
+          <LinkListEditor links={config.brandBar.links} onChange={(links) => setBrandBar({ links })} max={7} labelPh="Guides" hrefPh="/guides" />
+        </Field>
+        </div>
+        <div id={id("bb-button")}>
+        <Toggle
+          checked={config.brandBar.button.enabled}
+          onChange={(v) => setBrandBar({ button: { ...config.brandBar.button, enabled: v } })}
+          label="Outlined button at the end"
+          hint='e.g. "Log in" or "Contact sales". Stays visible on mobile when the other links collapse.'
+          style={{ paddingTop: 0 }}
+        />
+        {config.brandBar.button.enabled && (
+          <div className="glp-row2">
+            <Field label="Button label">
+              <input className="glp-input" value={config.brandBar.button.label} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, label: e.target.value } })} />
+            </Field>
+            <Field label="Button link">
+              <input className="glp-input" value={config.brandBar.button.href} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, href: e.target.value } })} />
+            </Field>
+          </div>
+        )}
+        </div>
+        </>
+      )}
+    </>
+  );
+}
+
+function InspectBrandBar({ config, setBrandBar, patch }) {
+  const [tab, setTab] = useState("logo");
+  return (
+    <>
+      <div className="glp-subtabs" role="tablist" aria-label="Brand bar settings">
+        {[["logo", "Logo & color"], ["links", "Links"]].map(([k, l]) => (
+          <button key={k} type="button" role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
+        ))}
+      </div>
+      {tab === "links" && (
+        <Field label="Search & Ask AI" inline>
+          <Seg value={effSearchMode(config)} onChange={(v) => patch({ searchMode: v })} options={[{ value: "brand", label: "In brand bar" }, { value: "hero", label: "Under hero" }]} />
+        </Field>
+      )}
+      <BrandBarFields config={config} setBrandBar={setBrandBar} part={tab} />
+    </>
+  );
+}
+
+function BannerFields({ config, setBanner }) {
+  return (
+    <>
+      <Field label="Banner title">
+        <input className="glp-input" value={config.banner.title} onChange={(e) => setBanner({ title: e.target.value })} />
+      </Field>
+      <Field label="Banner text">
+        <textarea className="glp-textarea" value={config.banner.text} onChange={(e) => setBanner({ text: e.target.value })} />
+      </Field>
+      <div className="glp-row2">
+        <Field label="Button label">
+          <input className="glp-input" value={config.banner.btnLabel} onChange={(e) => setBanner({ btnLabel: e.target.value })} />
+        </Field>
+        <Field label="Button link">
+          <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
+        </Field>
+      </div>
+      <Field label="Layout" inline>
+        <Seg value={config.banner.align} onChange={(v) => setBanner({ align: v })} options={[{ value: "left", label: "Side by side" }, { value: "center", label: "Centered" }]} />
+      </Field>
+      {config.banner.align === "center" && (
+        <>
+          <div className="glp-row2">
+            <Field label="Second button (optional)">
+              <input className="glp-input" value={config.banner.btn2Label} onChange={(e) => setBanner({ btn2Label: e.target.value })} placeholder="Read the API" />
+            </Field>
+            <Field label="Second button link">
+              <input className="glp-input" value={config.banner.btn2Href} onChange={(e) => setBanner({ btn2Href: e.target.value })} placeholder="/reference" />
+            </Field>
+          </div>
+          <Toggle checked={config.banner.glow} onChange={(v) => setBanner({ glow: v })} label="Glow background" hint="Soft brand-color glow behind the banner." style={{ paddingTop: 0 }} />
+        </>
+      )}
+    </>
+  );
+}
+
 /* the section popover: Layout, plus Card style for card sections */
 function InspectSection({ section, onChange }) {
   const cards = section.type === "cards";
@@ -5910,7 +6311,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
         <div className="glp-view__side">
           <span className="glp-view__label">Preview</span>
           {(() => {
-            const note = (editable ? "Click text to edit it. Hover a section or card to move, copy or delete it. " : hasOverride ? "Manual code edits are on, so the preview is read-only. " : "") + (liquidNote ? "Showing 3 sample projects (ReadMe fills in your real ones)" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
+            const note = (editable ? "Click text to edit it. Hover any part of the page for its settings, or a section or card to move, copy or delete it. " : hasOverride ? "Manual code edits are on, so the preview is read-only. " : "") + (liquidNote ? "Showing 3 sample projects (ReadMe fills in your real ones)" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
             return <span className="glp-view__note" title={note}>{note}</span>;
           })()}
         </div>
@@ -6307,6 +6708,7 @@ function App() {
     side.scrollTo({ top: Math.max(0, top(target) - offset), behavior: "smooth" });
     flashRow(item || row);
   };
+  const focusRef = useRef(() => {});
   /* scroll any sidebar element to just under the sticky tab bar */
   const revealEl = (el) => {
     const side = sideRef.current;
@@ -6318,6 +6720,40 @@ function App() {
 
   /* edits committed inside the preview iframe come back as { path, value } */
   useEffect(() => {
+    /* opens the sidebar on what was clicked in the preview (also the popovers' sidebar button) */
+    focusRef.current = (d) => {
+      /* the click came from the preview, so don't scroll the preview back to the section's top */
+      previewFocusAt.current = Date.now();
+      if (d.area === "appearance") {
+        if (openNavRef.current !== "theme") setOpenNav("theme");
+        const g = ["ap-footer", "bb-links", "bb-button", "bb-name"].includes(d.group) ? d.group : "ap-header";
+        setTimeout(() => {
+          const box = g.startsWith("bb-") && document.getElementById(g);
+          if (!box) { jumpToRef.current(g.startsWith("bb-") ? "ap-header" : g); flashRow(document.getElementById(g.startsWith("bb-") ? "ap-header" : g)); return; }
+          const row = g === "bb-links" && Number.isInteger(d.item) ? box.querySelectorAll(".glp-linkrow")[d.item] : null;
+          setApActive("ap-header");
+          jumpLock.current = Date.now() + 900;
+          revealEl(row || box);
+          flashRow(row || box);
+        }, 60);
+        return;
+      }
+      let rowId = null, itemId = null;
+      if (d.area === "hero") { setOpenSection("__hero"); rowId = "__hero"; }
+      else if (d.area === "section" && Number.isInteger(d.index)) {
+        const sec = configRef.current.sections[d.index];
+        if (!sec) return;
+        setOpenSection(sec.id);
+        rowId = sec.id;
+        const items = sec.type === "columns" ? sec.columns : sec.type !== "code" && sec.source !== "liquid" ? sec.cards : null;
+        const it = items && Number.isInteger(d.item) ? items[d.item] : null;
+        if (it) { setOpenCard(it.id); itemId = it.id; }
+      }
+      if (!rowId) return;
+      /* stay on the Sections tab if already there (switching tabs resets the sidebar to the top) */
+      if (openNavRef.current !== "sections") setOpenNav("sections");
+      setTimeout(() => revealRow(rowId, itemId), 60);
+    };
     const onMsg = (e) => {
       const d = e.data;
       if (!d || typeof d !== "object") return;
@@ -6331,8 +6767,11 @@ function App() {
       if (d.type === "glp-inspect") {
         if (d.kind === "close") { setInspect(null); return; }
         const r = d.rect;
-        if (["section", "card-icon", "col-media"].includes(d.kind) && typeof d.sid === "string" && r && [r.t, r.l, r.w, r.h].every((v) => typeof v === "number"))
+        const okRect = r && [r.t, r.l, r.w, r.h].every((v) => typeof v === "number");
+        if (["section", "card-icon", "col-media"].includes(d.kind) && typeof d.sid === "string" && okRect)
           setInspect({ kind: d.kind, sid: d.sid, index: Number.isInteger(d.index) ? d.index : -1, rect: r, key: Date.now() });
+        /* the page's fixed parts: no section id */
+        else if (PART_KINDS.includes(d.kind) && okRect) setInspect({ kind: d.kind, rect: r, key: Date.now() });
         return;
       }
       if (d.type === "glp-link") {
@@ -6363,40 +6802,7 @@ function App() {
         }
         return;
       }
-      if (d.type === "glp-focus") {
-        /* the click came from the preview, so don't scroll the preview back to the section's top */
-        previewFocusAt.current = Date.now();
-        if (d.area === "appearance") {
-          if (openNavRef.current !== "theme") setOpenNav("theme");
-          const g = ["ap-footer", "bb-links", "bb-button", "bb-name"].includes(d.group) ? d.group : "ap-header";
-          setTimeout(() => {
-            const box = g.startsWith("bb-") && document.getElementById(g);
-            if (!box) { jumpToRef.current(g.startsWith("bb-") ? "ap-header" : g); flashRow(document.getElementById(g.startsWith("bb-") ? "ap-header" : g)); return; }
-            const row = g === "bb-links" && Number.isInteger(d.item) ? box.querySelectorAll(".glp-linkrow")[d.item] : null;
-            setApActive("ap-header");
-            jumpLock.current = Date.now() + 900;
-            revealEl(row || box);
-            flashRow(row || box);
-          }, 60);
-          return;
-        }
-        let rowId = null, itemId = null;
-        if (d.area === "hero") { setOpenSection("__hero"); rowId = "__hero"; }
-        else if (d.area === "section" && Number.isInteger(d.index)) {
-          const sec = configRef.current.sections[d.index];
-          if (!sec) return;
-          setOpenSection(sec.id);
-          rowId = sec.id;
-          const items = sec.type === "columns" ? sec.columns : sec.type !== "code" && sec.source !== "liquid" ? sec.cards : null;
-          const it = items && Number.isInteger(d.item) ? items[d.item] : null;
-          if (it) { setOpenCard(it.id); itemId = it.id; }
-        }
-        if (!rowId) return;
-        /* stay on the Sections tab if already there (switching tabs resets the sidebar to the top) */
-        if (openNavRef.current !== "sections") setOpenNav("sections");
-        setTimeout(() => revealRow(rowId, itemId), 60);
-        return;
-      }
+      if (d.type === "glp-focus") { focusRef.current(d); return; }
       if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
         const sec = configRef.current.sections[d.index];
         if (sec) { setOpenNav("sections"); setOpenSection(sec.id); }
@@ -7014,6 +7420,22 @@ function App() {
   /* ---- preview popover content (edits apply straight to the page, like the sidebar) ---- */
   const inspector = (() => {
     if (!inspect) return null;
+    if (PART_KINDS.includes(inspect.kind)) {
+      /* every change from a popover rebuilds the preview right away */
+      const now = (fn) => (p) => { urgentAt.current = Date.now(); fn(p); };
+      const close = () => setInspect(null);
+      const side = (d) => () => { setInspect(null); focusRef.current(d); };
+      if (inspect.kind === "hero")
+        return { key: inspect.key, rect: inspect.rect, onClose: close, onSidebar: side({ area: "hero" }), title: "Hero Settings",
+          body: <InspectHero config={config} setHero={now(setHero)} setTicker={now(setTicker)} /> };
+      if (inspect.kind === "brand" && config.brandBar.enabled)
+        return { key: inspect.key, rect: inspect.rect, onClose: close, onSidebar: side({ area: "appearance", group: "bb-name" }), title: "Brand Bar Settings",
+          body: <InspectBrandBar config={config} setBrandBar={now(setBrandBar)} patch={now(patch)} /> };
+      if (inspect.kind === "banner" && config.banner.enabled)
+        return { key: inspect.key, rect: inspect.rect, onClose: close, onSidebar: side({ area: "appearance", group: "ap-footer" }), title: "Banner Settings",
+          body: <BannerFields config={config} setBanner={now(setBanner)} /> };
+      return null;
+    }
     const sec = config.sections.find((x) => x.id === inspect.sid);
     if (!sec) return null;
     const applySec = (next) => { urgentAt.current = Date.now(); updateSection(sec.id, next); };
@@ -7479,58 +7901,7 @@ function App() {
                     <div className="glp-note" style={{ marginBottom: 12 }}>
                       Replaces ReadMe's header on this page only. Search and Ask AI keep working.
                     </div>
-                    <div id="bb-name">
-                    <div className="glp-row2">
-                      <Field label="Wordmark">
-                        <input className="glp-input" value={config.brandBar.name} onChange={(e) => setBrandBar({ name: e.target.value })} />
-                      </Field>
-                      <Field label="Tag (optional)">
-                        <input className="glp-input" value={config.brandBar.tag} onChange={(e) => setBrandBar({ tag: e.target.value })} placeholder="Developers" />
-                      </Field>
-                    </div>
-                    <Field label="Logo URL (optional, replaces wordmark)">
-                      <input className="glp-input" value={config.brandBar.logoUrl} onChange={(e) => setBrandBar({ logoUrl: e.target.value })} placeholder="https://files.readme.io/…/logo.svg" />
-                    </Field>
-                    </div>
-                    {(config.brandBar.logoUrl || "").trim() && (
-                      <Field label="Logo size" inline>
-                        <Seg
-                          value={LOGO_SIZES.includes(Number(config.brandBar.logoSize)) ? Number(config.brandBar.logoSize) : 32}
-                          onChange={(v) => setBrandBar({ logoSize: v })}
-                          options={LOGO_SIZES.map((n) => ({ value: n, label: n + "px" }))}
-                        />
-                      </Field>
-                    )}
-                    <Field label="Bar color" inline>
-                      <ColorValue value={config.brandBar.bg || ""} onChange={(v) => setBrandBar({ bg: v })} label="Bar color" />
-                    </Field>
-                    <div className="glp-note" style={{ marginBottom: 12 }}>
-                      A solid bar behind the logo and links. Text turns white or dark to stay readable, so a white logo works on a dark color.
-                    </div>
-                    <div id="bb-links">
-                    <Field label="Nav links">
-                      <LinkListEditor links={config.brandBar.links} onChange={(links) => setBrandBar({ links })} max={7} labelPh="Guides" hrefPh="/guides" />
-                    </Field>
-                    </div>
-                    <div id="bb-button">
-                    <Toggle
-                      checked={config.brandBar.button.enabled}
-                      onChange={(v) => setBrandBar({ button: { ...config.brandBar.button, enabled: v } })}
-                      label="Outlined button at the end"
-                      hint='e.g. "Log in" or "Contact sales". Stays visible on mobile when the other links collapse.'
-                      style={{ paddingTop: 0 }}
-                    />
-                    {config.brandBar.button.enabled && (
-                      <div className="glp-row2">
-                        <Field label="Button label">
-                          <input className="glp-input" value={config.brandBar.button.label} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, label: e.target.value } })} />
-                        </Field>
-                        <Field label="Button link">
-                          <input className="glp-input" value={config.brandBar.button.href} onChange={(e) => setBrandBar({ button: { ...config.brandBar.button, href: e.target.value } })} />
-                        </Field>
-                      </div>
-                    )}
-                    </div>
+                    <BrandBarFields config={config} setBrandBar={setBrandBar} />
                   </>
                 )}
                 {config.headerImage.enabled && (
@@ -7554,36 +7925,7 @@ function App() {
                 />
                 {config.banner.enabled && (
                   <>
-                    <Field label="Banner title">
-                      <input className="glp-input" value={config.banner.title} onChange={(e) => setBanner({ title: e.target.value })} />
-                    </Field>
-                    <Field label="Banner text">
-                      <textarea className="glp-textarea" value={config.banner.text} onChange={(e) => setBanner({ text: e.target.value })} />
-                    </Field>
-                    <div className="glp-row2">
-                      <Field label="Button label">
-                        <input className="glp-input" value={config.banner.btnLabel} onChange={(e) => setBanner({ btnLabel: e.target.value })} />
-                      </Field>
-                      <Field label="Button link">
-                        <input className="glp-input" value={config.banner.btnHref} onChange={(e) => setBanner({ btnHref: e.target.value })} />
-                      </Field>
-                    </div>
-                    <Field label="Layout" inline>
-                      <Seg value={config.banner.align} onChange={(v) => setBanner({ align: v })} options={[{ value: "left", label: "Side by side" }, { value: "center", label: "Centered" }]} />
-                    </Field>
-                    {config.banner.align === "center" && (
-                      <>
-                        <div className="glp-row2">
-                          <Field label="Second button (optional)">
-                            <input className="glp-input" value={config.banner.btn2Label} onChange={(e) => setBanner({ btn2Label: e.target.value })} placeholder="Read the API" />
-                          </Field>
-                          <Field label="Second button link">
-                            <input className="glp-input" value={config.banner.btn2Href} onChange={(e) => setBanner({ btn2Href: e.target.value })} placeholder="/reference" />
-                          </Field>
-                        </div>
-                        <Toggle checked={config.banner.glow} onChange={(v) => setBanner({ glow: v })} label="Glow background" hint="Soft brand-color glow behind the banner." style={{ paddingTop: 0 }} />
-                      </>
-                    )}
+                    <BannerFields config={config} setBanner={setBanner} />
                   </>
                 )}
 
@@ -7619,27 +7961,7 @@ function App() {
                   <CardStyleControls style={config.cardStyle || DEFAULT_STYLE} setStyle={setCardStyle} />
                 </FixedRow>
                 <FixedRow rowId="__hero" title="Hero" icon="fa-image" meta={config.hero.bg === "glow" ? "glow" : ""} open={openSection === "__hero"} onToggle={() => setOpenSection(openSection === "__hero" ? null : "__hero")}>
-                <Field label="Eyebrow (blank to hide)">
-                  <input
-                    className="glp-input"
-                    value={config.hero.eyebrow}
-                    onChange={(e) => setHero({ eyebrow: e.target.value })}
-                    placeholder="e.g. Documentation center"
-                  />
-                </Field>
-                <div className="glp-row2">
-                  <Field label="Announcement chip (blank to hide)">
-                    <input
-                      className="glp-input"
-                      value={config.hero.chip}
-                      onChange={(e) => setHero({ chip: e.target.value })}
-                      placeholder="e.g. v2.4 is now available"
-                    />
-                  </Field>
-                  <Field label="Chip link (optional)">
-                    <input className="glp-input" value={config.hero.chipHref} onChange={(e) => setHero({ chipHref: e.target.value })} placeholder="/changelog" />
-                  </Field>
-                </div>
+                <HeroTopFields config={config} setHero={setHero} />
                 <Field label="Page title">
                   <div className="glp-fieldrow">
                     <input className="glp-input" value={config.hero.title} onChange={(e) => setHero({ title: e.target.value })} />
@@ -7664,110 +7986,8 @@ function App() {
                     />
                   </div>
                 </Field>
-                <Field label="Alignment" inline>
-                  <Seg
-                    value={config.hero.align}
-                    onChange={(v) => setHero({ align: v })}
-                    options={[
-                      { value: "center", label: "Centered" },
-                      { value: "left", label: "Left" },
-                    ]}
-                  />
-                </Field>
-                {effSearchMode(config) === "hero" && (
-                  <Field label="Line under the search row (blank to hide)">
-                    <input
-                      className="glp-input"
-                      value={config.hero.searchHint}
-                      onChange={(e) => setHero({ searchHint: e.target.value })}
-                      placeholder="Search covers every doc set below. Ask AI answers with links to its sources."
-                    />
-                  </Field>
-                )}
-                {effSearchMode(config) === "hero" && (
-                  <Field label="Search size" inline>
-                    <Seg value={config.hero.searchSize} onChange={(v) => setHero({ searchSize: v })} options={[{ value: "normal", label: "Normal" }, { value: "large", label: "Large" }]} />
-                  </Field>
-                )}
-                <Field label="Background" inline>
-                  <Seg value={config.hero.bg} onChange={(v) => setHero({ bg: v })} options={[{ value: "none", label: "None" }, { value: "glow", label: "Glow" }]} />
-                </Field>
-                <Field label="Background color" inline>
-                  <ColorValue value={config.hero.bgColor || ""} onChange={(v) => setHero({ bgColor: v })} label="Hero background color" />
-                </Field>
-                <NumberField label="Vertical padding" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
-                <Field label="Quick links (pills under the hero)">
-                  <LinkListEditor links={config.hero.quickLinks} onChange={(quickLinks) => setHero({ quickLinks })} max={8} labelPh="Get started" hrefPh="/guides" />
-                </Field>
-                <Toggle
-                  checked={config.hero.panel.enabled}
-                  onChange={(v) => setHero({ panel: { ...config.hero.panel, enabled: v }, ...(v ? { align: "left" } : {}) })}
-                  label="Side panel"
-                  hint="A card beside the hero with a titled list of links and counts. Holds the search box when search sits under the hero."
-                />
-                {config.hero.panel.enabled && (
-                  <>
-                    <Field label="Panel title">
-                      <input className="glp-input" value={config.hero.panel.title} onChange={(e) => setHero({ panel: { ...config.hero.panel, title: e.target.value } })} />
-                    </Field>
-                    <Field label="Panel links">
-                      <LinkListEditor withMeta links={config.hero.panel.links} onChange={(links) => setHero({ panel: { ...config.hero.panel, links } })} max={8} labelPh="Guides" hrefPh="/guides" />
-                    </Field>
-                  </>
-                )}
-                <Toggle
-                  checked={config.hero.buttons}
-                  onChange={(v) => setHero({ buttons: v })}
-                  label="Hero buttons"
-                  hint="Primary + secondary call-to-action under the subtitle."
-                />
-                {config.hero.buttons && (
-                  <>
-                    <div className="glp-row2">
-                      <Field label="Primary label">
-                        <input
-                          className="glp-input"
-                          value={config.hero.btnPrimary.label}
-                          onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, label: e.target.value } })}
-                        />
-                      </Field>
-                      <Field label="Primary link">
-                        <input
-                          className="glp-input"
-                          value={config.hero.btnPrimary.href}
-                          onChange={(e) => setHero({ btnPrimary: { ...config.hero.btnPrimary, href: e.target.value } })}
-                        />
-                      </Field>
-                    </div>
-                    <div className="glp-row2">
-                      <Field label="Secondary label">
-                        <input
-                          className="glp-input"
-                          value={config.hero.btnSecondary.label}
-                          onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, label: e.target.value } })}
-                        />
-                      </Field>
-                      <Field label="Secondary link">
-                        <input
-                          className="glp-input"
-                          value={config.hero.btnSecondary.href}
-                          onChange={(e) => setHero({ btnSecondary: { ...config.hero.btnSecondary, href: e.target.value } })}
-                        />
-                      </Field>
-                    </div>
-                  </>
-                )}
-                <Toggle
-                  checked={config.ticker.enabled}
-                  onChange={(v) => setTicker({ enabled: v })}
-                  label="Announcement ticker"
-                  hint="Scrolling marquee strip at the very top."
-                />
-                {config.ticker.enabled && (
-                  <Field label="Ticker text (repeats automatically)">
-                    <input className="glp-input" value={config.ticker.text} onChange={(e) => setTicker({ text: e.target.value })} />
-                  </Field>
-                )}
+                <HeroLayoutFields config={config} setHero={setHero} />
+                <HeroExtrasFields config={config} setHero={setHero} setTicker={setTicker} />
                 </FixedRow>
                 <div className="glp-outline-label">Sections</div>
                 {config.sections.map((section, i) => (
