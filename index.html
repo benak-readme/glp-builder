@@ -2993,7 +2993,10 @@ const PREVIEW_CANVAS_SCRIPT = `
   function paint() {
     if (!cur || !document.contains(cur)) { hideAll(); return; }
     var all = secs(), i = all.indexOf(cur), n = all.length, b = box(cur), kind = cur.getAttribute("data-glp-kind");
-    if (onSecBar) frame(secOut, b, 8); else hide(secOut);
+    /* outline pads clear the 8px highlight around editable text (columns and section
+       headings have no inner padding of their own, so a tighter line sat inside it) */
+    var SPAD = 14;
+    if (onSecBar) frame(secOut, b, SPAD); else hide(secOut);
     secTag.textContent = KIND_LABEL[kind] || "Section";
     var isCards = kind === "cards" || kind === "liquid";
     srcSeg.style.display = isCards ? "inline-flex" : "none";
@@ -3003,12 +3006,12 @@ const PREVIEW_CANVAS_SCRIPT = `
     /* toolbars sit centered on the top edge of what they control: half in its (empty)
        top padding, half in the gap above, so they don't cover headings or copy */
     show(secBar);
-    var sbTop = b.t - 8 - secBar.offsetHeight / 2, sbLeft = b.r + 8 - 12 - secBar.offsetWidth;
+    var sbTop = b.t - SPAD - secBar.offsetHeight / 2, sbLeft = b.r + SPAD - 12 - secBar.offsetWidth;
     place(secBar, sbTop, sbLeft);
     if (editingIn(cur)) { hide(secBar); sbTop = -1e6; }
     if (n < MAX.sections) {
-      show(addBelow); place(addBelow, b.b + 8 - 14, b.l + b.w / 2 - 14);
-      if (i === 0) { show(addAbove); place(addAbove, b.t - 8 - 14, b.l + b.w / 2 - 14); } else hide(addAbove);
+      show(addBelow); place(addBelow, b.b + SPAD - 14, b.l + b.w / 2 - 14);
+      if (i === 0) { show(addAbove); place(addAbove, b.t - SPAD - 14, b.l + b.w / 2 - 14); } else hide(addAbove);
     } else { hide(addBelow); hide(addAbove); }
     var its = itemsOf(cur);
     if (its && its.list.length) {
@@ -3020,14 +3023,19 @@ const PREVIEW_CANVAS_SCRIPT = `
     } else hide(addItem);
     if (curItem && its && its.list.indexOf(curItem) >= 0 && !editingIn(curItem)) {
       var k = its.list.indexOf(curItem), ib = box(curItem), cnt = its.list.length, maxI = its.key === "columns" ? MAX.columns : MAX.cards;
-      frame(itemOut, ib, 3);
+      var IPAD = its.key === "columns" ? 12 : 3;
+      frame(itemOut, ib, IPAD);
       itemTag.textContent = (its.key === "columns" ? "Column " : "Card ") + (k + 1);
       iLink.style.display = curItem.hasAttribute("data-glp-href") ? "" : "none";
       iPrev.disabled = k <= 0; iNext.disabled = k >= cnt - 1; iDup.disabled = cnt >= maxI; iDel.disabled = cnt <= 1;
       show(itemBar);
-      var w = itemBar.offsetWidth, h = itemBar.offsetHeight, ibTop = ib.t - h / 2, ibLeft = ib.l + 10;
+      var w = itemBar.offsetWidth, h = itemBar.offsetHeight, ibTop = ib.t - IPAD - h / 2, ibLeft = ib.l - IPAD + 10;
       /* if it would collide with the section's toolbar (items flush with the section top), tuck it inside the item */
-      if (ibTop < sbTop + secBar.offsetHeight + 4 && ibTop + h > sbTop - 4 && ibLeft < sbLeft + secBar.offsetWidth + 4 && ibLeft + w > sbLeft - 4) { ibTop = ib.t + 8; ibLeft = ib.l + 8; }
+      /* if it would collide with the section's toolbar or cover the section's heading,
+         move it to the item's bottom edge (usually empty space) instead */
+      var hit2 = function (r) { return ibTop < r.b + 2 && ibTop + h > r.t - 2 && ibLeft < r.r + 2 && ibLeft + w > r.l - 2; };
+      var headEl = cur.querySelector(".bnk-section"), sbBox = { t: sbTop, b: sbTop + secBar.offsetHeight, l: sbLeft, r: sbLeft + secBar.offsetWidth };
+      if (hit2(sbBox) || (headEl && hit2(box(headEl)))) ibTop = ib.b + IPAD - h / 2;
       place(itemBar, ibTop, ibLeft);
     } else { hide(itemBar); hide(itemOut); }
   }
