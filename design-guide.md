@@ -102,10 +102,11 @@ rows, title | description | count), autoH: true }`.
 - `styleMode: "custom"` and `style`: switches that compose the card look:
   `anchor` (whole card is a link), `icon` (icon tile), `iconInline` (icon beside title), `badge` (eyebrow pill),
   `bar` (accent top bar), `peek` (small list), `links` (list of chevron links + footnote; card is not itself a link),
-  `cta` (call to action) + `ctaPlain` (as a text link instead of a button), `num` (numbered 01, 02, 03), `mono` (uppercase mono titles),
+  `cta` (call to action) + `ctaPlain` (as a text link instead of a button), `ctaFill: "outlined"|"filled"` (how the
+  CTA buttons look; match the source's solid vs outline buttons), `num` (numbered 01, 02, 03), `mono` (uppercase mono titles),
   `radius` (0-24), `density`: "roomy"|"comfortable"|"compact".
 - `cards` (max 12), each: `title`, `blurb` (may be ""), `href`, `meta` (small count like "120 pages", optional), `icon` (a Font Awesome 6 free solid icon name,
-  e.g. "book", "code", "rocket", "key", "life-ring", "clock-rotate-left"), `ctaText`,
+  e.g. "book", "code", "rocket", "key", "life-ring", "clock-rotate-left"), `ctaText`, `ctaStyle: "filled"|"outline"` (only to make one card's button differ from `style.ctaFill`),
   `eyebrow` + `badge: "dot"|"lock"` (when style.badge), `peekLabel` + `peekItems: [strings]` (when style.peek),
   `links: [{label, href}]` + `note` + `noteLinkLabel` + `noteHref` (when style.links; wrap words in *asterisks* for italics),
   `accent`: "green"|"purple"|"amber"|"blue"|"rose"|"slate" (ignored when theme is uniform/matchReadme).

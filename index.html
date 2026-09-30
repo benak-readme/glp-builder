@@ -128,6 +128,7 @@ function resolveFonts(cfg) {
    peek    : preview list section
    cta     : CTA button/link shown
    ctaPlain: CTA is a plain text link
+   ctaFill : outlined | filled, how CTA buttons look (a card's own ctaStyle can override)
    mono    : mono, uppercase titles (terminal aesthetic)
    radius  : corner radius (px)
    density : roomy | comfortable | compact (padding + title size)
@@ -142,6 +143,7 @@ const DEFAULT_STYLE = {
   peek: false,
   cta: false,
   ctaPlain: false,
+  ctaFill: "outlined",
   mono: false,
   links: false,
   iconInline: false,
@@ -208,7 +210,8 @@ const CARD_DEFAULTS = {
   peekItems: ["First highlight", "Second highlight"],
   peekArrows: false,
   ctaText: "View docs",
-  ctaStyle: "ghost",
+  /* auto = follow the card style's Button fill; filled / outline override it for this card */
+  ctaStyle: "auto",
   primary: false,
   /* small count/label on the card, e.g. "913 pages" */
   meta: "",
@@ -230,7 +233,7 @@ const DEFAULT_LIQUID = {
   peekLabel: "Inside",
   peekCount: 3,
   ctaText: "View docs",
-  ctaStyle: "ghost",
+  ctaStyle: "auto",
   accents: ["green", "purple", "amber"],
 };
 
@@ -878,6 +881,9 @@ const safeLinks = (arr) =>
   Array.isArray(arr) ? arr.filter((l) => l && typeof l === "object").map((l) => ({ label: str(l.label), href: str(l.href) })) : [];
 
 const CARD_STR_FIELDS = ["icon", "title", "blurb", "href", "eyebrow", "peekLabel", "ctaText", "note", "noteLinkLabel", "noteHref", "meta"];
+/* a card's button fill: "filled" / "outline" override the style, anything else
+   (including the old default "ghost") follows the card style's Button fill */
+const normCtaStyle = (v) => (v === "filled" || v === "outline" ? v : "auto");
 const normCard = (c) => {
   const o = { ...CARD_DEFAULTS, ...(c && typeof c === "object" ? c : {}) };
   CARD_STR_FIELDS.forEach((k) => { o[k] = str(o[k], CARD_DEFAULTS[k]); });
@@ -888,6 +894,7 @@ const normCard = (c) => {
     customDark: safeHex(o.customDark, CARD_DEFAULTS.customDark),
     peekItems: Array.isArray(o.peekItems) ? o.peekItems.map((x) => str(x)) : [],
     links: safeLinks(o.links),
+    ctaStyle: normCtaStyle(o.ctaStyle),
     id: o.id || uid(),
   };
 };
@@ -989,7 +996,7 @@ const normSection = (s) => ({
   styleMode: s.styleMode === "global" ? "global" : "custom",
   style: { ...DEFAULT_STYLE, ...(s.style || {}), file: false },
   layout: { ...DEFAULT_SECTION_LAYOUT, ...(s.layout || {}) },
-  liquid: { ...DEFAULT_LIQUID, ...(s.liquid || {}) },
+  liquid: (() => { const q = { ...DEFAULT_LIQUID, ...(s.liquid || {}) }; return { ...q, ctaStyle: normCtaStyle(q.ctaStyle) }; })(),
   columns: (Array.isArray(s.columns) && s.columns.length ? s.columns.slice(0, 4) : DEFAULT_COLUMNS()).map(normColumn),
   cards: (Array.isArray(s.cards) && s.cards.length ? s.cards : DEFAULT_CONFIG.sections[0].cards).map(normCard),
 });
@@ -1242,7 +1249,7 @@ function buildCard(v, style) {
   if (style.cta) {
     const ctaCls = style.ctaPlain
       ? "bnk-card__go bnk-card__go--plain"
-      : `bnk-card__go bnk-card__go--${v.ctaStyle === "filled" ? "filled" : "ghost"}`;
+      : `bnk-card__go bnk-card__go--${(v.ctaStyle === "filled" || v.ctaStyle === "outline" ? v.ctaStyle === "filled" : style.ctaFill === "filled") ? "filled" : "ghost"}`;
     foot = style.anchor
       ? `\n      <span class="${ctaCls}">${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></span>`
       : `\n      <a class="${ctaCls}" href="${v.href}">${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>`;
@@ -4052,11 +4059,12 @@ function CtaStyleFields({ textLabel, plainTextLabel, ctaText, ctaStyle, ctaPlain
       </Field>
       <Field label="Button style">
         <Seg
-          value={ctaStyle}
+          value={normCtaStyle(ctaStyle)}
           onChange={onStyleChange}
           options={[
+            { value: "auto", label: "Card style" },
             { value: "filled", label: "Filled" },
-            { value: "ghost", label: "Outlined" },
+            { value: "outline", label: "Outlined" },
           ]}
         />
       </Field>
@@ -4536,6 +4544,18 @@ function CardStyleControls({ style: st, setStyle, liquid = false }) {
           ]}
         />
       </Field>
+      {st.cta && !st.ctaPlain && (
+        <Field label="Button fill" inline>
+          <Seg
+            value={st.ctaFill === "filled" ? "filled" : "outlined"}
+            onChange={(v) => setStyle({ ctaFill: v })}
+            options={[
+              { value: "outlined", label: "Outlined" },
+              { value: "filled", label: "Filled" },
+            ]}
+          />
+        </Field>
+      )}
       <Field label="Density" inline>
         <Seg
           value={st.density}
