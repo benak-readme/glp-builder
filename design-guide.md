@@ -89,7 +89,9 @@ Name the page after the source, e.g. "Unbranded developer.acme.com".
 
 ## Sections
 Common fields: `label` (builder-only name), `eyebrow` (small label line above the heading, e.g. "Code samples"),
-`heading`, `intro`, `align: "center"|"left"`,
+`heading`, `intro`, `align: "center"|"left"` (the content), `headAlign: "auto"|"center"|"left"` (the heading, eyebrow and
+intro; "auto" follows `align`; set it when the source's heading and content align differently, e.g. a left heading over
+centered columns),
 `layout: { colMin (min card width px, 180-420), gap (px), spaceAbove (px), divider (bool),
 dividerStyle: "hairline"|"accent", bg: "none"|"subtle"|"accent"|"dark", bento (bool), list (bool: cards as full-width
 rows, title | description | count), autoH: true }`.

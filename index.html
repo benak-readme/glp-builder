@@ -520,7 +520,7 @@ function restyleWithTemplate(cur, tpl) {
     quickLinks: H.quickLinks && H.quickLinks.length ? H.quickLinks : T.quickLinks,
     panel: { ...T.panel, ...(H.panel && H.panel.links && H.panel.links.length ? { title: H.panel.title, links: H.panel.links } : {}) },
   };
-  const LOOK = ["style", "styleMode", "layout", "align"];
+  const LOOK = ["style", "styleMode", "layout", "align", "headAlign"];
   const used = {};
   const sections = cur.sections.map((sec) => {
     const type = sec.type || "cards";
@@ -981,6 +981,8 @@ const normSection = (s) => ({
   heading: s.heading || "",
   intro: s.intro || "",
   align: s.align === "left" ? "left" : "center",
+  /* heading + intro alignment when it should differ from the content's ("auto" = same as align) */
+  headAlign: s.headAlign === "left" || s.headAlign === "center" ? s.headAlign : "auto",
   source: s.source === "liquid" ? "liquid" : "static",
   /* older saved sections keep their own look ("custom"); the global style is
      opt-in per section so migrating never changes an existing page's cards */
@@ -2078,6 +2080,13 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   .bnk-section__text { margin: 0; max-width: 680px; font-size: 14px; line-height: 1.55; color: var(--bnk-ink-2) !important; }
   .bnk-sec--center .bnk-section { text-align: center; }
   .bnk-sec--center .bnk-section__text { margin-left: auto; margin-right: auto; }
+  /* heading alignment set apart from the content's (e.g. a left heading over centered columns) */
+  .bnk-sec--head-left .bnk-section { text-align: left; }
+  .bnk-sec--head-left .bnk-section__text { margin-left: 0; margin-right: 0; }
+  .bnk-sec--head-left .bnk-section__eyebrow { justify-content: flex-start; }
+  .bnk-sec--head-center .bnk-section { text-align: center; }
+  .bnk-sec--head-center .bnk-section__text { margin-left: auto; margin-right: auto; }
+  .bnk-sec--head-center .bnk-section__eyebrow { justify-content: center; }
 
   /* ---------- text columns ---------- */
   .bnk-col { display: flex; flex-direction: column; align-items: flex-start; }
@@ -2123,6 +2132,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
       const st = effStyle(sec);
       const cls =
         `bnk-sec bnk-sec-${i} bnk-sec--${sec.align === "left" ? "left" : "center"}` +
+        (sec.headAlign === "left" || sec.headAlign === "center" ? " bnk-sec--head-" + sec.headAlign : "") +
         (sec.layout.divider ? " bnk-sec--divider" + (sec.layout.dividerStyle === "accent" ? " bnk-sec--divider-accent" : "") : "") +
         (["subtle", "accent", "dark"].includes(sec.layout.bg) ? " bnk-sec--bg-" + sec.layout.bg : "") +
         (!isCols && st.bar ? " bnk-sec--bar" : "") +
@@ -4765,11 +4775,22 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
 
           {tab === "layout" && (
             <>
-              <Field label="Alignment" inline>
+              <Field label="Content alignment" inline>
                 <Seg
                   value={section.align}
                   onChange={(v) => set({ align: v })}
                   options={[
+                    { value: "center", label: "Centered" },
+                    { value: "left", label: "Left" },
+                  ]}
+                />
+              </Field>
+              <Field label="Heading alignment" inline>
+                <Seg
+                  value={section.headAlign === "left" || section.headAlign === "center" ? section.headAlign : "auto"}
+                  onChange={(v) => set({ headAlign: v })}
+                  options={[
+                    { value: "auto", label: "Same" },
                     { value: "center", label: "Centered" },
                     { value: "left", label: "Left" },
                   ]}
