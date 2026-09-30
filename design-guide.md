@@ -20,6 +20,8 @@ them**. Every choice below should come from what the source page actually shows.
      (see `theme`). Only use "readme" if the user asks to keep the hub's own colors.
    - **Fonts:** set `typeface.custom: true` with the closest supported heading/body fonts and a `headingWeight`
      that matches how bold the source headings look.
+   - **Colored header or hero:** if the source's nav bar or hero sits on a solid color, set `hero.bgColor` (and
+     `brandBar.bg` if the nav bar is a different color from the hero). Keep a white `logoUrl` in that case.
    - **Only add optional flourishes the source actually has:** hero `bg: "glow"`, `searchSize: "large"`,
      `quickLinks`, the hero `panel`, section `eyebrow`s, `pattern`, `banner.glow`, a code window. If the source
      doesn't show it, leave it out.
@@ -56,13 +58,18 @@ Name the page after the source, e.g. "Unbranded developer.acme.com".
 - Text formatting: in descriptions, intros, the hero subtitle, column text, link labels, banner text and the footer,
   `**word**` renders bold, `*word*` italic, and `***word***` both. Headings and card titles take `*word*` italic too.
 - `brandBar`: custom header that replaces ReadMe's header on the landing page.
-  `{ enabled, name, tag, logoUrl, links: [{label, href}], button: {enabled, label, href} }`.
+  `{ enabled, name, tag, logoUrl, bg, links: [{label, href}], button: {enabled, label, href} }`.
   Use it when the page has its own logo row / top nav. `logoUrl` (an absolute image URL) replaces the wordmark.
+  `bg` (hex) gives the bar its own solid full-width color; text and links flip to white or near-black to stay
+  readable, so a white logo works on a dark bar. Leave it out when the bar sits on the hero color (see `hero.bgColor`).
 - `searchMode`: where ReadMe's search + Ask AI sit. "native" (normal header) | "header" (centered in header)
   | "hero" (row under the hero) | "brand" (inside the brand bar). With `brandBar.enabled`, use "hero" or "brand".
 - `hero`: `{ eyebrow, title, subtitle, align: "center"|"left", titleSize (px|null), subtitleSize (px|null),
   chip, chipHref, buttons (bool), btnPrimary: {label, href}, btnSecondary: {label, href}, searchHint }`.
   `searchHint` is a small line under the search row (only shown when searchMode is "hero").
+  `bgColor` (hex) puts the brand bar, hero, search row and quick links on one solid full-width band, with text and
+  buttons flipped to a readable color (use it when the source hero sits on a solid colored block; a source with a
+  white logo on a colored header usually wants this).
   Also: `bg: "none"|"glow"` (soft brand-color glow behind the hero), `searchSize: "normal"|"large"` (a big search box,
   great for search-first help centers), `quickLinks: [{label, href}]` (pills under the hero), and
   `panel: { enabled, title, links: [{label, href, meta}] }` (a card beside a left-aligned hero listing sections with a
@@ -82,7 +89,9 @@ Name the page after the source, e.g. "Unbranded developer.acme.com".
 
 ## Sections
 Common fields: `label` (builder-only name), `eyebrow` (small label line above the heading, e.g. "Code samples"),
-`heading`, `intro`, `align: "center"|"left"`,
+`heading`, `intro`, `align: "center"|"left"` (the content), `headAlign: "auto"|"center"|"left"` (the heading, eyebrow and
+intro; "auto" follows `align`; set it when the source's heading and content align differently, e.g. a left heading over
+centered columns),
 `layout: { colMin (min card width px, 180-420), gap (px), spaceAbove (px), divider (bool),
 dividerStyle: "hairline"|"accent", bg: "none"|"subtle"|"accent"|"dark", bento (bool), list (bool: cards as full-width
 rows, title | description | count), autoH: true }`.
@@ -107,7 +116,12 @@ rows, title | description | count), autoH: true }`.
   with `langs` (comma-separated) shown as chips. Use when the source page shows a quickstart snippet.
 
 ### Text-column section: `"type": "columns"`
-- `columns` (1-4): `{ heading, body, ctas: [{label, href, style: "plain"|"button"|"filled"}] }`.
+- `columns` (1-4): `{ heading, body, image, imageSize, icon, ctas: [{label, href, style: "plain"|"button"|"filled"}] }`.
+  `image` (absolute URL) shows an illustration above the heading, `imageSize` its height in px (default 88);
+  `icon` (Font Awesome name) shows an icon tile instead when there's no image.
+- **Icon or illustration + short text in a row, with no card borders or backgrounds** (a "Benefits" or "Why us" strip):
+  use a columns section, not cards. Keep the source's illustration URLs as `image`, set `align: "center"` if the
+  source centers them, and leave `heading` blank when the source has only text under each graphic.
 - Great for help/support strips; pair with `layout.bg: "dark"`.
 
 ## Mapping tips

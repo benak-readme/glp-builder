@@ -254,6 +254,10 @@ const DEFAULT_CODE = { file: "quickstart.ts", langs: "TypeScript, Python, Go, Ru
 const COLUMN_DEFAULTS = {
   heading: "Column heading",
   body: "A short line of supporting text for this column.",
+  /* optional graphic above the heading: an illustration image (wins) or a Font Awesome icon */
+  image: "",
+  imageSize: 88,
+  icon: "",
 };
 const CTA_DEFAULTS = { label: "Learn more", href: "/", style: "plain" };
 const makeCta = (over) => {
@@ -306,6 +310,8 @@ const EMPTY_COLORS = () => ({
 const DEFAULT_CONFIG = {
   typeface: { heading: "readme", body: "readme", headingWeight: 600 },
   hero: {
+    /* solid full-width band behind the brand bar + hero ("" = none) */
+    bgColor: "",
     eyebrow: "",
     chip: "",
     chipHref: "",
@@ -343,6 +349,8 @@ const DEFAULT_CONFIG = {
       { label: "Changelog", href: "/changelog" },
     ],
     button: { enabled: true, label: "Log in", href: "/login" },
+    /* solid bar color ("" = none, the bar sits on the page); text flips to white or near-black to stay readable */
+    bg: "",
   },
   /* native = ReadMe's own default search/Ask AI placement, no relocation.
      header = centered in the header, hero = row under the hero,
@@ -512,7 +520,7 @@ function restyleWithTemplate(cur, tpl) {
     quickLinks: H.quickLinks && H.quickLinks.length ? H.quickLinks : T.quickLinks,
     panel: { ...T.panel, ...(H.panel && H.panel.links && H.panel.links.length ? { title: H.panel.title, links: H.panel.links } : {}) },
   };
-  const LOOK = ["style", "styleMode", "layout", "align"];
+  const LOOK = ["style", "styleMode", "layout", "align", "headAlign"];
   const used = {};
   const sections = cur.sections.map((sec) => {
     const type = sec.type || "cards";
@@ -851,6 +859,16 @@ const decodeConfig = (s) => JSON.parse(decodeURIComponent(escape(atob(s))));
 const FA_STYLES = ["solid", "regular", "light", "thin", "duotone", "brands"];
 const SEARCH_MODES = ["native", "header", "hero", "brand"];
 const safeHex = (v, d) => (typeof v === "string" && /^#[0-9a-f]{3,8}$/i.test(v.trim()) ? v.trim() : d);
+/* readable text color on a solid background: white on dark colors, near-black on light ones */
+function textOn(hex) {
+  let h = String(hex || "").replace("#", "");
+  if (h.length === 3 || h.length === 4) h = h.slice(0, 3).split("").map((x) => x + x).join("");
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  if ([r, g, b].some(isNaN)) return "#FFFFFF";
+  const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  /* pick whichever of white / #111418 has the higher contrast ratio */
+  return 1.05 / (L + 0.05) >= (L + 0.05) / 0.0569 ? "#FFFFFF" : "#111418";
+}
 const safeNum = (v, d, min, max) => {
   const n = Number(v);
   return v === null || v === "" || !Number.isFinite(n) ? d : Math.min(max, Math.max(min, n));
@@ -885,6 +903,7 @@ function sanitizeConfig(c) {
   hero.btnPrimary = { label: str(h.btnPrimary && h.btnPrimary.label), href: str(h.btnPrimary && h.btnPrimary.href) };
   hero.btnSecondary = { label: str(h.btnSecondary && h.btnSecondary.label), href: str(h.btnSecondary && h.btnSecondary.href) };
   hero.bg = h.bg === "glow" ? "glow" : "none";
+  hero.bgColor = safeHex(h.bgColor, "");
   hero.searchSize = h.searchSize === "large" ? "large" : "normal";
   hero.quickLinks = safeLinks(h.quickLinks);
   const pn = h.panel && typeof h.panel === "object" ? h.panel : {};
@@ -921,7 +940,7 @@ function sanitizeConfig(c) {
     },
     cardStyle: { ...c.cardStyle, radius: safeNum(c.cardStyle.radius, 16, 0, 48) },
     layout: { maxW: safeNum(c.layout.maxW, 1120, 640, 1920) },
-    brandBar: { ...bb, name: str(bb.name), tag: str(bb.tag), logoUrl: str(bb.logoUrl), links: safeLinks(bb.links),
+    brandBar: { ...bb, name: str(bb.name), tag: str(bb.tag), logoUrl: str(bb.logoUrl), bg: safeHex(bb.bg, ""), links: safeLinks(bb.links),
       button: { enabled: !!bb.button.enabled, label: str(bb.button.label), href: str(bb.button.href) } },
     sections: c.sections.map((sec) => ({
       ...sec,
@@ -944,7 +963,8 @@ function sanitizeConfig(c) {
         peekCount: safeNum(sec.liquid.peekCount, 3, 1, 10),
         accents: Array.isArray(sec.liquid.accents) && sec.liquid.accents.length ? sec.liquid.accents.map((a) => str(a)) : ["green"],
       },
-      columns: sec.columns.map((col) => ({ ...col, heading: str(col.heading), body: str(col.body), ctas: col.ctas.map((ct) => ({ ...ct, label: str(ct.label), href: str(ct.href) })) })),
+      columns: sec.columns.map((col) => ({ ...col, heading: str(col.heading), body: str(col.body),
+        image: str(col.image), imageSize: safeNum(col.imageSize, 88, 24, 240), icon: str(col.icon).replace(/[^a-z0-9-]/gi, ""), ctas: col.ctas.map((ct) => ({ ...ct, label: str(ct.label), href: str(ct.href) })) })),
     })),
   };
 }
@@ -961,6 +981,8 @@ const normSection = (s) => ({
   heading: s.heading || "",
   intro: s.intro || "",
   align: s.align === "left" ? "left" : "center",
+  /* heading + intro alignment when it should differ from the content's ("auto" = same as align) */
+  headAlign: s.headAlign === "left" || s.headAlign === "center" ? s.headAlign : "auto",
   source: s.source === "liquid" ? "liquid" : "static",
   /* older saved sections keep their own look ("custom"); the global style is
      opt-in per section so migrating never changes an existing page's cards */
@@ -1360,6 +1382,8 @@ function sectionColumns(sec, si) {
   return cols
     .map((col, i) => {
       const parts = [];
+      if ((col.image || "").trim()) parts.push(`      <img class="bnk-col__img" src="${esc(col.image.trim())}" alt="" style="height: ${Number(col.imageSize) || 88}px;">`);
+      else if ((col.icon || "").trim()) parts.push(`      <span class="bnk-col__icon" aria-hidden="true">${iconMarkup({ iconType: "fa", icon: col.icon.trim() })}</span>`);
       if ((col.heading || "").trim()) parts.push(`      <h3 class="bnk-col__title"${ed(`sections.${si}.columns.${i}.heading`)}${hwAttr(col.headingWeight)}>${inlineEm(col.heading)}</h3>`);
       if ((col.body || "").trim()) parts.push(`      <p class="bnk-col__text"${ed(`sections.${si}.columns.${i}.body`, true)}>${inlineEm(col.body)}</p>`);
       const ctas = (col.ctas || []).filter((c) => (c.label || "").trim());
@@ -1637,6 +1661,45 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
   }
 `
     : "";
+
+  /* ===== Solid color bands: brand bar and/or hero ===== */
+  /* inside a band every text/accent var flips to a color readable on it, and the
+     band paints edge to edge with the same box-shadow + clip-path trick as pageBg */
+  const bandVars = (bg, pad) => {
+    const fg = textOn(bg);
+    return `${pad}--bnk-heading: ${fg};
+${pad}--bnk-ink-1: color-mix(in srgb, ${fg} 88%, ${bg});
+${pad}--bnk-ink-2: color-mix(in srgb, ${fg} 76%, ${bg});
+${pad}--bnk-accent: ${fg};
+${pad}--bnk-cta-on: ${bg};
+${pad}--card-bg: color-mix(in srgb, ${fg} 10%, transparent);
+${pad}--card-border: color-mix(in srgb, ${fg} 30%, transparent);
+${pad}--card-title: ${fg};
+${pad}--bnk-solid: ${bg};
+${pad}background: ${bg};
+${pad}box-shadow: 0 0 0 100vmax ${bg};
+${pad}clip-path: inset(0 -100vmax);
+${pad}color: var(--bnk-ink-1);`;
+  };
+  const heroBand = cfg.hero.bgColor || "";
+  const brandBand = BB.enabled ? BB.bg || "" : "";
+  const bandCSS = (heroBand ? `
+  /* hero band: brand bar + hero + search row + quick links on one solid color.
+     Pulled up over the page's top padding so no strip of page shows above it. */
+  .bnk-top {
+${bandVars(heroBand, "    ")}
+    margin-top: -20px;
+    padding: 20px 0 44px;
+  }
+  .bnk-top .bnk-actions .rm-Header-search .rm-SearchToggle { border-color: color-mix(in srgb, var(--bnk-heading) 35%, transparent) !important; }
+` : "") + (brandBand ? `
+  /* brand bar band */
+  .bnk-brand {
+${bandVars(brandBand, "    ")}
+    margin-top: -20px;
+    padding: 14px 0;
+  }
+` : "");
 
   /* ===== Full-width background pattern (dots / grid / diagonal / shapes) ===== */
   const patternKind = normPattern(theme.pattern);
@@ -2017,10 +2080,23 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   .bnk-section__text { margin: 0; max-width: 680px; font-size: 14px; line-height: 1.55; color: var(--bnk-ink-2) !important; }
   .bnk-sec--center .bnk-section { text-align: center; }
   .bnk-sec--center .bnk-section__text { margin-left: auto; margin-right: auto; }
+  /* heading alignment set apart from the content's (e.g. a left heading over centered columns) */
+  .bnk-sec--head-left .bnk-section { text-align: left; }
+  .bnk-sec--head-left .bnk-section__text { margin-left: 0; margin-right: 0; }
+  .bnk-sec--head-left .bnk-section__eyebrow { justify-content: flex-start; }
+  .bnk-sec--head-center .bnk-section { text-align: center; }
+  .bnk-sec--head-center .bnk-section__text { margin-left: auto; margin-right: auto; }
+  .bnk-sec--head-center .bnk-section__eyebrow { justify-content: center; }
 
   /* ---------- text columns ---------- */
   .bnk-col { display: flex; flex-direction: column; align-items: flex-start; }
   .bnk-sec--center .bnk-col { align-items: center; text-align: center; }
+  .bnk-col__img { display: block; width: auto; max-width: 100%; object-fit: contain; margin: 0 0 24px; }
+  .bnk-col__icon {
+    width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; flex: none;
+    font-size: 22px; line-height: 1; border-radius: 12px; margin: 0 0 16px;
+    color: var(--bnk-accent); background: color-mix(in srgb, var(--bnk-accent) 11%, transparent);
+  }
   .bnk-col__title {
     margin: 0 0 9px; font-family: ${F.display}; font-weight: ${HW};
     font-size: 18px; letter-spacing: -0.01em; color: var(--bnk-heading) !important;
@@ -2056,6 +2132,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
       const st = effStyle(sec);
       const cls =
         `bnk-sec bnk-sec-${i} bnk-sec--${sec.align === "left" ? "left" : "center"}` +
+        (sec.headAlign === "left" || sec.headAlign === "center" ? " bnk-sec--head-" + sec.headAlign : "") +
         (sec.layout.divider ? " bnk-sec--divider" + (sec.layout.dividerStyle === "accent" ? " bnk-sec--divider-accent" : "") : "") +
         (["subtle", "accent", "dark"].includes(sec.layout.bg) ? " bnk-sec--bg-" + sec.layout.bg : "") +
         (!isCols && st.bar ? " bnk-sec--bar" : "") +
@@ -2325,7 +2402,7 @@ ${chipCSS}
   .bnk-hero__sub { margin: 0 ${heroLeft ? "0" : "auto"}; max-width: 660px; font-size: ${heroSubSize}px; line-height: 1.5; color: var(--bnk-ink-2) !important; }
 ${heroButtonsCSS}${actionsCSS}${extrasCSS}${patternCSS}${sectionCSS}${gridRules}
 ${cardCSS}
-${accentRules}
+${accentRules}${bandCSS}
   .rm-arrow { display: inline-block; transition: transform 200ms ease; }
   .bnk-landing strong { font-weight: 700; color: inherit; }
 ${bannerCSS}
@@ -2342,10 +2419,10 @@ ${bannerCSS}
 </style>
 
 <div class="bnk-landing" id="rm-root"${_editable ? ` data-glp-hw="${HW}"` : ""}>
-${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${H.bg === "glow" ? '  <div class="bnk-heroglow" aria-hidden="true"></div>\n' : ""}${brandMarkup}${tickerMarkup}${panelOn ? '  <div class="bnk-herogrid">\n' : ""}  <div class="bnk-hero">
+${cfg.headerImage.enabled ? '  <div class="bnk-herobg" aria-hidden="true"></div>\n' : ""}${H.bg === "glow" ? '  <div class="bnk-heroglow" aria-hidden="true"></div>\n' : ""}${heroBand ? '  <div class="bnk-top">\n' : ""}${brandMarkup}${tickerMarkup}${panelOn ? '  <div class="bnk-herogrid">\n' : ""}  <div class="bnk-hero">
 ${heroEyebrow}${heroChip}    <h1 class="bnk-hero__title"${ed("hero.title")}${hwAttr(cfg.hero.titleWeight)}>${inlineEm(cfg.hero.title)}</h1>
 ${cfg.hero.subtitle.trim() ? `    <p class="bnk-hero__sub"${ed("hero.subtitle", true)}>${inlineEm(cfg.hero.subtitle)}</p>\n` : ""}${heroButtons}  </div>
-${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}
+${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}${heroBand ? "  </div>\n" : ""}
 ${sectionsMarkup}
 ${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer"${ed("footer", true)}>${inlineEm(cfg.footer)}</p>` : ""}
 </div>
@@ -2575,6 +2652,27 @@ const PREVIEW_EDIT_SCRIPT = `
     var card = e.target.closest && e.target.closest("[data-glp-auto]");
     if (card) parent.postMessage({ type: "glp-focus-section", index: Number(card.getAttribute("data-glp-auto")) }, "*");
   }, true);
+
+  /* a click anywhere else opens that area's settings in the builder: the hero, a
+     section (plus the card or column clicked), or Appearance for the brand bar,
+     contact banner and footer. Editable text still takes the click for typing too. */
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t || !t.closest || t.closest("[data-glp-auto]") || t.closest(".glp-edbar")) return;
+    var msg = null;
+    var sec = t.closest(".bnk-sec");
+    var m = sec && /(?:^|\\s)bnk-sec-(\\d+)(?:\\s|$)/.exec(sec.className);
+    if (m) {
+      msg = { type: "glp-focus", area: "section", index: Number(m[1]) };
+      var item = t.closest(".bnk-card, .bnk-col");
+      if (item && sec.contains(item)) msg.item = [].indexOf.call(sec.querySelectorAll(item.classList.contains("bnk-col") ? ".bnk-col" : ".bnk-card"), item);
+    } else if (t.closest(".bnk-brand, .bnk-banner, .bnk-footer, .bnk-ticker")) {
+      msg = { type: "glp-focus", area: "appearance" };
+    } else if (t.closest(".bnk-top, .bnk-hero, .bnk-herogrid, .bnk-actions, .bnk-search-hint, .bnk-quick, .bnk-panel")) {
+      msg = { type: "glp-focus", area: "hero" };
+    }
+    if (msg) parent.postMessage(msg, "*");
+  });
 
   /* links inside the preview never navigate */
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
@@ -4077,9 +4175,9 @@ function FontSelect({ label, value, options, onChange, bare, firstLabel = "Match
 
 /* ---------- pinned outline row (Header, Hero, Contact banner, Footer): opens like
    a section but can't be dragged, duplicated or deleted ---------- */
-function FixedRow({ title, icon, meta, open, onToggle, children }) {
+function FixedRow({ title, icon, meta, open, onToggle, children, rowId }) {
   return (
-    <div className="glp-card glp-section glp-fixedrow">
+    <div className="glp-card glp-section glp-fixedrow" data-sec-id={rowId}>
       <div className="glp-card__head" role="button" tabIndex={0} aria-expanded={open} onClick={onToggle}
         onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onToggle(); } }}>
         <i className={"fa-solid " + icon + " glp-fixedrow__icon"} aria-hidden="true"></i>
@@ -4208,7 +4306,7 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
     set({ peekItems: items });
   };
   return (
-    <div className="glp-card">
+    <div className="glp-card" data-item-id={card.id}>
       <RowHead noun="card" max={12} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <span className="glp-card__swatch" style={{ background: acc.light }} />
@@ -4442,13 +4540,23 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
   const addCta = () => set({ ctas: [...ctas, makeCta()] });
   const removeCta = (i) => set({ ctas: ctas.filter((_, j) => j !== i) });
   return (
-    <div className="glp-card">
+    <div className="glp-card" data-item-id={column.id}>
       <RowHead noun="column" max={4} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <span className="glp-card__name">{column.heading || `Column ${index + 1}`}</span>
       </RowHead>
       {open && (
         <div className="glp-card__body">
+          <Field label="Image URL (optional, shown above the heading)">
+            <input className="glp-input" value={column.image || ""} onChange={(e) => set({ image: e.target.value })} placeholder="https://…/illustration.png" />
+          </Field>
+          {(column.image || "").trim() ? (
+            <NumberField label="Image height" value={column.imageSize || 88} min={24} max={240} step={4} onChange={(v) => set({ imageSize: v })} />
+          ) : (
+            <Field label="Icon (optional, a Font Awesome name like book)">
+              <input className="glp-input" value={column.icon || ""} onChange={(e) => set({ icon: e.target.value })} placeholder="No icon" />
+            </Field>
+          )}
           <Field label="Heading (blank to hide)">
             <input className="glp-input" value={column.heading} onChange={(e) => set({ heading: e.target.value })} />
           </Field>
@@ -4546,7 +4654,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
   const cardDrag = useDragReorder(cardOps.reorderTo);
 
   return (
-    <div className="glp-card glp-section">
+    <div className="glp-card glp-section" data-sec-id={section.id}>
       <RowHead noun="section" max={6} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <RenameName value={section.label} fallback={section.heading || `Section ${index + 1}`} onChange={(v) => set({ label: v })} />
@@ -4667,11 +4775,22 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
 
           {tab === "layout" && (
             <>
-              <Field label="Alignment" inline>
+              <Field label="Content alignment" inline>
                 <Seg
                   value={section.align}
                   onChange={(v) => set({ align: v })}
                   options={[
+                    { value: "center", label: "Centered" },
+                    { value: "left", label: "Left" },
+                  ]}
+                />
+              </Field>
+              <Field label="Heading alignment" inline>
+                <Seg
+                  value={section.headAlign === "left" || section.headAlign === "center" ? section.headAlign : "auto"}
+                  onChange={(v) => set({ headAlign: v })}
+                  options={[
+                    { value: "auto", label: "Same" },
                     { value: "center", label: "Centered" },
                     { value: "left", label: "Left" },
                   ]}
@@ -4810,7 +4929,7 @@ function CodeEditor({ value, onChange }) {
   );
 }
 
-function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex }) {
+function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex, previewFocusAt }) {
   const editable = html.includes("data-glp=");
   /* Double-buffered preview: render the new doc into the hidden iframe and
      only reveal it once it has finished loading, so the visible frame never
@@ -4869,6 +4988,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
   /* when a section is selected in the builder, scroll the preview to it and flash it */
   useEffect(() => {
     if (focusIndex == null) return;
+    if (previewFocusAt && Date.now() - previewFocusAt.current < 500) return; /* picked in the preview itself */
     const t = setTimeout(() => {
       const f = frames.current[activeRef.current];
       try {
@@ -5228,6 +5348,7 @@ function App() {
   const previewHtml = useMemo(() => generateHTML(config, { editable: true }), [config]);
   const configRef = useRef(config);
   configRef.current = config;
+  const previewFocusAt = useRef(0);
 
   /* edits committed inside the preview iframe come back as { path, value } */
   useEffect(() => {
@@ -5239,6 +5360,30 @@ function App() {
       if (d.type === "glp-preview-mode" && (d.mode === "light" || d.mode === "dark")) { setMode(d.mode); return; }
       if (d.type === "glp-heading-weight" && typeof d.path === "string" && EDITABLE_PATH_RE.test(d.path) && HEADING_PATH_RE.test(d.path) && (d.value === null || HEADING_WEIGHTS.includes(d.value))) {
         setConfig((c) => setAtPath(c, (d.path + "Weight").split("."), d.value === null ? undefined : d.value));
+        return;
+      }
+      if (d.type === "glp-focus") {
+        /* the click came from the preview, so don't scroll the preview back to the section's top */
+        previewFocusAt.current = Date.now();
+        let rowId = null, itemId = null;
+        if (d.area === "hero") { setOpenNav("sections"); setOpenSection("__hero"); rowId = "__hero"; }
+        else if (d.area === "appearance") setOpenNav("theme");
+        else if (d.area === "section" && Number.isInteger(d.index)) {
+          const sec = configRef.current.sections[d.index];
+          if (sec) {
+            setOpenNav("sections");
+            setOpenSection(sec.id);
+            rowId = sec.id;
+            const items = sec.type === "columns" ? sec.columns : sec.type !== "code" && sec.source !== "liquid" ? sec.cards : null;
+            const it = items && Number.isInteger(d.item) ? items[d.item] : null;
+            if (it) { setOpenCard(it.id); itemId = it.id; }
+          }
+        }
+        /* bring the opened row into view in the sidebar */
+        setTimeout(() => {
+          const el = (itemId && document.querySelector(`[data-item-id="${itemId}"]`)) || (rowId && document.querySelector(`[data-sec-id="${rowId}"]`));
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 80);
         return;
       }
       if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
@@ -5474,6 +5619,12 @@ function App() {
 
   const designsRef = useRef(designs);
   designsRef.current = designs;
+  /* async callbacks (file backup reconnect, the /g/ fetch) outlive the render that
+     created them, so they read these instead of stale closure values */
+  const sharedViewRef = useRef(sharedView);
+  sharedViewRef.current = sharedView;
+  const currentIdRef = useRef(currentId);
+  currentIdRef.current = currentId;
 
   /* write the working page into its slot right now (used before switching pages so a
      pending debounced autosave can't be lost). Only bumps updatedAt on a real change. */
@@ -5576,10 +5727,15 @@ function App() {
     const cur0 = designsRef.current;
     const pristine = cur0.length === 1 && !cur0[0].override && JSON.stringify(cur0[0].config) === JSON.stringify(DEFAULT_CONFIG);
     const merged = mergeDesigns(pristine ? [] : cur0, incoming);
+    const curId = currentIdRef.current;
     setDesigns(merged);
-    persistDesigns(merged, currentId);
+    persistDesigns(merged, curId);
+    /* a shared link is open: keep showing it. Swapping in a saved page here would put
+       the shared design into that page's slot once the /g/ fetch lands, and the next
+       autosave or page switch would write it over the saved page. */
+    if (sharedViewRef.current) return merged;
     /* if nothing real was open (fresh after a cache clear), open the newest imported page */
-    const cur = merged.find((d) => d.id === currentId);
+    const cur = merged.find((d) => d.id === curId);
     if (!cur || (merged.length > 1 && designsRef.current.length === 1 && JSON.stringify(cur.config) === JSON.stringify(DEFAULT_CONFIG))) {
       const newest = incoming.slice().sort((a, b) => b.updatedAt - a.updatedAt)[0];
       if (newest) {
@@ -5845,7 +6001,9 @@ function App() {
           const raw = await res.json();
           const cfg = migrateConfig(raw);
           if (raw && raw._meta && typeof raw._meta.name === "string") setSharedName(raw._meta.name.slice(0, 80));
-          if (!cancelled) { resetForPage(cfg); setConfig(cfg); setOpenSection(cfg.sections[0].id); }
+          /* belt and braces: whatever happened during the fetch, a shared design always
+             opens as an unsaved shared view, never inside one of the saved pages */
+          if (!cancelled) { resetForPage(cfg); setSharedView(true); setCurrentId(null); setConfig(cfg); setOpenSection(cfg.sections[0].id); }
         } else if (!cancelled) setShareError(true);
       } catch (e) {
         if (!cancelled) setShareError(true);
@@ -6311,6 +6469,12 @@ function App() {
                     <Field label="Logo URL (optional, replaces wordmark)">
                       <input className="glp-input" value={config.brandBar.logoUrl} onChange={(e) => setBrandBar({ logoUrl: e.target.value })} placeholder="https://files.readme.io/…/logo.svg" />
                     </Field>
+                    <Field label="Bar color" inline>
+                      <ColorValue value={config.brandBar.bg || ""} onChange={(v) => setBrandBar({ bg: v })} label="Bar color" />
+                    </Field>
+                    <div className="glp-note" style={{ marginBottom: 12 }}>
+                      A solid bar behind the logo and links. Text turns white or dark to stay readable, so a white logo works on a dark color.
+                    </div>
                     <Field label="Nav links">
                       <LinkListEditor links={config.brandBar.links} onChange={(links) => setBrandBar({ links })} max={7} labelPh="Guides" hrefPh="/guides" />
                     </Field>
@@ -6393,7 +6557,7 @@ function App() {
               </NavSection>
 
               <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
-                <FixedRow title="Hero" icon="fa-image" meta={config.hero.bg === "glow" ? "glow" : ""} open={openSection === "__hero"} onToggle={() => setOpenSection(openSection === "__hero" ? null : "__hero")}>
+                <FixedRow rowId="__hero" title="Hero" icon="fa-image" meta={config.hero.bg === "glow" ? "glow" : ""} open={openSection === "__hero"} onToggle={() => setOpenSection(openSection === "__hero" ? null : "__hero")}>
                 <Field label="Eyebrow (blank to hide)">
                   <input
                     className="glp-input"
@@ -6466,6 +6630,9 @@ function App() {
                 )}
                 <Field label="Background" inline>
                   <Seg value={config.hero.bg} onChange={(v) => setHero({ bg: v })} options={[{ value: "none", label: "None" }, { value: "glow", label: "Glow" }]} />
+                </Field>
+                <Field label="Background color" inline>
+                  <ColorValue value={config.hero.bgColor || ""} onChange={(v) => setHero({ bgColor: v })} label="Hero background color" />
                 </Field>
                 <NumberField label="Vertical padding" value={config.hero.padY || 0} min={0} max={160} step={4} onChange={(v) => setHero({ padY: v })} />
                 <Field label="Quick links (pills under the hero)">
@@ -6570,7 +6737,7 @@ function App() {
               </NavSection>
 
             </div>
-            <Preview html={override !== null ? generated : previewHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
+            <Preview html={override !== null ? generated : previewHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} previewFocusAt={previewFocusAt} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
           </>
         ) : (
           <>
