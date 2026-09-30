@@ -1336,7 +1336,7 @@ function buildCard(v, style) {
   style = anchor === style.anchor ? style : { ...style, anchor };
   const extra = v.attrs || "";
   const openTag = style.anchor
-    ? `<a class="bnk-card ${v.accentClass}${primaryCls}" href="${v.href}"${extra}\n       ${INLINE_CARD_STYLE}>`
+    ? `<a class="bnk-card ${v.accentClass}${primaryCls}" href="${v.href}"${extra}${v.lk || ""}\n       ${INLINE_CARD_STYLE}>`
     : `<div class="bnk-card ${v.accentClass}${primaryCls}"${extra}\n       ${INLINE_CARD_STYLE}>`;
   const closeTag = style.anchor ? "</a>" : "</div>";
 
@@ -1365,7 +1365,7 @@ function buildCard(v, style) {
       : `bnk-card__go bnk-card__go--${(v.ctaStyle === "filled" || v.ctaStyle === "outline" ? v.ctaStyle === "filled" : style.ctaFill === "filled") ? "filled" : "ghost"}`;
     foot = style.anchor
       ? `\n      <span class="${ctaCls}">${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></span>`
-      : `\n      <a class="${ctaCls}" href="${v.href}">${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>`;
+      : `\n      <a class="${ctaCls}" href="${v.href}"${v.lk || ""}>${v.ctaText}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>`;
   } else if (style.anchor) {
     /* whole-card link with no CTA → trailing arrow (compact "tiles" feel) */
     foot = `\n      <span class="rm-arrow bnk-card__arrow" aria-hidden="true">&#8594;</span>`;
@@ -1386,6 +1386,12 @@ const ed = (path, rich) =>
   _editable ? ` data-glp="${path}"${rich ? " data-glp-rich" : ""}${HEADING_PATH_RE.test(path) ? " data-glp-heading" : ""}` : "";
 /* a heading's own weight (its "<field>Weight" sibling, e.g. hero.titleWeight), overriding the global heading weight */
 const hwAttr = (w) => (HEADING_WEIGHTS.includes(Number(w)) ? ` style="font-weight: ${Number(w)}"` : "");
+/* links the preview can edit: where the URL lives (and the button text, when it isn't
+   already typed right on the page) */
+const lk = (path, raw, labelPath, rawLabel) =>
+  _editable ? ` data-glp-href="${path}" data-glp-hv="${esc(raw || "")}"${labelPath ? ` data-glp-lp="${labelPath}" data-glp-lv="${esc(rawLabel || "")}"` : ""}` : "";
+const LINK_PATH_RE =
+  /^(hero\.(chipHref|chip|btnPrimary\.href|btnSecondary\.href|quickLinks\.\d+\.(href|label)|panel\.links\.\d+\.href)|banner\.(btnHref|btnLabel|btn2Href)|brandBar\.(links\.\d+\.href|button\.href)|sections\.\d+\.(cards\.\d+\.(href|ctaText|noteHref|noteLinkLabel|links\.\d+\.href)|columns\.\d+\.ctas\.\d+\.(href|label)))$/;
 /* config paths the preview may write — anything else posted back is ignored */
 const EDITABLE_PATH_RE =
   /^(hero\.(eyebrow|title|subtitle|searchHint|btnPrimary\.label|btnSecondary\.label)|footer|banner\.(title|text)|brandBar\.(links\.\d+\.label|button\.label)|hero\.panel\.(title|links\.\d+\.label)|banner\.btn2Label|sections\.\d+\.(heading|intro|eyebrow|cards\.\d+\.(title|blurb|peekLabel|peekItems\.\d+|links\.\d+\.label)|columns\.\d+\.(heading|body)))$/;
@@ -1413,14 +1419,14 @@ ${items
 function staticLinks(c, base) {
   const links = (c.links || []).map((l, j) => [l, j]).filter(([l]) => (l.label || "").trim());
   const rows = links
-    .map(([l, j]) => `          <a class="bnk-card__link" href="${esc(normPath(l.href || "/"))}">${CHEVRON_SVG}<span${ed(base + ".links." + j + ".label", true)}>${inlineEm(l.label)}</span></a>`)
+    .map(([l, j]) => `          <a class="bnk-card__link" href="${esc(normPath(l.href || "/"))}"${lk(base + ".links." + j + ".href", l.href)}>${CHEVRON_SVG}<span${ed(base + ".links." + j + ".label", true)}>${inlineEm(l.label)}</span></a>`)
     .join("\n");
   const noteText = (c.note || "").trim();
   const noteLink = (c.noteLinkLabel || "").trim();
   const note =
     noteText || noteLink
       ? `        <span class="bnk-card__note">${esc(noteText)}${
-          noteLink ? `${noteText ? " " : ""}<a href="${esc(normPath(c.noteHref || "/"))}">${esc(noteLink)}</a>` : ""
+          noteLink ? `${noteText ? " " : ""}<a href="${esc(normPath(c.noteHref || "/"))}"${lk(base + ".noteHref", c.noteHref, base + ".noteLinkLabel", c.noteLinkLabel)}>${esc(noteLink)}</a>` : ""
         }</span>`
       : "";
   if (!rows && !note) return "";
@@ -1452,6 +1458,7 @@ function sectionCards(sec, palette, style, si) {
             ed: (f, rich) => ed(`sections.${si}.cards.${i}.${f}`, rich),
             ctaText: esc(c.ctaText),
             ctaStyle: c.ctaStyle,
+            lk: style.cta ? lk(`sections.${si}.cards.${i}.href`, c.href, `sections.${si}.cards.${i}.ctaText`, c.ctaText) : lk(`sections.${si}.cards.${i}.href`, c.href),
             comment: `Card ${i + 1}: ${esc(c.title)}`,
           },
           style
@@ -1506,7 +1513,7 @@ function sectionColumns(sec, si) {
       else if ((col.icon || "").trim()) parts.push(`      <span class="bnk-col__icon" aria-hidden="true">${iconMarkup({ iconType: "fa", icon: col.icon.trim() })}</span>`);
       if ((col.heading || "").trim()) parts.push(`      <h3 class="bnk-col__title"${ed(`sections.${si}.columns.${i}.heading`)}${hwAttr(col.headingWeight)}>${inlineEm(col.heading)}</h3>`);
       if ((col.body || "").trim()) parts.push(`      <p class="bnk-col__text"${ed(`sections.${si}.columns.${i}.body`, true)}>${inlineEm(col.body)}</p>`);
-      const ctas = (col.ctas || []).filter((c) => (c.label || "").trim());
+      const ctas = (col.ctas || []).map((c, k) => ({ ...c, k })).filter((c) => (c.label || "").trim());
       if (ctas.length) {
         const links = ctas
           .map((cta) => {
@@ -1516,7 +1523,8 @@ function sectionColumns(sec, si) {
                 : cta.style === "button"
                 ? "bnk-col__cta bnk-col__cta--btn"
                 : "bnk-col__cta";
-            return `        <a class="${cls}" href="${esc(normPath(cta.href || "/"))}">${esc(cta.label)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>`;
+            const lp = `sections.${si}.columns.${i}.ctas.${cta.k}`;
+            return `        <a class="${cls}" href="${esc(normPath(cta.href || "/"))}"${lk(lp + ".href", cta.href, lp + ".label", cta.label)}>${esc(cta.label)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>`;
           })
           .join("\n");
         parts.push(`      <div class="bnk-col__ctas">\n${links}\n      </div>`);
@@ -2317,20 +2325,20 @@ ${heading}${body}
   const heroEyebrow = cfg.hero.eyebrow.trim() ? `    <p class="bnk-hero__eyebrow"${ed("hero.eyebrow")}>${esc(cfg.hero.eyebrow)}</p>\n` : "";
   const heroChip = cfg.hero.chip.trim()
     ? cfg.hero.chipHref.trim()
-      ? `    <a class="bnk-hero__chip" href="${esc(normPath(cfg.hero.chipHref))}">${esc(cfg.hero.chip)} <span class="rm-arrow" aria-hidden="true">&#8594;</span></a>\n`
+      ? `    <a class="bnk-hero__chip" href="${esc(normPath(cfg.hero.chipHref))}"${lk("hero.chipHref", cfg.hero.chipHref, "hero.chip", cfg.hero.chip)}>${esc(cfg.hero.chip)} <span class="rm-arrow" aria-hidden="true">&#8594;</span></a>\n`
       : `    <span class="bnk-hero__chip">${esc(cfg.hero.chip)}</span>\n`
     : "";
   const heroButtons = cfg.hero.buttons
     ? `    <div class="bnk-hero__btns">
-      <a class="bnk-btn bnk-btn--primary" href="${esc(normPath(cfg.hero.btnPrimary.href))}"${ed("hero.btnPrimary.label")}>${esc(cfg.hero.btnPrimary.label)}</a>
-      <a class="bnk-btn bnk-btn--secondary" href="${esc(normPath(cfg.hero.btnSecondary.href))}"${ed("hero.btnSecondary.label")}>${esc(cfg.hero.btnSecondary.label)}</a>
+      <a class="bnk-btn bnk-btn--primary" href="${esc(normPath(cfg.hero.btnPrimary.href))}"${ed("hero.btnPrimary.label")}${lk("hero.btnPrimary.href", cfg.hero.btnPrimary.href)}>${esc(cfg.hero.btnPrimary.label)}</a>
+      <a class="bnk-btn bnk-btn--secondary" href="${esc(normPath(cfg.hero.btnSecondary.href))}"${ed("hero.btnSecondary.label")}${lk("hero.btnSecondary.href", cfg.hero.btnSecondary.href)}>${esc(cfg.hero.btnSecondary.label)}</a>
     </div>\n`
     : "";
   const H = cfg.hero;
   const panelOn = !!(H.panel && H.panel.enabled);
-  const quickLinks = (H.quickLinks || []).filter((l) => (l.label || "").trim());
+  const quickLinks = (H.quickLinks || []).map((l, j) => ({ ...l, j })).filter((l) => (l.label || "").trim());
   const quickMarkup = quickLinks.length
-    ? `  <div class="bnk-quick">${quickLinks.map((l) => `<a class="bnk-quick__link" href="${esc(normPath(l.href || "/"))}">${esc(l.label)}</a>`).join("")}</div>\n`
+    ? `  <div class="bnk-quick">${quickLinks.map((l) => `<a class="bnk-quick__link" href="${esc(normPath(l.href || "/"))}"${lk(`hero.quickLinks.${l.j}.href`, l.href, `hero.quickLinks.${l.j}.label`, l.label)}>${esc(l.label)}</a>`).join("")}</div>\n`
     : "";
   const actionsMarkup = sm === "hero"
     ? `  <div class="bnk-actions${H.searchSize === "large" ? " bnk-actions--lg" : ""}${panelOn ? " bnk-actions--panel" : ""}" id="rm-actions"></div>\n${!panelOn && H.searchHint && H.searchHint.trim() ? `  <p class="bnk-search-hint"${ed("hero.searchHint", true)}>${inlineEm(H.searchHint)}</p>\n` : ""}`
@@ -2339,7 +2347,7 @@ ${heading}${body}
   const panelMarkup = panelOn
     ? `    <aside class="bnk-panel">
 ${sm === "hero" ? "    " + actionsMarkup.trim() + "\n" : ""}      <p class="bnk-panel__title"${ed("hero.panel.title")}${hwAttr(H.panel.titleWeight)}>${inlineEm(H.panel.title)}</p>
-${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l.href || "/"))}"><span${ed(`hero.panel.links.${l.j}.label`)}>${esc(l.label)}</span>${(l.meta || "").trim() ? `<span class="bnk-panel__meta">${esc(l.meta)}</span>` : ""}</a>`).join("\n")}
+${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l.href || "/"))}"${lk(`hero.panel.links.${l.j}.href`, l.href)}><span${ed(`hero.panel.links.${l.j}.label`)}>${esc(l.label)}</span>${(l.meta || "").trim() ? `<span class="bnk-panel__meta">${esc(l.meta)}</span>` : ""}</a>`).join("\n")}
     </aside>\n`
     : "";
   const bannerCenter = cfg.banner.align === "center";
@@ -2348,8 +2356,8 @@ ${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l
     <h2 class="bnk-banner__title"${ed("banner.title")}${hwAttr(cfg.banner.titleWeight)}>${inlineEm(cfg.banner.title)}</h2>
     <p class="bnk-banner__text"${ed("banner.text", true)}>${inlineEm(cfg.banner.text)}</p>
     <div class="bnk-banner__btns">
-      <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>${
-        (cfg.banner.btn2Label || "").trim() ? `\n      <a class="bnk-banner__btn bnk-banner__btn--ghost" href="${esc(normPath(cfg.banner.btn2Href || "/"))}"${ed("banner.btn2Label")}>${esc(cfg.banner.btn2Label)}</a>` : ""
+      <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}"${lk("banner.btnHref", cfg.banner.btnHref, "banner.btnLabel", cfg.banner.btnLabel)}>${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>${
+        (cfg.banner.btn2Label || "").trim() ? `\n      <a class="bnk-banner__btn bnk-banner__btn--ghost" href="${esc(normPath(cfg.banner.btn2Href || "/"))}"${ed("banner.btn2Label")}${lk("banner.btn2Href", cfg.banner.btn2Href)}>${esc(cfg.banner.btn2Label)}</a>` : ""
       }
     </div>
   </div>\n`
@@ -2359,7 +2367,7 @@ ${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l
       <h2 class="bnk-banner__title"${ed("banner.title")}${hwAttr(cfg.banner.titleWeight)}>${inlineEm(cfg.banner.title)}</h2>
       <p class="bnk-banner__text"${ed("banner.text", true)}>${inlineEm(cfg.banner.text)}</p>
     </div>
-    <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}">${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>
+    <a class="bnk-banner__btn" href="${esc(normPath(cfg.banner.btnHref))}"${lk("banner.btnHref", cfg.banner.btnHref, "banner.btnLabel", cfg.banner.btnLabel)}>${esc(cfg.banner.btnLabel)}<span class="rm-arrow" aria-hidden="true">&#8594;</span></a>
   </div>\n`
     : "";
 
@@ -2372,9 +2380,9 @@ ${panelLinks.map((l) => `      <a class="bnk-panel__link" href="${esc(normPath(l
         : `${esc(BB.name)}${(BB.tag || "").trim() ? ` <small>${esc(BB.tag)}</small>` : ""}`
     }</a>
 ${sm === "brand" ? '    <div class="bnk-brand__search" id="rm-brand-search"></div>\n' : ""}    <nav class="bnk-brand__nav" aria-label="Documentation">
-${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`brandBar.links.${l.j}.label`)}>${esc(l.label)}</a>`).join("\n")}${
+${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`brandBar.links.${l.j}.label`)}${lk(`brandBar.links.${l.j}.href`, l.href)}>${esc(l.label)}</a>`).join("\n")}${
         BB.button && BB.button.enabled && (BB.button.label || "").trim()
-          ? `\n      <a class="bnk-brand__btn" href="${esc(normPath(BB.button.href || "/"))}"${ed("brandBar.button.label")}>${esc(BB.button.label)}</a>`
+          ? `\n      <a class="bnk-brand__btn" href="${esc(normPath(BB.button.href || "/"))}"${ed("brandBar.button.label")}${lk("brandBar.button.href", BB.button.href)}>${esc(BB.button.label)}</a>`
           : ""
       }
     </nav>
@@ -2877,6 +2885,35 @@ const PREVIEW_CANVAS_SCRIPT = `
   .glp-cv-add:hover { background: #33353E; transform: scale(1.06); }
   .glp-cv-add:focus-visible { outline: 2px solid rgba(23,24,29,.6); outline-offset: 2px; }
   html[data-color-mode="dark"] .glp-cv-add { border-color: #2A2C33; }
+  .glp-cv-pill {
+    all: unset; box-sizing: border-box; position: absolute; z-index: 99992; display: none; cursor: pointer;
+    align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 7px;
+    background: #17181D; color: #E6E8F0; font: 500 11.5px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    box-shadow: 0 4px 14px rgba(0,0,0,.22), 0 0 0 1px rgba(255,255,255,.07); animation: glpCvIn 120ms ease-out;
+  }
+  .glp-cv-pill:hover { background: #2A2C33; }
+  .glp-cv-pill i { font-size: 10.5px; }
+  .glp-cv-link {
+    position: absolute; z-index: 99996; display: none; flex-direction: column; gap: 10px; width: 320px; box-sizing: border-box;
+    padding: 12px; border-radius: 11px; background: #17181D; color: #E6E8F0;
+    font: 500 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    box-shadow: 0 12px 32px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .glp-cv-link label { display: flex; flex-direction: column; gap: 5px; color: #A7ABB8; font-size: 11.5px; }
+  .glp-cv-link input {
+    all: unset; box-sizing: border-box; width: 100%; height: 32px; padding: 0 10px; border-radius: 7px;
+    background: #0E0F13; color: #fff; font: 13px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+  }
+  .glp-cv-link input:focus { box-shadow: inset 0 0 0 1px rgba(255,255,255,.5); }
+  .glp-cv-link__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .glp-cv-link__hint { color: #8A8F9E; font-size: 11px; }
+  .glp-cv-link__btns { display: flex; gap: 6px; }
+  .glp-cv-link button { all: unset; box-sizing: border-box; cursor: pointer; height: 28px; padding: 0 12px; border-radius: 7px; font-size: 12px; color: #E6E8F0; }
+  .glp-cv-link button:hover { background: rgba(255,255,255,.1); }
+  .glp-cv-link button.glp-cv-link__save { background: #fff; color: #17181D; }
+  .glp-cv-link button.glp-cv-link__save:hover { background: #E6E8F0; }
+  .glp-cv-link button:focus-visible { outline: 2px solid rgba(255,255,255,.7); }
   .glp-cv-menu { z-index: 99995; flex-direction: column; width: 272px; box-sizing: border-box; padding: 5px; border-radius: 11px; background: #15171F; box-shadow: 0 12px 32px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.06); }
   .glp-cv-menu__title { padding: 7px 10px 5px; color: #9AA0B4; font-size: 11px; }
   .glp-cv-menu button { display: flex; gap: 11px; align-items: flex-start; width: 100%; padding: 8px 10px; border-radius: 7px; color: #E6E8F0; font-size: 13px; }
@@ -2896,7 +2933,16 @@ const PREVIEW_CANVAS_SCRIPT = `
   var secBar = mk("div", "glp-cv"), itemBar = mk("div", "glp-cv");
   var addAbove = btn("plus", "Add a section above", "glp-cv-add"), addBelow = btn("plus", "Add a section below", "glp-cv-add"), addItem = btn("plus", "Add", "glp-cv-add");
   var menu = mk("div", "glp-cv-menu");
-  var parts = [secOut, itemOut, secBar, itemBar, addAbove, addBelow, addItem, menu];
+  /* links: a small "Link" tag on any hovered link, and a box to edit its URL (and text) */
+  var linkPill = mk("button", "glp-cv-pill", '<i class="fa-solid fa-link" aria-hidden="true"></i>Link');
+  linkPill.type = "button"; linkPill.title = "Edit this link";
+  var linkPop = mk("div", "glp-cv-link");
+  linkPop.innerHTML = '<label>URL<input class="glp-cv-link__url" spellcheck="false" placeholder="/guides or https://…"></label>' +
+    '<label class="glp-cv-link__lbl">Text<input class="glp-cv-link__text"></label>' +
+    '<div class="glp-cv-link__row"><span class="glp-cv-link__hint">Paths like /guides stay on your hub</span>' +
+    '<span class="glp-cv-link__btns"><button type="button" class="glp-cv-link__cancel">Cancel</button><button type="button" class="glp-cv-link__save">Save</button></span></div>';
+  var linkUrl = linkPop.querySelector(".glp-cv-link__url"), linkText = linkPop.querySelector(".glp-cv-link__text"), linkLbl = linkPop.querySelector(".glp-cv-link__lbl");
+  var parts = [secOut, itemOut, secBar, itemBar, addAbove, addBelow, addItem, menu, linkPill, linkPop];
 
   var secTag = mk("span", "glp-cv__tag");
   /* cards sections: switch between cards you write and one card per child project */
@@ -2914,7 +2960,8 @@ const PREVIEW_CANVAS_SCRIPT = `
   secBar.addEventListener("mouseleave", function () { onSecBar = false; paint(); });
   var itemTag = mk("span", "glp-cv__tag");
   var iPrev = btn("arrow-left", "Move left"), iNext = btn("arrow-right", "Move right"), iDup = btn("clone", "Duplicate"), iDel = btn("trash-can", "Delete", "glp-cv__del");
-  [itemTag, iPrev, iNext, iDup, iDel].forEach(function (b) { itemBar.appendChild(b); });
+  var iLink = btn("link", "Edit this card's link");
+  [itemTag, iLink, iPrev, iNext, iDup, iDel].forEach(function (b) { itemBar.appendChild(b); });
 
   var KINDS = [
     ["cards", "table-cells-large", "Cards", "Cards you write, each with its own link"],
@@ -2975,6 +3022,7 @@ const PREVIEW_CANVAS_SCRIPT = `
       var k = its.list.indexOf(curItem), ib = box(curItem), cnt = its.list.length, maxI = its.key === "columns" ? MAX.columns : MAX.cards;
       frame(itemOut, ib, 3);
       itemTag.textContent = (its.key === "columns" ? "Column " : "Card ") + (k + 1);
+      iLink.style.display = curItem.hasAttribute("data-glp-href") ? "" : "none";
       iPrev.disabled = k <= 0; iNext.disabled = k >= cnt - 1; iDup.disabled = cnt >= maxI; iDel.disabled = cnt <= 1;
       show(itemBar);
       var w = itemBar.offsetWidth, h = itemBar.offsetHeight, ibTop = ib.t - h / 2, ibLeft = ib.l + 10;
@@ -3043,11 +3091,64 @@ const PREVIEW_CANVAS_SCRIPT = `
   addBelow.addEventListener("click", function (e) { e.stopPropagation(); var i = secs().indexOf(cur); openMenu(addBelow, i + 1); });
   addAbove.addEventListener("click", function (e) { e.stopPropagation(); openMenu(addAbove, 0); });
   document.addEventListener("mousedown", function (e) { if (menu.style.display === "flex" && !menu.contains(e.target) && e.target !== addAbove && e.target !== addBelow && !addAbove.contains(e.target) && !addBelow.contains(e.target)) hideMenu(); }, true);
+  /* ---- links ---- */
+  var curLink = null, linkT = null, popFor = null;
+  function linkUnder(t) { var l = t.closest && t.closest("[data-glp-href]"); return l && !l.classList.contains("bnk-card") ? l : null; }
+  function showPill(l) {
+    curLink = l;
+    show(linkPill);
+    var b = box(l);
+    place(linkPill, b.t - linkPill.offsetHeight + 4, b.r - linkPill.offsetWidth + 6);
+  }
+  function hidePill() { curLink = null; hide(linkPill); }
+  document.addEventListener("mousemove", function (e) {
+    if (popFor) return;
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (linkPill.contains(t)) { clearTimeout(linkT); return; }
+    var l = linkUnder(t);
+    if (l) { clearTimeout(linkT); if (l !== curLink) showPill(l); }
+    else if (curLink) { clearTimeout(linkT); linkT = setTimeout(hidePill, 220); }
+  });
+  function openLink(el) {
+    popFor = el;
+    hidePill();
+    linkUrl.value = el.getAttribute("data-glp-hv") || "";
+    var hasText = el.hasAttribute("data-glp-lp");
+    linkLbl.style.display = hasText ? "" : "none";
+    linkText.value = hasText ? el.getAttribute("data-glp-lv") || "" : "";
+    show(linkPop);
+    var b = box(el), h = linkPop.offsetHeight, w = linkPop.offsetWidth;
+    var top = b.b + 8 + h > scrollY + innerHeight - 8 && b.t - 8 - h >= scrollY + 8 ? b.t - 8 - h : b.b + 8;
+    place(linkPop, top, Math.min(b.l, scrollX + innerWidth - w - 8));
+    linkUrl.focus(); linkUrl.select();
+  }
+  function closeLink() { popFor = null; hide(linkPop); }
+  function saveLink() {
+    var el = popFor; if (!el) return;
+    var msg = { type: "glp-link", href: { path: el.getAttribute("data-glp-href"), value: linkUrl.value.trim() } };
+    if (el.hasAttribute("data-glp-lp")) msg.label = { path: el.getAttribute("data-glp-lp"), value: linkText.value };
+    if (lastXY) { msg.x = lastXY[0]; msg.y = lastXY[1]; }
+    closeLink();
+    parent.postMessage(msg, "*");
+  }
+  linkPill.addEventListener("click", function (e) { e.stopPropagation(); if (curLink) openLink(curLink); });
+  iLink.addEventListener("click", function (e) { e.stopPropagation(); if (curItem && curItem.hasAttribute("data-glp-href")) openLink(curItem); });
+  linkPop.querySelector(".glp-cv-link__save").addEventListener("click", saveLink);
+  linkPop.querySelector(".glp-cv-link__cancel").addEventListener("click", closeLink);
+  linkPop.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); saveLink(); }
+    else if (e.key === "Escape") { e.preventDefault(); closeLink(); }
+    e.stopPropagation();
+  });
+  document.addEventListener("mousedown", function (e) { if (popFor && !linkPop.contains(e.target)) closeLink(); }, true);
+  window.addEventListener("scroll", function () { if (curLink && !popFor) showPill(curLink); }, { passive: true });
+
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") { hideMenu(); return; }
     /* undo / redo while the preview has focus (text being typed keeps the browser's own undo) */
     var a = document.activeElement;
-    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "z" || e.key === "Z" || e.key === "y") && !(a && a.isContentEditable)) {
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "z" || e.key === "Z" || e.key === "y") && !(a && (a.isContentEditable || a.tagName === "INPUT"))) {
       e.preventDefault();
       parent.postMessage({ type: "glp-history", redo: e.key === "y" || e.shiftKey }, "*");
     }
@@ -5883,6 +5984,15 @@ function App() {
       if (d.type === "glp-preview-mode" && (d.mode === "light" || d.mode === "dark")) { setMode(d.mode); return; }
       if (d.type === "glp-heading-weight" && typeof d.path === "string" && EDITABLE_PATH_RE.test(d.path) && HEADING_PATH_RE.test(d.path) && (d.value === null || HEADING_WEIGHTS.includes(d.value))) {
         setConfig((c) => setAtPath(c, (d.path + "Weight").split("."), d.value === null ? undefined : d.value));
+        return;
+      }
+      if (d.type === "glp-link") {
+        /* a link's URL (and its button text) from the preview's link box, applied as one undo step */
+        const edits = [d.href, d.label].filter((e) => e && typeof e.path === "string" && typeof e.value === "string" && LINK_PATH_RE.test(e.path));
+        if (!edits.length) return;
+        urgentAt.current = Date.now();
+        if (typeof d.x === "number" && typeof d.y === "number") canvasPointer.current = { x: d.x, y: d.y, t: Date.now() };
+        setConfig((c) => edits.reduce((acc, e) => setAtPath(acc, e.path.split("."), e.value.slice(0, 2000)), c));
         return;
       }
       if (d.type === "glp-history") { const h = histRef.current; if (h) (d.redo ? h.redo : h.undo)(); return; }
