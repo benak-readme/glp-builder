@@ -5664,8 +5664,14 @@ function App() {
     ? "Shared design"
     : ((designs.find((d) => d.id === currentId) || {}).name || "Untitled page");
 
+  /* leave the shared link behind once its design is a saved page (or another page is
+     opened), so a reload opens that page instead of the shared view: drops an inline
+     #c= fragment and a /g/<code> short-link path */
   const stripHash = () => {
-    try { window.history.replaceState(null, "", window.location.pathname + window.location.search); } catch (e) {}
+    try {
+      const path = window.location.pathname.replace(/\/g\/[a-z0-9]{4,16}\/?$/i, "/");
+      window.history.replaceState(null, "", path + window.location.search);
+    } catch (e) {}
   };
   /* excludeId lets renameCurrent check uniqueness against every OTHER page without
      tripping over the current page's own (soon-to-be-replaced) name */
