@@ -5531,6 +5531,18 @@ function InspectSection({ section, onChange }) {
   const t = cards ? tab : "layout";
   return (
     <>
+      {/* the same Type switch as the sidebar's Content tab */}
+      <Field label="Type" inline>
+        <Seg
+          value={section.type}
+          onChange={(v) => onChange({ ...section, type: v })}
+          options={[
+            { value: "cards", label: "Cards" },
+            { value: "columns", label: "Columns" },
+            { value: "code", label: "Code" },
+          ]}
+        />
+      </Field>
       {cards && (
         <div className="glp-subtabs" role="tablist" aria-label="Section settings">
           {[["layout", "Layout"], ["style", "Card style"]].map(([k, l]) => (
