@@ -357,6 +357,12 @@ function applyCanvasOp(cfg, d) {
     if (secs.length <= 1) return null;
     return { config: put(secs.filter((s) => s.id !== sec.id)) };
   }
+  if (d.op === "sec-source") {
+    /* cards sections only: "static" = cards you write, "liquid" = one per child project */
+    const v = d.value === "liquid" ? "liquid" : "static";
+    if (sec.type !== "cards" || sec.source === v) return null;
+    return { config: put(secs.map((s) => (s.id === sec.id ? { ...s, source: v, cards: s.cards && s.cards.length ? s.cards : [{ ...CARD_DEFAULTS, id: uid() }] } : s))) };
+  }
   const key = sectionItems(sec);
   if (!key) return null;
   const list = sec[key];
@@ -2669,7 +2675,8 @@ const PREVIEW_EDIT_SCRIPT = `
       hideBar();
       if (el.__cancel) { el.__cancel = false; el.innerHTML = el.__origHtml; return; }
       var v = text(el);
-      if (v !== el.__orig) parent.postMessage({ type: "glp-edit", path: el.getAttribute("data-glp"), value: v }, "*");
+      var xy = window.__glpLastXY;
+      if (v !== el.__orig) parent.postMessage({ type: "glp-edit", path: el.getAttribute("data-glp"), value: v, x: xy && xy[0], y: xy && xy[1] }, "*");
     });
   }
   /* floating toolbar: B / I on rich text, heading weight on headings */
@@ -2823,24 +2830,30 @@ const PREVIEW_LIVE_SCRIPT = `<script>
 const PREVIEW_CANVAS_SCRIPT = `
 <style>
   .glp-cv, .glp-cv-menu { position: absolute; z-index: 99990; display: none; font: 500 12px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  .glp-cv { align-items: center; gap: 1px; padding: 3px; border-radius: 9px; background: #15171F; box-shadow: 0 6px 20px rgba(0,0,0,.28), 0 0 0 1px rgba(255,255,255,.06); }
+  /* neutral graphite controls: they sit on customers' own brand colors, so they
+     stay out of the page's palette instead of adding a competing blue */
+  .glp-cv { align-items: center; gap: 1px; padding: 3px; border-radius: 9px; background: #17181D; box-shadow: 0 6px 20px rgba(0,0,0,.26), 0 0 0 1px rgba(255,255,255,.07); animation: glpCvIn 120ms ease-out; }
+  @keyframes glpCvIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+  .glp-cv.glp-cv--instant, .glp-cv-add.glp-cv--instant { animation: none; }
+  @media (prefers-reduced-motion: reduce) { .glp-cv, .glp-cv-add { animation: none !important; } }
+  .glp-cv__seg { display: inline-flex; margin: 0 2px 0 1px; padding: 2px; border-radius: 7px; background: rgba(255,255,255,.07); }
+  .glp-cv .glp-cv__seg button { width: auto; height: 22px; padding: 0 9px; font-size: 11.5px; color: #A7ABB8; border-radius: 5px; }
+  .glp-cv .glp-cv__seg button.on { background: rgba(255,255,255,.16); color: #fff; }
   .glp-cv button, .glp-cv-menu button { all: unset; box-sizing: border-box; cursor: pointer; }
   .glp-cv button { width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; color: #E6E8F0; font-size: 12px; }
   .glp-cv button:hover { background: rgba(255,255,255,.13); }
-  .glp-cv button:focus-visible { outline: 2px solid #8E9BFF; }
+  .glp-cv button:focus-visible { outline: 2px solid rgba(255,255,255,.75); }
   .glp-cv button[disabled] { opacity: .32; cursor: default; background: none; }
   .glp-cv button.glp-cv__del:hover { background: #C93434; color: #fff; }
   .glp-cv__tag { padding: 0 7px 0 7px; color: #9AA0B4; font-size: 11px; white-space: nowrap; }
   .glp-cv__sep { width: 1px; height: 16px; margin: 0 3px; background: rgba(255,255,255,.14); }
-  /* one blue outline at a time: the section's, or (when a card/column is hovered) the
-     item's, with the section's dropping to a faint line */
-  .glp-cv-out { position: absolute; z-index: 99980; display: none; pointer-events: none; box-sizing: border-box; border: 1.5px solid rgba(44,62,200,.7); border-radius: 12px; transition: border-color 120ms ease; }
-  .glp-cv-out.glp-cv-out--dim { border-color: rgba(44,62,200,.16); }
-  .glp-cv-out--item { border-color: rgba(44,62,200,.8); border-radius: 10px; }
-  /* a lighter blue on dark pages, where the light-mode blue nearly disappears */
-  html[data-color-mode="dark"] .glp-cv-out { border-color: rgba(142,155,255,.7); }
-  html[data-color-mode="dark"] .glp-cv-out.glp-cv-out--dim { border-color: rgba(142,155,255,.2); }
-  html[data-color-mode="dark"] .glp-cv-out--item { border-color: rgba(142,155,255,.85); }
+  /* outlines: only the card/column you're on; a section is outlined just while its
+     toolbar is hovered, to show what those buttons act on */
+  .glp-cv-out { position: absolute; z-index: 99980; display: none; pointer-events: none; box-sizing: border-box; border: 1.5px solid rgba(23,24,29,.38); border-radius: 12px; }
+  .glp-cv-out--item { border-color: rgba(23,24,29,.5); border-radius: 10px; }
+  /* lighter lines on dark pages */
+  html[data-color-mode="dark"] .glp-cv-out { border-color: rgba(255,255,255,.34); }
+  html[data-color-mode="dark"] .glp-cv-out--item { border-color: rgba(255,255,255,.5); }
   html[data-color-mode="dark"] .glp-cv, html[data-color-mode="dark"] .glp-cv-menu { box-shadow: 0 6px 20px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.14); }
   /* edit mode holds cards still: no hover lift or recolored border while you work on them
      (Live shows the real hover) */
@@ -2851,21 +2864,23 @@ const PREVIEW_CANVAS_SCRIPT = `
   .glp-cv-add {
     all: unset; box-sizing: border-box; position: absolute; z-index: 99991; display: none; cursor: pointer;
     width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center;
-    background: rgb(44,62,200); color: #fff; font-size: 12px; border: 2px solid #fff; box-shadow: 0 4px 14px rgba(0,0,0,.25);
+    background: #17181D; color: #fff; font-size: 12px; border: 2px solid #fff; box-shadow: 0 4px 14px rgba(0,0,0,.22);
+    animation: glpCvIn 120ms ease-out; transition: background-color 120ms ease, transform 120ms ease;
   }
-  .glp-cv-add:hover { background: rgb(33,50,180); transform: scale(1.08); }
-  .glp-cv-add:focus-visible { outline: 2px solid #8E9BFF; outline-offset: 2px; }
+  .glp-cv-add:hover { background: #33353E; transform: scale(1.06); }
+  .glp-cv-add:focus-visible { outline: 2px solid rgba(23,24,29,.6); outline-offset: 2px; }
+  html[data-color-mode="dark"] .glp-cv-add { border-color: #2A2C33; }
   .glp-cv-menu { z-index: 99995; flex-direction: column; width: 272px; box-sizing: border-box; padding: 5px; border-radius: 11px; background: #15171F; box-shadow: 0 12px 32px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.06); }
   .glp-cv-menu__title { padding: 7px 10px 5px; color: #9AA0B4; font-size: 11px; }
   .glp-cv-menu button { display: flex; gap: 11px; align-items: flex-start; width: 100%; padding: 8px 10px; border-radius: 7px; color: #E6E8F0; font-size: 13px; }
   .glp-cv-menu button:hover, .glp-cv-menu button:focus-visible { background: rgba(255,255,255,.1); }
-  .glp-cv-menu button i { width: 16px; margin-top: 2px; color: #A9B3FF; text-align: center; }
+  .glp-cv-menu button i { width: 16px; margin-top: 2px; color: #C4C7D2; text-align: center; }
   .glp-cv-menu button small { display: block; margin-top: 3px; color: #9AA0B4; font-size: 11.5px; }
 </style>
 <script>
 (function () {
   var MAX = { sections: ${LIMITS.sections}, cards: ${LIMITS.cards}, columns: ${LIMITS.columns} };
-  var KIND_LABEL = { cards: "Cards", liquid: "Auto cards", columns: "Columns", code: "Code sample" };
+  var KIND_LABEL = { cards: "Cards", liquid: "Cards", columns: "Columns", code: "Code sample" };
   function mk(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html) e.innerHTML = html; return e; }
   function btn(icon, title, cls) { var b = mk("button", cls || "", '<i class="fa-solid fa-' + icon + '" aria-hidden="true"></i>'); b.type = "button"; b.title = title; b.setAttribute("aria-label", title); return b; }
   function send(msg) { msg.type = "glp-canvas"; if (lastXY) { msg.x = lastXY[0]; msg.y = lastXY[1]; } parent.postMessage(msg, "*"); }
@@ -2877,8 +2892,19 @@ const PREVIEW_CANVAS_SCRIPT = `
   var parts = [secOut, itemOut, secBar, itemBar, addAbove, addBelow, addItem, menu];
 
   var secTag = mk("span", "glp-cv__tag");
+  /* cards sections: switch between cards you write and one card per child project */
+  var srcSeg = mk("span", "glp-cv__seg");
+  var srcManual = mk("button", "", "Manual"), srcAuto = mk("button", "", "Auto");
+  srcManual.type = srcAuto.type = "button";
+  srcManual.title = "Manual: cards you write, each with its own link";
+  srcAuto.title = "Auto: one card per child project, filled in by ReadMe";
+  srcSeg.appendChild(srcManual); srcSeg.appendChild(srcAuto);
   var sUp = btn("arrow-up", "Move section up"), sDown = btn("arrow-down", "Move section down"), sDup = btn("clone", "Duplicate section"), sDel = btn("trash-can", "Delete section", "glp-cv__del"), sSet = btn("sliders", "Section settings");
-  [secTag, sUp, sDown, sDup, sDel, mk("span", "glp-cv__sep"), sSet].forEach(function (b) { secBar.appendChild(b); });
+  [secTag, srcSeg, sUp, sDown, sDup, sDel, mk("span", "glp-cv__sep"), sSet].forEach(function (b) { secBar.appendChild(b); });
+  /* the section is outlined only while you're on its toolbar */
+  var onSecBar = false;
+  secBar.addEventListener("mouseenter", function () { onSecBar = true; paint(); });
+  secBar.addEventListener("mouseleave", function () { onSecBar = false; paint(); });
   var itemTag = mk("span", "glp-cv__tag");
   var iPrev = btn("arrow-left", "Move left"), iNext = btn("arrow-right", "Move right"), iDup = btn("clone", "Duplicate"), iDel = btn("trash-can", "Delete", "glp-cv__del");
   [itemTag, iPrev, iNext, iDup, iDel].forEach(function (b) { itemBar.appendChild(b); });
@@ -2913,9 +2939,12 @@ const PREVIEW_CANVAS_SCRIPT = `
   function paint() {
     if (!cur || !document.contains(cur)) { hideAll(); return; }
     var all = secs(), i = all.indexOf(cur), n = all.length, b = box(cur), kind = cur.getAttribute("data-glp-kind");
-    frame(secOut, b, 8);
-    secOut.classList.toggle("glp-cv-out--dim", !!curItem);
+    if (onSecBar) frame(secOut, b, 8); else hide(secOut);
     secTag.textContent = KIND_LABEL[kind] || "Section";
+    var isCards = kind === "cards" || kind === "liquid";
+    srcSeg.style.display = isCards ? "inline-flex" : "none";
+    srcManual.className = kind === "cards" ? "on" : ""; srcAuto.className = kind === "liquid" ? "on" : "";
+    srcManual.setAttribute("aria-pressed", kind === "cards"); srcAuto.setAttribute("aria-pressed", kind === "liquid");
     sUp.disabled = i <= 0; sDown.disabled = i >= n - 1; sDup.disabled = n >= MAX.sections; sDel.disabled = n <= 1;
     /* toolbars sit centered on the top edge of what they control: half in its (empty)
        top padding, half in the gap above, so they don't cover headings or copy */
@@ -2982,13 +3011,16 @@ const PREVIEW_CANVAS_SCRIPT = `
 
   function sid() { return cur && cur.getAttribute("data-glp-sid"); }
   function idx() { var its = cur && itemsOf(cur); return its && curItem ? its.list.indexOf(curItem) : -1; }
-  sUp.addEventListener("click", function () { send({ op: "sec-move", sid: sid(), dir: -1 }); });
-  sDown.addEventListener("click", function () { send({ op: "sec-move", sid: sid(), dir: 1 }); });
+  function topOf(el) { return el ? el.getBoundingClientRect().top : null; }
+  sUp.addEventListener("click", function () { send({ op: "sec-move", sid: sid(), dir: -1, prevTop: topOf(cur) }); });
+  sDown.addEventListener("click", function () { send({ op: "sec-move", sid: sid(), dir: 1, prevTop: topOf(cur) }); });
+  srcManual.addEventListener("click", function () { if (cur && cur.getAttribute("data-glp-kind") !== "cards") send({ op: "sec-source", sid: sid(), value: "static", prevTop: topOf(cur) }); });
+  srcAuto.addEventListener("click", function () { if (cur && cur.getAttribute("data-glp-kind") !== "liquid") send({ op: "sec-source", sid: sid(), value: "liquid", prevTop: topOf(cur) }); });
   sDup.addEventListener("click", function () { send({ op: "sec-dup", sid: sid() }); });
   sDel.addEventListener("click", function () { send({ op: "sec-del", sid: sid() }); });
   sSet.addEventListener("click", function () { var i = secs().indexOf(cur); if (i >= 0) parent.postMessage({ type: "glp-focus", area: "section", index: i }, "*"); });
-  iPrev.addEventListener("click", function () { send({ op: "item-move", sid: sid(), index: idx(), dir: -1 }); });
-  iNext.addEventListener("click", function () { send({ op: "item-move", sid: sid(), index: idx(), dir: 1 }); });
+  iPrev.addEventListener("click", function () { send({ op: "item-move", sid: sid(), index: idx(), dir: -1, prevTop: topOf(curItem) }); });
+  iNext.addEventListener("click", function () { send({ op: "item-move", sid: sid(), index: idx(), dir: 1, prevTop: topOf(curItem) }); });
   iDup.addEventListener("click", function () { send({ op: "item-dup", sid: sid(), index: idx() }); });
   iDel.addEventListener("click", function () { send({ op: "item-del", sid: sid(), index: idx() }); });
   addItem.addEventListener("click", function () { send({ op: "item-add", sid: sid() }); });
@@ -3017,26 +3049,38 @@ const PREVIEW_CANVAS_SCRIPT = `
   /* the preview reloads after every change; the builder hands back where the pointer
      was so the same toolbar comes straight back instead of waiting for a mouse move */
   var lastXY = null;
-  document.addEventListener("mousemove", function (e) { lastXY = [e.clientX, e.clientY]; }, true);
-  window.addEventListener("message", function (e) {
-    var m = e.data;
-    if (e.source !== parent || !m || m.type !== "glp-cv-restore" || typeof m.x !== "number" || typeof m.y !== "number") return;
+  document.addEventListener("mousemove", function (e) { lastXY = [e.clientX, e.clientY]; window.__glpLastXY = lastXY; }, true);
+  /* called by the builder on the new frame before it's revealed */
+  window.__glpCvRestore = function (m) {
+    if (!m || typeof m.x !== "number" || typeof m.y !== "number") return;
     lastXY = [m.x, m.y];
-    /* the toolbars sit a little outside the section's edge, so match a section within 30px */
     var hit = null;
     if (typeof m.sid === "string") secs().forEach(function (sec) { if (sec.getAttribute("data-glp-sid") === m.sid) hit = sec; });
-    if (hit && typeof m.item === "number") {
-      var fl = itemsOf(hit);
-      clearTimeout(hideT);
-      cur = hit; curItem = fl && fl.list[m.item] ? fl.list[m.item] : null; paint();
-      return;
+    var it = null;
+    if (hit && typeof m.item === "number") { var fl = itemsOf(hit); it = fl && fl.list[m.item] ? fl.list[m.item] : null; }
+    /* keep what moved at the same spot on screen: the page scrolls, not the thing you moved */
+    var anchor = it || hit;
+    if (anchor && typeof m.prevTop === "number") { var dy = anchor.getBoundingClientRect().top - m.prevTop; if (Math.abs(dy) > 1) window.scrollBy(0, dy); }
+    if (!hit) {
+      /* the toolbars sit a little outside the section's edge, so match a section within 30px */
+      secs().forEach(function (sec) { var r = sec.getBoundingClientRect(); if (!hit && m.x >= r.left - 30 && m.x <= r.right + 30 && m.y >= r.top - 30 && m.y <= r.bottom + 30) hit = sec; });
+      if (!hit) return;
+      var its = itemsOf(hit);
+      if (its) its.list.forEach(function (el) { var r = el.getBoundingClientRect(); if (m.x >= r.left && m.x <= r.right && m.y >= r.top && m.y <= r.bottom) it = el; });
     }
-    if (!hit) secs().forEach(function (sec) { var r = sec.getBoundingClientRect(); if (m.x >= r.left - 30 && m.x <= r.right + 30 && m.y >= r.top - 30 && m.y <= r.bottom + 30 && !hit) hit = sec; });
-    if (!hit) return;
-    var its = itemsOf(hit), it = null;
-    if (its) its.list.forEach(function (el) { var r = el.getBoundingClientRect(); if (m.x >= r.left && m.x <= r.right && m.y >= r.top && m.y <= r.bottom) it = el; });
     clearTimeout(hideT);
-    cur = hit; curItem = it; paint();
+    cur = hit; curItem = it;
+    /* the pointer is still over the same toolbar button, so show it as it was (no fade-in) */
+    [secBar, itemBar, addAbove, addBelow, addItem].forEach(function (x) { x.classList.add("glp-cv--instant"); });
+    paint();
+    var el = document.elementFromPoint(m.x, m.y);
+    onSecBar = !!(el && secBar.contains(el));
+    paint();
+    setTimeout(function () { [secBar, itemBar, addAbove, addBelow, addItem].forEach(function (x) { x.classList.remove("glp-cv--instant"); }); }, 200);
+  };
+  window.addEventListener("message", function (e) {
+    var m = e.data;
+    if (e.source === parent && m && m.type === "glp-cv-restore") window.__glpCvRestore(m);
   });
   parts.forEach(function (p) { document.body.appendChild(p); });
 })();
@@ -3154,9 +3198,9 @@ function buildPreviewDoc(userHtml, mode) {
   .bnk-sec { scroll-margin-top: 20px; }
   .bnk-sec.bnk-flash { animation: bnkFlash 1.3s ease; border-radius: 10px; }
   @keyframes bnkFlash {
-    0% { box-shadow: 0 0 0 3px rgba(76,141,255,0); }
-    18% { box-shadow: 0 0 0 3px rgba(76,141,255,.55); }
-    100% { box-shadow: 0 0 0 3px rgba(76,141,255,0); }
+    0% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent); }
+    18% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 30%, transparent); }
+    100% { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 0%, transparent); }
   }
 </style>
 </head>
@@ -3844,14 +3888,26 @@ const APP_CSS = `
 
   .glp-view { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .glp-view__bar {
-    display: flex; align-items: center; gap: 12px;
-    padding: 9px 16px; flex: none;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr); align-items: center; gap: 12px;
+    padding: 8px 16px; flex: none;
     border-bottom: 1px solid var(--line);
     background: var(--panel);
   }
   .glp-view__label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
   .glp-view__bar .glp-seg { flex-wrap: nowrap; }
-  .glp-view__note { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--ink-3); }
+  .glp-view__side { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .glp-view__side--end { justify-content: flex-end; }
+  /* the Edit / Live switch: the preview's main mode, so it's centered and larger */
+  .glp-modeseg { padding: 4px; border-radius: 11px; }
+  .glp-modeseg button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 18px; font-size: 13.5px; border-radius: 8px; }
+  .glp-modeseg button i { font-size: 12.5px; }
+  /* narrow preview: view options go icon-only and the hint hides, so Edit / Live keeps the middle */
+  .glp-view { container-type: inline-size; }
+  .glp-view__side--end .glp-seg button { display: inline-flex; align-items: center; gap: 6px; }
+  @container (max-width: 980px) {
+    .glp-view__lbl, .glp-view__note { display: none; }
+  }
+  .glp-view__note { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--ink-3); }
   .glp-view__framewrap {
     flex: 1; min-height: 0; display: flex; justify-content: center;
     padding: 16px;
@@ -4032,9 +4088,9 @@ function Field({ label, children, style, inline }) {
   );
 }
 
-function Seg({ value, options, onChange }) {
+function Seg({ value, options, onChange, className }) {
   return (
-    <div className="glp-seg">
+    <div className={"glp-seg" + (className ? " " + className : "")}>
       {options.map((o) => (
         <button key={o.value} className={value === o.value ? "on" : ""} onClick={() => onChange(o.value)} type="button">
           {o.label}
@@ -5309,7 +5365,7 @@ function CodeEditor({ value, onChange }) {
   );
 }
 
-function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex, previewFocusAt, canvasMode, setCanvasMode, hasOverride, canvasPointer }) {
+function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex, previewFocusAt, canvasMode, setCanvasMode, hasOverride, canvasPointer, urgentAt }) {
   const editable = html.includes("data-glp=");
   /* Double-buffered preview: render the new doc into the hidden iframe and
      only reveal it once it has finished loading, so the visible frame never
@@ -5357,20 +5413,35 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
         return;
       }
       setSlots(back === 0 ? [doc, s[1]] : [s[0], doc]);
-    }, 250);
+      /* changes made in the preview itself rebuild right away; sidebar typing and
+         slider drags are batched so the preview isn't rebuilt on every keystroke */
+    }, urgentAt && Date.now() - urgentAt.current < 400 ? 0 : 250);
     return () => clearTimeout(t);
   }, [html, mode]);
   const onFrameLoad = (i) => {
     if (i === activeRef.current || !slotsRef.current[i]) return; // only react to the freshly-loaded back buffer
-    restoreScroll(i); // restore the captured scroll onto the incoming frame before revealing it
-    setActive(i);
-    /* after a preview edit-mode action, bring that toolbar straight back in the new frame */
-    const cp = canvasPointer && canvasPointer.current;
-    if (cp && Date.now() - cp.t < 4000) {
-      canvasPointer.current = null;
-      const f = frames.current[i];
-      setTimeout(() => { try { f.contentWindow.postMessage({ type: "glp-cv-restore", x: cp.x, y: cp.y, sid: cp.sid, item: cp.item }, "*"); } catch (e) {} }, 30);
-    }
+    const f = frames.current[i];
+    const reveal = () => {
+      if (i === activeRef.current) return;
+      restoreScroll(i); // restore the captured scroll onto the incoming frame before revealing it
+      /* after a preview edit-mode action, put that toolbar back (and keep what moved under
+         the pointer) in the new frame before it's shown, so nothing blinks or jumps */
+      const cp = canvasPointer && canvasPointer.current;
+      if (cp && Date.now() - cp.t < 4000) {
+        canvasPointer.current = null;
+        try { f.contentWindow.__glpCvRestore && f.contentWindow.__glpCvRestore(cp); } catch (e) {}
+      }
+      setActive(i);
+    };
+    /* don't reveal a frame whose web fonts are still loading (text would flash in a fallback font) */
+    let d = null;
+    try { d = f.contentDocument; } catch (e) {}
+    if (d && d.fonts && d.fonts.status !== "loaded") {
+      let done = false;
+      const go = () => { if (!done) { done = true; reveal(); } };
+      d.fonts.ready.then(go, go);
+      setTimeout(go, 350);
+    } else reveal();
   };
   /* when a section is selected in the builder, scroll the preview to it and flash it */
   useEffect(() => {
@@ -5393,9 +5464,16 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
   return (
     <div className="glp-view">
       <div className="glp-view__bar">
-        <span className="glp-view__label">Preview</span>
-        {setCanvasMode && (
+        <div className="glp-view__side">
+          <span className="glp-view__label">Preview</span>
+          {(() => {
+            const note = (editable ? "Click text to edit it. Hover a section or card to move, copy or delete it. " : hasOverride ? "Manual code edits are on, so the preview is read-only. " : "") + (liquidNote ? "Showing 3 sample projects (ReadMe fills in your real ones)" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
+            return <span className="glp-view__note" title={note}>{note}</span>;
+          })()}
+        </div>
+        {setCanvasMode ? (
           <Seg
+            className="glp-modeseg"
             value={hasOverride ? "live" : canvasMode}
             onChange={(v) => { if (!hasOverride) setCanvasMode(v); }}
             options={[
@@ -5403,27 +5481,25 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
               { value: "live", label: <span title="Exactly the page ReadMe will show, with no editing controls"><i className="fa-solid fa-eye" aria-hidden="true"></i> Live</span> },
             ]}
           />
-        )}
-        <Seg
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: "light", label: <><i className="fa-solid fa-sun" aria-hidden="true"></i> Light</> },
-            { value: "dark", label: <><i className="fa-solid fa-moon" aria-hidden="true"></i> Dark</> },
-          ]}
-        />
-        <Seg
-          value={device}
-          onChange={setDevice}
-          options={[
-            { value: "desktop", label: "Desktop" },
-            { value: "mobile", label: "Mobile" },
-          ]}
-        />
-        {(() => {
-          const note = (editable ? "Click text to edit it. Hover a section or card to move, copy or delete it. " : hasOverride ? "Manual code edits are on, so the preview is read-only. " : "") + (liquidNote ? "Showing 3 sample projects (ReadMe fills in your real ones)" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
-          return <span className="glp-view__note" title={note}>{note}</span>;
-        })()}
+        ) : <span />}
+        <div className="glp-view__side glp-view__side--end">
+          <Seg
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "light", label: <span title="Light mode"><i className="fa-solid fa-sun" aria-hidden="true"></i> <span className="glp-view__lbl">Light</span></span> },
+              { value: "dark", label: <span title="Dark mode"><i className="fa-solid fa-moon" aria-hidden="true"></i> <span className="glp-view__lbl">Dark</span></span> },
+            ]}
+          />
+          <Seg
+            value={device}
+            onChange={setDevice}
+            options={[
+              { value: "desktop", label: <span title="Desktop width"><i className="fa-solid fa-desktop" aria-hidden="true"></i> <span className="glp-view__lbl">Desktop</span></span> },
+              { value: "mobile", label: <span title="Mobile width"><i className="fa-solid fa-mobile-screen" aria-hidden="true"></i> <span className="glp-view__lbl">Mobile</span></span> },
+            ]}
+          />
+        </div>
       </div>
       <div className="glp-view__framewrap">
         <div className="glp-framestack">
@@ -5752,6 +5828,8 @@ function App() {
   const previewFocusAt = useRef(0);
   const histRef = useRef(null);
   const canvasPointer = useRef(null);
+  /* when the last change came from the preview itself (it rebuilds without the usual delay) */
+  const urgentAt = useRef(0);
   /* preview mode: "edit" (click-to-edit text, hover toolbars, + buttons) or "live"
      (exactly the exported page); remembered across reloads */
   const [canvasMode, setCanvasModeRaw] = useState(() => { try { return localStorage.getItem("glp-builder:canvas") === "live" ? "live" : "edit"; } catch (e) { return "edit"; } });
@@ -5804,8 +5882,9 @@ function App() {
       if (d.type === "glp-canvas" && typeof d.op === "string") {
         const res = applyCanvasOp(configRef.current, d);
         if (!res) return;
+        urgentAt.current = Date.now();
         /* moves keep the toolbar on the thing that moved, so repeated clicks keep working */
-        const follow = d.op === "sec-move" ? { sid: d.sid } : d.op === "item-move" ? { sid: d.sid, item: d.index + (d.dir < 0 ? -1 : 1) } : null;
+        const follow = d.op === "sec-move" || d.op === "sec-source" ? { sid: d.sid, prevTop: d.prevTop } : d.op === "item-move" ? { sid: d.sid, item: d.index + (d.dir < 0 ? -1 : 1), prevTop: d.prevTop } : null;
         if (typeof d.x === "number" && typeof d.y === "number") canvasPointer.current = { x: d.x, y: d.y, t: Date.now(), ...(follow || {}) };
         /* adding scrolls the preview to the new section; moves and deletes keep it still */
         if (!(res.focus && res.focus.section && !res.focus.item && d.op !== "sec-dup")) previewFocusAt.current = Date.now();
@@ -5858,6 +5937,9 @@ function App() {
         return;
       }
       if (d.type !== "glp-edit" || typeof d.path !== "string" || typeof d.value !== "string" || !EDITABLE_PATH_RE.test(d.path)) return;
+      urgentAt.current = Date.now();
+      /* keep the hover toolbars where they were after the preview rebuilds */
+      if (typeof d.x === "number" && typeof d.y === "number") canvasPointer.current = { x: d.x, y: d.y, t: Date.now() };
       setConfig((c) => setAtPath(c, d.path.split("."), d.value.slice(0, 2000)));
     };
     window.addEventListener("message", onMsg);
@@ -7191,7 +7273,7 @@ function App() {
               </NavSection>
 
             </div>
-            <Preview html={override !== null || canvasMode === "live" ? generated : previewHtml} canvasMode={canvasMode} setCanvasMode={setCanvasMode} hasOverride={override !== null} canvasPointer={canvasPointer} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} previewFocusAt={previewFocusAt} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
+            <Preview html={override !== null || canvasMode === "live" ? generated : previewHtml} canvasMode={canvasMode} setCanvasMode={setCanvasMode} hasOverride={override !== null} canvasPointer={canvasPointer} urgentAt={urgentAt} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} previewFocusAt={previewFocusAt} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
           </>
         ) : (
           <>
