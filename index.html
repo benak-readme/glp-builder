@@ -1741,7 +1741,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
     border: 1px solid color-mix(in srgb, var(--bnk-heading, currentColor) 22%, transparent) !important;
   }
   .bnk-actions .rm-AskAi { display: flex !important; align-items: stretch !important; }
-  .bnk-actions .rm-AskAi-button {
+  .bnk-actions :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
     height: 48px !important;
     border-radius: 12px !important;
     padding: 0 18px !important;
@@ -1827,12 +1827,20 @@ ${bandVars(heroBand, "    ")}
     padding: 20px 0 44px;
   }
   .bnk-top .bnk-actions .rm-Header-search .rm-SearchToggle { border-color: color-mix(in srgb, var(--bnk-heading) 35%, transparent) !important; }
+  .bnk-top :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
+    color: var(--bnk-heading) !important; border-color: color-mix(in srgb, var(--bnk-heading) 40%, transparent) !important;
+    background: color-mix(in srgb, var(--bnk-heading) 10%, transparent) !important;
+  }
 ` : "") + (brandBand ? `
   /* brand bar band */
   .bnk-brand {
 ${bandVars(brandBand, "    ")}
     margin-top: -20px;
     padding: 14px 0;
+  }
+  .bnk-brand :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
+    color: var(--bnk-heading) !important; border-color: color-mix(in srgb, var(--bnk-heading) 40%, transparent) !important;
+    background: color-mix(in srgb, var(--bnk-heading) 10%, transparent) !important;
   }
 ` : "");
 
@@ -1895,7 +1903,7 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-quick__link:hover { border-color: var(--bnk-accent); color: var(--bnk-accent) !important; }
   .bnk-actions--lg .rm-Header-search { flex: 1 1 640px !important; max-width: 660px; }
   .bnk-actions--lg .rm-Header-search .rm-SearchToggle { height: 58px !important; font-size: 16px !important; border-radius: 14px !important; padding: 0 20px !important; }
-  .bnk-actions--lg .rm-AskAi-button { height: 58px !important; border-radius: 14px !important; }
+  .bnk-actions--lg :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) { height: 58px !important; border-radius: 14px !important; }
   .bnk-section__eyebrow {
     display: flex; align-items: center; gap: 10px; margin: 0 0 10px;
     font-family: ${F.mono}; font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
@@ -1946,7 +1954,7 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
      through otherwise); --card-blur is only set in dark mode */
   .bnk-panel, .bnk-quick__link, .bnk-codesec__lang, .bnk-banner, .bnk-btn--secondary, .bnk-banner__btn--ghost,
   .bnk-sec--bg-subtle, .bnk-sec--bg-accent, .bnk-sec--bg-dark,
-  .bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button {
+  .bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
     -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
   }
   /* outline buttons and pills sit on a solid fill (their tint, if any, layered over the page color) */
@@ -1955,7 +1963,7 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-quick__link { background: linear-gradient(var(--card-bg), var(--card-bg)), var(--bnk-solid); }
   .bnk-codesec__lang.on { background: linear-gradient(color-mix(in srgb, var(--bnk-accent) 12%, transparent), color-mix(in srgb, var(--bnk-accent) 12%, transparent)), var(--bnk-solid); }
   .bnk-sec--bg-dark .bnk-col__cta--btn, .bnk-sec--bg-accent .bnk-col__cta--btn { background-color: transparent; }
-${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  ", (pad) => `${pad}background-color: rgba(var(--color-bg-page-rgb, 11, 12, 13), 0.92) !important;`)}
+${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [class*="Header-ask-ai-button"])', "  ", (pad) => `${pad}background-color: rgba(var(--color-bg-page-rgb, 11, 12, 13), 0.92) !important;`)}
   @media (max-width: 860px) {
     .bnk-herogrid, .bnk-codesec { grid-template-columns: 1fr; }
     .bnk-sec--list .bnk-card__body { flex-direction: column; gap: 6px; }
@@ -2406,7 +2414,9 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
     var MODE = ${JSON.stringify(sm)};
     function place() {
       var search = document.querySelector(".rm-Header-search");
-      var askai = document.querySelector(".rm-AskAi");
+      /* Ask AI: the classic header wraps it in .rm-AskAi; ReadMe's current header renders a
+         bare <button class="... Header-ask-ai-button<hash> ..."> (hashed CSS-module name) */
+      var askai = document.querySelector(".rm-AskAi") || document.querySelector('[class*="Header-ask-ai-button"]');
       if (MODE === "hero" || MODE === "brand") {
         var actions = document.getElementById(MODE === "hero" ? "rm-actions" : "rm-brand-search");
         if (actions) {
@@ -3289,7 +3299,7 @@ function buildPreviewDoc(userHtml, mode) {
     border-radius: 4px; padding: 1px 5px;
     font-family: ui-monospace, monospace;
   }
-  .rm-Header-link, .rm-Header-right, .rm-SearchToggle, .rm-AskAi-button { white-space: nowrap; }
+  .rm-Header-link, .rm-Header-right, .rm-SearchToggle, [class*="Header-ask-ai-button"] { white-space: nowrap; }
   /* narrower previews (code view, small windows, mobile): tighten instead of wrapping */
   @media (max-width: 1080px) {
     .rm-SearchToggle { min-width: 220px; }
@@ -3301,13 +3311,12 @@ function buildPreviewDoc(userHtml, mode) {
     .rm-Header-center { justify-content: center; min-width: 0; }
     .rm-SearchToggle { min-width: 0; flex: 1; }
     .rm-SearchToggle kbd, .rm-Header-right .fa-chevron-down { display: none; }
-    .rm-AskAi-button { padding: 7px 10px; }
+    [class*="Header-ask-ai-button"] { padding: 7px 10px; }
     .rm-Header-theme { margin-left: 0; }
     .rm-Header-bottom { justify-content: flex-start; overflow-x: auto; scrollbar-width: none; gap: 20px; padding: 0 14px; }
   }
-  @media (max-width: 480px) { .rm-AskAi-text { display: none; } .rm-Header-center { gap: 6px; } }
-  .rm-AskAi { display: flex; }
-  .rm-AskAi-button {
+  @media (max-width: 480px) { [class*="Header-ask-ai-button"] .Button-label { display: none; } .rm-Header-center { gap: 6px; } }
+  [class*="Header-ask-ai-button"] {
     display: inline-flex; align-items: center; gap: 7px;
     border: 1px solid var(--color-border-default);
     background: var(--color-bg-page);
@@ -3333,7 +3342,7 @@ function buildPreviewDoc(userHtml, mode) {
       <span class="rm-Header-brand"><span class="brand-mark"><i class="fa-solid fa-book-open"></i></span></span>
       <div class="rm-Header-center">
         <div class="rm-Header-search"><button class="rm-SearchToggle"><i class="fa-solid fa-magnifying-glass"></i><span>Search</span><kbd>&#8984;K</kbd></button></div>
-        <div class="rm-AskAi"><button class="rm-AskAi-button"><i class="fa-solid fa-wand-magic-sparkles"></i><span class="rm-AskAi-text">Ask AI</span></button></div>
+        <button class="Button Button_sm Header-ask-ai-buttonwuBB0I2a5yRJ Button_secondary Button_secondary_outline" type="button"><i class="fa-solid fa-wand-magic-sparkles"></i><span class="Button-label">Ask AI</span></button>
       </div>
       <div class="rm-Header-right"><span>Your Name</span><i class="fa-solid fa-chevron-down"></i><button type="button" class="rm-Header-theme" title="Switch preview to ${dark ? "light" : "dark"} mode" aria-label="Switch preview to ${dark ? "light" : "dark"} mode" onclick="parent.postMessage({ type: 'glp-preview-mode', mode: '${dark ? "light" : "dark"}' }, '*')"><i class="fa-solid fa-circle-half-stroke"></i></button></div>
     </div>
