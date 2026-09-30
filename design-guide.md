@@ -58,7 +58,8 @@ Name the page after the source, e.g. "Unbranded developer.acme.com".
 - Text formatting: in descriptions, intros, the hero subtitle, column text, link labels, banner text and the footer,
   `**word**` renders bold, `*word*` italic, and `***word***` both. Headings and card titles take `*word*` italic too.
 - `brandBar`: custom header that replaces ReadMe's header on the landing page.
-  `{ enabled, name, tag, logoUrl, bg, links: [{label, href}], button: {enabled, label, href} }`.
+  `{ enabled, name, tag, logoUrl, logoSize, bg, links: [{label, href}], button: {enabled, label, href} }`.
+  `logoSize` is the logo's height in px: 24 | 32 (default) | 40; pick the closest to the source's logo.
   Use it when the page has its own logo row / top nav. `logoUrl` (an absolute image URL) replaces the wordmark.
   `bg` (hex) gives the bar its own solid full-width color; text and links flip to white or near-black to stay
   readable, so a white logo works on a dark bar. Leave it out when the bar sits on the hero color (see `hero.bgColor`).
