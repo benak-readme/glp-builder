@@ -20,7 +20,7 @@
 <body>
 <div id="root"><div class="boot">Loading GLP Builder…</div></div>
 <script type="text/babel" data-presets="react">
-const { useState, useMemo, useEffect, useRef, useCallback, useId } = React;
+const { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback, useId } = React;
 
 /* ============================================================
    GLP Builder: visual editor for ReadMe Enterprise Global Landing Pages.
@@ -2826,6 +2826,9 @@ const PREVIEW_EDIT_SCRIPT = `
     }
     var r = el.getBoundingClientRect();
     bar.style.display = "flex";
+    /* measure at the left edge: left where it was, near the right edge, the bar shrinks to the
+       space left and measures narrower than it is, so it ran off the preview */
+    bar.style.left = "0px";
     var top = r.top + window.scrollY - bar.offsetHeight - 10;
     if (top < window.scrollY + 4) top = r.bottom + window.scrollY + 10;
     bar.style.top = top + "px";
@@ -3000,6 +3003,10 @@ const PREVIEW_CANVAS_SCRIPT = `
   .glp-cv-link button.glp-cv-link__save { background: #fff; color: #17181D; }
   .glp-cv-link button.glp-cv-link__save:hover { background: #E6E8F0; }
   .glp-cv-link button:focus-visible { outline: 2px solid rgba(255,255,255,.7); }
+  /* card icons and column images open a picker when clicked */
+  .bnk-sec[data-glp-kind="cards"] .bnk-card__icon, .bnk-sec[data-glp-kind="columns"] .bnk-col__img, .bnk-sec[data-glp-kind="columns"] .bnk-col__icon { cursor: pointer !important; }
+  .bnk-sec[data-glp-kind="cards"] .bnk-card__icon:hover, .bnk-sec[data-glp-kind="columns"] .bnk-col__img:hover, .bnk-sec[data-glp-kind="columns"] .bnk-col__icon:hover { outline: 2px dotted rgba(23,24,29,.5); outline-offset: 4px; }
+  html[data-color-mode="dark"] .bnk-sec[data-glp-kind="cards"] .bnk-card__icon:hover, html[data-color-mode="dark"] .bnk-sec[data-glp-kind="columns"] .bnk-col__img:hover, html[data-color-mode="dark"] .bnk-sec[data-glp-kind="columns"] .bnk-col__icon:hover { outline-color: rgba(255,255,255,.55); }
   .glp-cv-menu { z-index: 99995; flex-direction: column; width: 272px; box-sizing: border-box; padding: 5px; border-radius: 11px; background: #15171F; box-shadow: 0 12px 32px rgba(0,0,0,.3), 0 0 0 1px rgba(255,255,255,.06); }
   .glp-cv-menu__title { padding: 7px 10px 5px; color: #9AA0B4; font-size: 11px; }
   .glp-cv-menu button { display: flex; gap: 11px; align-items: flex-start; width: 100%; padding: 8px 10px; border-radius: 7px; color: #E6E8F0; font-size: 13px; }
@@ -3031,15 +3038,8 @@ const PREVIEW_CANVAS_SCRIPT = `
   var parts = [secOut, itemOut, secBar, itemBar, addAbove, addBelow, addItem, menu, linkPill, linkPop];
 
   var secTag = mk("span", "glp-cv__tag");
-  /* cards sections: switch between cards you write and one card per child project */
-  var srcSeg = mk("span", "glp-cv__seg");
-  var srcManual = mk("button", "", "Manual"), srcAuto = mk("button", "", "Auto");
-  srcManual.type = srcAuto.type = "button";
-  srcManual.title = "Manual: cards you write, each with its own link";
-  srcAuto.title = "Auto: one card per child project, filled in by ReadMe";
-  srcSeg.appendChild(srcManual); srcSeg.appendChild(srcAuto);
   var sUp = btn("arrow-up", "Move section up"), sDown = btn("arrow-down", "Move section down"), sDup = btn("clone", "Duplicate section"), sDel = btn("trash-can", "Delete section", "glp-cv__del"), sSet = btn("sliders", "Section settings");
-  [secTag, srcSeg, sUp, sDown, sDup, sDel, mk("span", "glp-cv__sep"), sSet].forEach(function (b) { secBar.appendChild(b); });
+  [secTag, sUp, sDown, sDup, sDel, mk("span", "glp-cv__sep"), sSet].forEach(function (b) { secBar.appendChild(b); });
   /* the section is outlined only while you're on its toolbar */
   var onSecBar = false;
   secBar.addEventListener("mouseenter", function () { onSecBar = true; paint(); });
@@ -3047,7 +3047,8 @@ const PREVIEW_CANVAS_SCRIPT = `
   var itemTag = mk("span", "glp-cv__tag");
   var iPrev = btn("arrow-left", "Move left"), iNext = btn("arrow-right", "Move right"), iDup = btn("clone", "Duplicate"), iDel = btn("trash-can", "Delete", "glp-cv__del");
   var iLink = btn("link", "Edit this card's link");
-  [itemTag, iLink, iPrev, iNext, iDup, iDel].forEach(function (b) { itemBar.appendChild(b); });
+  var iImg = btn("image", "Image or icon");
+  [itemTag, iLink, iImg, iPrev, iNext, iDup, iDel].forEach(function (b) { itemBar.appendChild(b); });
 
   var KINDS = [
     ["cards", "table-cells-large", "Cards", "Cards you write, each with its own link"],
@@ -3084,10 +3085,7 @@ const PREVIEW_CANVAS_SCRIPT = `
     var SPAD = 14;
     if (onSecBar) frame(secOut, b, SPAD); else hide(secOut);
     secTag.textContent = KIND_LABEL[kind] || "Section";
-    var isCards = kind === "cards" || kind === "liquid";
-    srcSeg.style.display = isCards ? "inline-flex" : "none";
-    srcManual.className = kind === "cards" ? "on" : ""; srcAuto.className = kind === "liquid" ? "on" : "";
-    srcManual.setAttribute("aria-pressed", kind === "cards"); srcAuto.setAttribute("aria-pressed", kind === "liquid");
+
     sUp.disabled = i <= 0; sDown.disabled = i >= n - 1; sDup.disabled = n >= MAX.sections; sDel.disabled = n <= 1;
     /* toolbars sit centered on the top edge of what they control: half in its (empty)
        top padding, half in the gap above, so they don't cover headings or copy */
@@ -3113,6 +3111,7 @@ const PREVIEW_CANVAS_SCRIPT = `
       frame(itemOut, ib, IPAD);
       itemTag.textContent = (its.key === "columns" ? "Column " : "Card ") + (k + 1);
       iLink.style.display = curItem.hasAttribute("data-glp-href") ? "" : "none";
+      iImg.style.display = its.key === "columns" ? "" : "none";
       iPrev.disabled = k <= 0; iNext.disabled = k >= cnt - 1; iDup.disabled = cnt >= maxI; iDel.disabled = cnt <= 1;
       show(itemBar);
       var w = itemBar.offsetWidth, h = itemBar.offsetHeight, ibTop = ib.t - IPAD - h / 2, ibLeft = ib.l - IPAD + 10;
@@ -3163,11 +3162,27 @@ const PREVIEW_CANVAS_SCRIPT = `
   function topOf(el) { return el ? el.getBoundingClientRect().top : null; }
   sUp.addEventListener("click", function () { send({ op: "sec-move", sid: sid(), dir: -1, prevTop: topOf(cur) }); });
   sDown.addEventListener("click", function () { send({ op: "sec-move", sid: sid(), dir: 1, prevTop: topOf(cur) }); });
-  srcManual.addEventListener("click", function () { if (cur && cur.getAttribute("data-glp-kind") !== "cards") send({ op: "sec-source", sid: sid(), value: "static", prevTop: topOf(cur) }); });
-  srcAuto.addEventListener("click", function () { if (cur && cur.getAttribute("data-glp-kind") !== "liquid") send({ op: "sec-source", sid: sid(), value: "liquid", prevTop: topOf(cur) }); });
+
   sDup.addEventListener("click", function () { send({ op: "sec-dup", sid: sid() }); });
   sDel.addEventListener("click", function () { send({ op: "sec-del", sid: sid() }); });
-  sSet.addEventListener("click", function () { var i = secs().indexOf(cur); if (i >= 0) parent.postMessage({ type: "glp-focus", area: "section", index: i }, "*"); });
+  /* ---- settings popovers (drawn by the builder over the preview) ---- */
+  function rectOf(el, right) { var r = el.getBoundingClientRect(); return { t: r.top, l: r.left, w: r.width, h: r.height, right: !!right }; }
+  function inspect(kind, sec, index, el, right) { parent.postMessage({ type: "glp-inspect", kind: kind, sid: sec.getAttribute("data-glp-sid"), index: index, rect: rectOf(el, right) }, "*"); }
+  sSet.title = "Section settings"; sSet.setAttribute("aria-label", "Section settings");
+  sSet.addEventListener("click", function () { if (cur) inspect("section", cur, -1, secBar, true); });
+  iImg.addEventListener("click", function () { if (cur && curItem) inspect("col-media", cur, idx(), curItem); });
+  /* clicking a card's icon or a column's image/icon opens its picker */
+  document.addEventListener("click", function (e) {
+    var t = e.target; if (!t || !t.closest) return;
+    var ic = t.closest('.bnk-sec[data-glp-kind="cards"] .bnk-card__icon, .bnk-sec[data-glp-kind="columns"] .bnk-col__img, .bnk-sec[data-glp-kind="columns"] .bnk-col__icon');
+    if (!ic) return;
+    var sec = ic.closest(".bnk-sec"), its = itemsOf(sec), item = ic.closest(its.key === "columns" ? ".bnk-col" : ".bnk-card");
+    var i = its.list.indexOf(item); if (i < 0) return;
+    e.preventDefault(); e.stopPropagation();
+    inspect(its.key === "columns" ? "col-media" : "card-icon", sec, i, ic);
+  }, true);
+  /* clicking elsewhere in the preview, or Esc, closes an open popover */
+  document.addEventListener("mousedown", function (e) { if (!parts.some(function (p) { return p.contains(e.target); })) parent.postMessage({ type: "glp-inspect", kind: "close" }, "*"); }, true);
   iPrev.addEventListener("click", function () { send({ op: "item-move", sid: sid(), index: idx(), dir: -1, prevTop: topOf(curItem) }); });
   iNext.addEventListener("click", function () { send({ op: "item-move", sid: sid(), index: idx(), dir: 1, prevTop: topOf(curItem) }); });
   iDup.addEventListener("click", function () { send({ op: "item-dup", sid: sid(), index: idx() }); });
@@ -3239,7 +3254,7 @@ const PREVIEW_CANVAS_SCRIPT = `
   window.addEventListener("scroll", function () { if (curLink && !popFor) showPill(curLink); }, { passive: true });
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { hideMenu(); return; }
+    if (e.key === "Escape") { hideMenu(); parent.postMessage({ type: "glp-inspect", kind: "close" }, "*"); return; }
     /* undo / redo while the preview has focus (text being typed keeps the browser's own undo) */
     var a = document.activeElement;
     if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "z" || e.key === "Z" || e.key === "y") && !(a && (a.isContentEditable || a.tagName === "INPUT"))) {
@@ -4118,6 +4133,18 @@ const APP_CSS = `
       var(--bg);
   }
   .glp-framestack { position: relative; flex: 1 1 auto; height: 100%; min-width: 0; }
+  .glp-cvpop {
+    position: absolute; z-index: 20; width: 460px; max-width: calc(100% - 16px); overflow: auto; overscroll-behavior: contain;
+    background: var(--panel); border-radius: 14px; box-shadow: var(--hairline), 0 18px 48px rgb(0 0 0 / 0.28);
+    animation: glpPopIn 120ms ease-out;
+  }
+  @keyframes glpPopIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .glp-cvpop { animation: none; } }
+  .glp-cvpop__head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 4px; padding: 10px 10px 8px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .glp-cvpop__src { margin-right: 4px; }
+  .glp-cvpop__src button { padding: 4px 10px; font-size: 12px; }
+  .glp-cvpop__title { flex: 1; min-width: 0; font-weight: 600; font-size: 13.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glp-cvpop__body { padding: 14px 16px 16px; }
   .glp-frame {
     position: absolute; top: 0; bottom: 0; left: 0; right: 0; margin: 0 auto;
     border: 1px solid var(--line);
@@ -5189,16 +5216,7 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
       </RowHead>
       {open && (
         <div className="glp-card__body">
-          <Field label="Image URL (optional, shown above the heading)">
-            <input className="glp-input" value={column.image || ""} onChange={(e) => set({ image: e.target.value })} placeholder="https://…/illustration.png" />
-          </Field>
-          {(column.image || "").trim() ? (
-            <NumberField label="Image height" value={column.imageSize || 88} min={24} max={240} step={4} onChange={(v) => set({ imageSize: v })} />
-          ) : (
-            <Field label="Icon (optional, a Font Awesome name like book)">
-              <input className="glp-input" value={column.icon || ""} onChange={(e) => set({ icon: e.target.value })} placeholder="No icon" />
-            </Field>
-          )}
+          <ColumnMediaFields column={column} onChange={onChange} />
           <Field label="Heading (blank to hide)">
             <input className="glp-input" value={column.heading} onChange={(e) => set({ heading: e.target.value })} />
           </Field>
@@ -5244,6 +5262,130 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
 }
 
 /* ---------- section editor ---------- */
+/* a section's Layout settings: used by the sidebar's Layout tab and the preview's
+   section-settings popover, so both stay identical */
+function SectionLayoutFields({ section, onChange }) {
+  const set = (patch) => onChange({ ...section, ...patch });
+  const setLay = (patch) => onChange({ ...section, layout: { ...section.layout, ...patch } });
+  const isCols = section.type === "columns";
+  return (
+    <>
+      <Field label="Content alignment" inline>
+        <Seg
+          value={section.align}
+          onChange={(v) => set({ align: v })}
+          options={[
+            { value: "center", label: "Centered" },
+            { value: "left", label: "Left" },
+          ]}
+        />
+      </Field>
+      <Field label="Heading alignment" inline>
+        <Seg
+          value={section.headAlign === "left" || section.headAlign === "center" ? section.headAlign : "auto"}
+          onChange={(v) => set({ headAlign: v })}
+          options={[
+            { value: "auto", label: "Same" },
+            { value: "center", label: "Centered" },
+            { value: "left", label: "Left" },
+          ]}
+        />
+      </Field>
+      <Field label="Background" inline>
+        <Seg
+          value={section.layout.bg || "none"}
+          onChange={(v) => setLay({ bg: v })}
+          options={[
+            { value: "none", label: "None" },
+            { value: "subtle", label: "Subtle" },
+            { value: "accent", label: "Accent" },
+            { value: "dark", label: "Dark" },
+          ]}
+        />
+      </Field>
+      <Slider label="Space above" value={section.layout.spaceAbove == null ? 36 : section.layout.spaceAbove} min={0} max={160} step={2} onChange={(v) => setLay({ spaceAbove: v })} />
+      <Field label="Divider above" inline>
+        <Seg
+          value={!section.layout.divider ? "none" : section.layout.dividerStyle === "accent" ? "accent" : "hairline"}
+          onChange={(v) => setLay(v === "none" ? { divider: false } : { divider: true, dividerStyle: v })}
+          options={[
+            { value: "none", label: "None" },
+            { value: "hairline", label: "Hairline" },
+            { value: "accent", label: "Accent" },
+          ]}
+        />
+      </Field>
+      {section.type === "code" ? null : isCols ? (
+        <Slider label="Column gap" value={section.layout.gap} min={12} max={56} onChange={(v) => setLay({ gap: v })} />
+      ) : (
+        <>
+          <Field label="Arrange" inline>
+            <Seg value={section.layout.list ? "list" : "grid"} onChange={(v) => setLay({ list: v === "list" })} options={[{ value: "grid", label: "Grid" }, { value: "list", label: "List rows" }]} />
+          </Field>
+          {!section.layout.bento && !section.layout.list && (
+            <Slider label="Min card width" value={section.layout.colMin} min={180} max={420} onChange={(v) => setLay({ colMin: v })} />
+          )}
+          <Slider label="Card gap" value={section.layout.gap} min={12} max={36} onChange={(v) => setLay({ gap: v })} />
+          {!section.layout.autoH && (
+            <Slider label="Min card height" value={section.layout.cardMinH} min={140} max={800} step={4} onChange={(v) => setLay({ cardMinH: v })} />
+          )}
+          <div className="glp-toggles2">
+            <Toggle checked={section.layout.bento} onChange={(v) => setLay({ bento: v })} label="Bento grid" hint="Asymmetric mixed-size 6-column layout." />
+            <Toggle checked={section.layout.autoH} onChange={(v) => setLay({ autoH: v })} label="Auto height" hint="Let content decide card height instead of a fixed minimum." />
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/* a cards section's own card style (Global / Custom), shared the same way */
+function SectionStyleFields({ section, onChange, liquid }) {
+  const set = (patch) => onChange({ ...section, ...patch });
+  const setStyle = (patch) => onChange({ ...section, style: { ...section.style, ...patch } });
+  const liquidOn = liquid != null ? liquid : section.source === "liquid";
+  return (
+    <>
+      <Field label="Look" inline>
+        <Seg
+          value={section.styleMode === "custom" ? "custom" : "global"}
+          onChange={(v) => set({ styleMode: v })}
+          options={[
+            { value: "global", label: "Global" },
+            { value: "custom", label: "Custom" },
+          ]}
+        />
+      </Field>
+      {section.styleMode === "custom" ? (
+        <CardStyleControls style={section.style} setStyle={setStyle} liquid={liquidOn} />
+      ) : (
+        <div className="glp-note">
+          Using the <b>global card style</b>, shared by every Global section. Change it in <b>Card Style</b> at the top of this tab. Switch to <b>Custom</b> to change just this section.
+        </div>
+      )}
+    </>
+  );
+}
+
+/* a column's image / icon (sidebar column editor and the preview's media popover) */
+function ColumnMediaFields({ column, onChange }) {
+  const set = (patch) => onChange({ ...column, ...patch });
+  return (
+    <>
+      <Field label="Image URL (optional, shown above the heading)">
+        <input className="glp-input" value={column.image || ""} onChange={(e) => set({ image: e.target.value })} placeholder="https://…/illustration.png" />
+      </Field>
+      {(column.image || "").trim() ? (
+        <NumberField label="Image height" value={column.imageSize || 88} min={24} max={240} step={4} onChange={(v) => set({ imageSize: v })} />
+      ) : (
+        <Field label="Icon (optional, a Font Awesome name like book)">
+          <input className="glp-input" value={column.icon || ""} onChange={(e) => set({ icon: e.target.value })} placeholder="No icon" />
+        </Field>
+      )}
+    </>
+  );
+}
+
 function SectionEditor({ section, index, count, hideAccents, globalStyle, open, onToggle, onMove, onRemove, onDuplicate, onChange, cardOps, openCard, setOpenCard, dragHandleProps, dropRowProps, dragOver }) {
   const set = (patch) => onChange({ ...section, ...patch });
   const setStyle = (patch) => onChange({ ...section, style: { ...section.style, ...patch } });
@@ -5415,100 +5557,82 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
             </>
           )}
 
-          {tab === "layout" && (
-            <>
-              <Field label="Content alignment" inline>
-                <Seg
-                  value={section.align}
-                  onChange={(v) => set({ align: v })}
-                  options={[
-                    { value: "center", label: "Centered" },
-                    { value: "left", label: "Left" },
-                  ]}
-                />
-              </Field>
-              <Field label="Heading alignment" inline>
-                <Seg
-                  value={section.headAlign === "left" || section.headAlign === "center" ? section.headAlign : "auto"}
-                  onChange={(v) => set({ headAlign: v })}
-                  options={[
-                    { value: "auto", label: "Same" },
-                    { value: "center", label: "Centered" },
-                    { value: "left", label: "Left" },
-                  ]}
-                />
-              </Field>
-              <Field label="Background" inline>
-                <Seg
-                  value={section.layout.bg || "none"}
-                  onChange={(v) => setLay({ bg: v })}
-                  options={[
-                    { value: "none", label: "None" },
-                    { value: "subtle", label: "Subtle" },
-                    { value: "accent", label: "Accent" },
-                    { value: "dark", label: "Dark" },
-                  ]}
-                />
-              </Field>
-              <Slider label="Space above" value={section.layout.spaceAbove == null ? 36 : section.layout.spaceAbove} min={0} max={160} step={2} onChange={(v) => setLay({ spaceAbove: v })} />
-              <Field label="Divider above" inline>
-                <Seg
-                  value={!section.layout.divider ? "none" : section.layout.dividerStyle === "accent" ? "accent" : "hairline"}
-                  onChange={(v) => setLay(v === "none" ? { divider: false } : { divider: true, dividerStyle: v })}
-                  options={[
-                    { value: "none", label: "None" },
-                    { value: "hairline", label: "Hairline" },
-                    { value: "accent", label: "Accent" },
-                  ]}
-                />
-              </Field>
-              {section.type === "code" ? null : isCols ? (
-                <Slider label="Column gap" value={section.layout.gap} min={12} max={56} onChange={(v) => setLay({ gap: v })} />
-              ) : (
-                <>
-                  <Field label="Arrange" inline>
-                    <Seg value={section.layout.list ? "list" : "grid"} onChange={(v) => setLay({ list: v === "list" })} options={[{ value: "grid", label: "Grid" }, { value: "list", label: "List rows" }]} />
-                  </Field>
-                  {!section.layout.bento && !section.layout.list && (
-                    <Slider label="Min card width" value={section.layout.colMin} min={180} max={420} onChange={(v) => setLay({ colMin: v })} />
-                  )}
-                  <Slider label="Card gap" value={section.layout.gap} min={12} max={36} onChange={(v) => setLay({ gap: v })} />
-                  {!section.layout.autoH && (
-                    <Slider label="Min card height" value={section.layout.cardMinH} min={140} max={800} step={4} onChange={(v) => setLay({ cardMinH: v })} />
-                  )}
-                  <div className="glp-toggles2">
-                    <Toggle checked={section.layout.bento} onChange={(v) => setLay({ bento: v })} label="Bento grid" hint="Asymmetric mixed-size 6-column layout." />
-                    <Toggle checked={section.layout.autoH} onChange={(v) => setLay({ autoH: v })} label="Auto height" hint="Let content decide card height instead of a fixed minimum." />
-                  </div>
-                </>
-              )}
-            </>
-          )}
+          {tab === "layout" && <SectionLayoutFields section={section} onChange={onChange} />}
 
-          {tab === "style" && !isCols && section.type !== "code" && (
-            <>
-              <Field label="Look" inline>
-                <Seg
-                  value={section.styleMode === "custom" ? "custom" : "global"}
-                  onChange={(v) => set({ styleMode: v })}
-                  options={[
-                    { value: "global", label: "Global" },
-                    { value: "custom", label: "Custom" },
-                  ]}
-                />
-              </Field>
-              {section.styleMode === "custom" ? (
-                <CardStyleControls style={section.style} setStyle={setStyle} liquid={liquidOn} />
-              ) : (
-                <div className="glp-note">
-                  Using the <b>global card style</b>, shared by every Global section. Change it in <b>Card Style</b> at the top of this tab. Switch to <b>Custom</b> to change just this section.
-                </div>
-              )}
-            </>
-          )}
+          {tab === "style" && !isCols && section.type !== "code" && <SectionStyleFields section={section} onChange={onChange} liquid={liquidOn} />}
         </div>
       )}
     </div>
+  );
+}
+
+/* ---------- preview edit mode: a settings popover the builder draws over the preview,
+   anchored to what was clicked there (rect is in the iframe's viewport coordinates) ---------- */
+function CanvasPopover({ anchor, frameEl, stackEl, title, headerExtra, onClose, onSidebar, children }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  const place = () => {
+    const el = ref.current;
+    if (!el || !frameEl || !stackEl || !anchor) return;
+    const fr = frameEl.getBoundingClientRect(), st = stackEl.getBoundingClientRect();
+    const top = fr.top - st.top + anchor.t, left = fr.left - st.left + anchor.l, bottom = top + anchor.h;
+    const w = el.offsetWidth, h = Math.min(el.scrollHeight, st.height - 16);
+    let y = bottom + 8;
+    if (y + h > st.height - 8) y = top - 8 - h >= 8 ? top - 8 - h : Math.max(8, st.height - 8 - h);
+    const x = Math.max(8, Math.min(anchor.right ? left + anchor.w - w : left, st.width - w - 8));
+    setPos({ top: y, left: x, maxHeight: st.height - 16 });
+  };
+  useLayoutEffect(place, [anchor, frameEl, stackEl]);
+  useEffect(() => {
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    const onResize = () => place();
+    document.addEventListener("mousedown", onDown, true);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onResize);
+    return () => { document.removeEventListener("mousedown", onDown, true); document.removeEventListener("keydown", onKey); window.removeEventListener("resize", onResize); };
+  });
+  return (
+    <div ref={ref} className="glp-cvpop" role="dialog" aria-label={title} style={pos ? { top: pos.top, left: pos.left, maxHeight: pos.maxHeight } : { visibility: "hidden", top: 0, left: 0 }}>
+      <div className="glp-cvpop__head">
+        <span className="glp-cvpop__title">{title}</span>
+        {headerExtra}
+        {onSidebar && <button type="button" className="glp-iconbtn" title="Open in the sidebar" aria-label="Open in the sidebar" onClick={onSidebar}><i className="fa-solid fa-table-columns" aria-hidden="true"></i></button>}
+        <button type="button" className="glp-iconbtn" title="Close (Esc)" aria-label="Close" onClick={onClose}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+      <div className="glp-cvpop__body">{children}</div>
+    </div>
+  );
+}
+
+/* the section popover: Layout, plus Card style for card sections */
+function InspectSection({ section, onChange }) {
+  const cards = section.type === "cards";
+  const [tab, setTab] = useState("layout");
+  const t = cards ? tab : "layout";
+  return (
+    <>
+      {/* the same Type switch as the sidebar's Content tab */}
+      <Field label="Type" inline>
+        <Seg
+          value={section.type}
+          onChange={(v) => onChange({ ...section, type: v })}
+          options={[
+            { value: "cards", label: "Cards" },
+            { value: "columns", label: "Columns" },
+            { value: "code", label: "Code" },
+          ]}
+        />
+      </Field>
+      {cards && (
+        <div className="glp-subtabs" role="tablist" aria-label="Section settings">
+          {[["layout", "Layout"], ["style", "Card style"]].map(([k, l]) => (
+            <button key={k} type="button" role="tab" aria-selected={t === k} className={t === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
+          ))}
+        </div>
+      )}
+      {t === "layout" ? <SectionLayoutFields section={section} onChange={onChange} /> : <SectionStyleFields section={section} onChange={onChange} />}
+    </>
   );
 }
 
@@ -5571,7 +5695,8 @@ function CodeEditor({ value, onChange }) {
   );
 }
 
-function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex, previewFocusAt, canvasMode, setCanvasMode, hasOverride, canvasPointer, urgentAt }) {
+function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex, previewFocusAt, canvasMode, setCanvasMode, hasOverride, canvasPointer, urgentAt, inspector }) {
+  const stackRef = useRef(null);
   const editable = html.includes("data-glp=");
   /* Double-buffered preview: render the new doc into the hidden iframe and
      only reveal it once it has finished loading, so the visible frame never
@@ -5621,7 +5746,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
       setSlots(back === 0 ? [doc, s[1]] : [s[0], doc]);
       /* changes made in the preview itself rebuild right away; sidebar typing and
          slider drags are batched so the preview isn't rebuilt on every keystroke */
-    }, urgentAt && Date.now() - urgentAt.current < 400 ? 0 : 250);
+    }, urgentAt && Date.now() - urgentAt.current < 400 ? 40 : 250);
     return () => clearTimeout(t);
   }, [html, mode]);
   const onFrameLoad = (i) => {
@@ -5708,7 +5833,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
         </div>
       </div>
       <div className="glp-view__framewrap">
-        <div className="glp-framestack">
+        <div className="glp-framestack" ref={stackRef}>
           {[0, 1].map((i) => (
             <iframe
               key={i}
@@ -5720,6 +5845,12 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
               onLoad={() => onFrameLoad(i)}
             />
           ))}
+          {inspector && (
+            <CanvasPopover key={inspector.key} anchor={inspector.rect} frameEl={frames.current[active]} stackEl={stackRef.current}
+              title={inspector.title} headerExtra={inspector.headerExtra} onClose={inspector.onClose} onSidebar={inspector.onSidebar}>
+              {inspector.body}
+            </CanvasPopover>
+          )}
         </div>
       </div>
     </div>
@@ -6032,6 +6163,8 @@ function App() {
   configRef.current = config;
   const previewFocusAt = useRef(0);
   const histRef = useRef(null);
+  /* the preview popover: { kind: "section" | "card-icon" | "col-media", sid, index, rect } */
+  const [inspect, setInspect] = useState(null);
   const canvasPointer = useRef(null);
   /* when the last change came from the preview itself (it rebuilds without the usual delay) */
   const urgentAt = useRef(0);
@@ -6081,6 +6214,13 @@ function App() {
       if (d.type === "glp-preview-mode" && (d.mode === "light" || d.mode === "dark")) { setMode(d.mode); return; }
       if (d.type === "glp-heading-weight" && typeof d.path === "string" && EDITABLE_PATH_RE.test(d.path) && HEADING_PATH_RE.test(d.path) && (d.value === null || HEADING_WEIGHTS.includes(d.value))) {
         setConfig((c) => setAtPath(c, (d.path + "Weight").split("."), d.value === null ? undefined : d.value));
+        return;
+      }
+      if (d.type === "glp-inspect") {
+        if (d.kind === "close") { setInspect(null); return; }
+        const r = d.rect;
+        if (["section", "card-icon", "col-media"].includes(d.kind) && typeof d.sid === "string" && r && [r.t, r.l, r.w, r.h].every((v) => typeof v === "number"))
+          setInspect({ kind: d.kind, sid: d.sid, index: Number.isInteger(d.index) ? d.index : -1, rect: r, key: Date.now() });
         return;
       }
       if (d.type === "glp-link") {
@@ -6758,6 +6898,51 @@ function App() {
   }, []);
 
   const hasLiquid = config.sections.some((s) => s.type !== "columns" && s.source === "liquid");
+
+  /* ---- preview popover content (edits apply straight to the page, like the sidebar) ---- */
+  const inspector = (() => {
+    if (!inspect) return null;
+    const sec = config.sections.find((x) => x.id === inspect.sid);
+    if (!sec) return null;
+    const applySec = (next) => { urgentAt.current = Date.now(); updateSection(sec.id, next); };
+    const close = () => setInspect(null);
+    const toSidebar = (itemId) => () => {
+      setInspect(null);
+      if (openNav !== "sections") setOpenNav("sections");
+      setOpenSection(sec.id);
+      if (itemId) setOpenCard(itemId);
+      setTimeout(() => revealRow(sec.id, itemId || null), 80);
+    };
+    if (inspect.kind === "section") {
+      /* card sections: Manual (cards you write) / Auto (one per child project) sits in the header bar */
+      const srcSeg = sec.type === "cards" ? (
+        <Seg
+          className="glp-seg--nowrap glp-cvpop__src"
+          value={sec.source === "liquid" ? "liquid" : "static"}
+          onChange={(v) => applySec({ ...sec, source: v, cards: sec.cards && sec.cards.length ? sec.cards : [{ ...CARD_DEFAULTS, id: uid() }] })}
+          options={[
+            { value: "static", label: <span title="Cards you write, each with its own link">Manual</span> },
+            { value: "liquid", label: <span title="One card per child project, filled in by ReadMe">Auto from projects</span> },
+          ]}
+        />
+      ) : null;
+      return { key: inspect.key, rect: inspect.rect, onClose: close, onSidebar: toSidebar(null), title: "Section Settings", headerExtra: srcSeg,
+        body: <InspectSection section={sec} onChange={applySec} /> };
+    }
+    if (inspect.kind === "card-icon") {
+      const card = sec.type === "cards" && sec.source !== "liquid" ? sec.cards[inspect.index] : null;
+      if (!card) return null;
+      return { key: inspect.key, rect: inspect.rect, onClose: close, onSidebar: toSidebar(card.id), title: "Card Icon",
+        body: <IconField label="Icon" obj={card} onChange={(p) => applySec({ ...sec, cards: sec.cards.map((k) => (k.id === card.id ? { ...k, ...p } : k)) })} /> };
+    }
+    if (inspect.kind === "col-media") {
+      const col = sec.type === "columns" ? sec.columns[inspect.index] : null;
+      if (!col) return null;
+      return { key: inspect.key, rect: inspect.rect, onClose: close, onSidebar: toSidebar(col.id), title: "Column Image",
+        body: <ColumnMediaFields column={col} onChange={(next) => applySec({ ...sec, columns: sec.columns.map((c) => (c.id === col.id ? next : c)) })} /> };
+    }
+    return null;
+  })();
 
   return (
     <div className="glp" data-ui={ui}>
@@ -7501,7 +7686,7 @@ function App() {
               </NavSection>
 
             </div>
-            <Preview html={override !== null || canvasMode === "live" ? generated : previewHtml} canvasMode={canvasMode} setCanvasMode={setCanvasMode} hasOverride={override !== null} canvasPointer={canvasPointer} urgentAt={urgentAt} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} previewFocusAt={previewFocusAt} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
+            <Preview inspector={canvasMode === "edit" && override === null ? inspector : null} html={override !== null || canvasMode === "live" ? generated : previewHtml} canvasMode={canvasMode} setCanvasMode={setCanvasMode} hasOverride={override !== null} canvasPointer={canvasPointer} urgentAt={urgentAt} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} previewFocusAt={previewFocusAt} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
           </>
         ) : (
           <>
