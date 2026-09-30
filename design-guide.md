@@ -103,7 +103,8 @@ rows, title | description | count), autoH: true }`.
 - `styleMode: "custom"` and `style`: switches that compose the card look:
   `anchor` (whole card is a link), `icon` (icon tile), `iconInline` (icon beside title), `badge` (eyebrow pill),
   `bar` (accent top bar), `peek` (small list), `links` (list of chevron links + footnote; card is not itself a link),
-  `cta` (call to action) + `ctaPlain` (as a text link instead of a button), `ctaFill: "outlined"|"filled"` (how the
+  `plain` (no card background, border, shadow or padding: cards read like columns; use it for auto-from-projects
+  cards when the source shows a bare icon/logo + text row), `cta` (call to action) + `ctaPlain` (as a text link instead of a button), `ctaFill: "outlined"|"filled"` (how the
   CTA buttons look; match the source's solid vs outline buttons), `num` (numbered 01, 02, 03), `mono` (uppercase mono titles),
   `radius` (0-24), `density`: "roomy"|"comfortable"|"compact".
 - `cards` (max 12), each: `title`, `blurb` (may be ""), `href`, `meta` (small count like "120 pages", optional), `icon` (a Font Awesome 6 free solid icon name,

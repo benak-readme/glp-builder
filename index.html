@@ -134,6 +134,7 @@ function resolveFonts(cfg) {
    density : roomy | comfortable | compact (padding + title size)
    links   : link list (chevron rows) + optional footnote — card becomes a <div>
    iconInline: icon sits beside the title instead of above it
+   plain   : no card background, border, shadow or padding (cards read like columns)
 ------------------------------------------------------ */
 const DEFAULT_STYLE = {
   anchor: true,
@@ -147,6 +148,7 @@ const DEFAULT_STYLE = {
   mono: false,
   links: false,
   iconInline: false,
+  plain: false,
   radius: 16,
   density: "comfortable",
 };
@@ -2222,6 +2224,16 @@ ${pad}--card-border-now: color-mix(in srgb, var(--accent) 45%, rgba(255,255,255,
   .bnk-landing .bnk-sec--bg-dark .bnk-card:hover { --card-bg-now: rgba(255, 255, 255, 0.08); --card-border-now: rgba(255, 255, 255, 0.24); }
   .bnk-card:hover .rm-arrow { transform: translateX(4px); }
   .bnk-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  /* "No card background": cards read like columns (no surface, border, shadow, padding
+     or hover lift); in a centered section their contents center too */
+  .bnk-landing .bnk-sec.bnk-sec--plain .bnk-card, .bnk-landing .bnk-sec.bnk-sec--plain .bnk-card:hover {
+    --card-bg-now: transparent; --card-border-now: transparent; --card-shadow: none; --card-blur: none; --card-pad: 0;
+    transform: none;
+  }
+  .bnk-landing .bnk-sec--plain.bnk-sec--center .bnk-card { text-align: center; align-items: center; }
+  .bnk-landing .bnk-sec--plain.bnk-sec--center .bnk-card__body { align-items: center; }
+  .bnk-landing .bnk-sec--plain.bnk-sec--center :is(.bnk-card__go, .bnk-card__arrow, .bnk-card__eyebrow) { align-self: center; }
+  .bnk-landing .bnk-sec--plain .bnk-card:hover .bnk-card__title { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
 `;
 
   /* ---------- section heading CSS ---------- */
@@ -2321,6 +2333,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
         (sec.layout.divider ? " bnk-sec--divider" + (sec.layout.dividerStyle === "accent" ? " bnk-sec--divider-accent" : "") : "") +
         (["subtle", "accent", "dark"].includes(sec.layout.bg) ? " bnk-sec--bg-" + sec.layout.bg : "") +
         (!isCols && st.bar ? " bnk-sec--bar" : "") +
+        (!isCols && !isCode && st.plain ? " bnk-sec--plain" : "") +
         (!isCols && st.mono ? " bnk-sec--mono" : "") +
         (!isCols && !isCode && sec.layout.bento && !sec.layout.list ? " bnk-sec--bento" : "") +
         (!isCols && !isCode && sec.layout.list ? " bnk-sec--list" : "") +
@@ -5117,6 +5130,7 @@ function CardStyleControls({ style: st, setStyle, liquid = false }) {
         {!liquid && <StyleCheck checked={!!st.links} label="Link list" onChange={(v) => setStyle({ links: v })} />}
         <StyleCheck checked={!!st.num} label="Numbered (01, 02)" onChange={(v) => setStyle({ num: v })} />
         <StyleCheck checked={!!st.iconInline} label="Icon beside title" onChange={(v) => setStyle(v ? { iconInline: true, icon: true } : { iconInline: false })} />
+        <StyleCheck checked={!!st.plain} label="No card background" onChange={(v) => setStyle({ plain: v })} />
       </div>
       {/* NB: this "button" value means "a styled CTA is shown" (filled or ghost, chosen
           elsewhere) — a different axis from ColumnEditor's per-CTA style Seg below, whose
