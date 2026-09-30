@@ -2091,7 +2091,8 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   /* ---------- text columns ---------- */
   .bnk-col { display: flex; flex-direction: column; align-items: flex-start; }
   .bnk-sec--center .bnk-col { align-items: center; text-align: center; }
-  .bnk-col__img { display: block; width: auto; max-width: 100%; object-fit: contain; margin: 0 0 24px; }
+  /* rounded so a logo on a white JPG reads as a deliberate tile on dark pages */
+  .bnk-col__img { display: block; width: auto; max-width: 100%; object-fit: contain; margin: 0 0 24px; border-radius: 10px; }
   .bnk-col__icon {
     width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; flex: none;
     font-size: 22px; line-height: 1; border-radius: 12px; margin: 0 0 16px;

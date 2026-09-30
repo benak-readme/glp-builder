@@ -119,9 +119,11 @@ rows, title | description | count), autoH: true }`.
 - `columns` (1-4): `{ heading, body, image, imageSize, icon, ctas: [{label, href, style: "plain"|"button"|"filled"}] }`.
   `image` (absolute URL) shows an illustration above the heading, `imageSize` its height in px (default 88);
   `icon` (Font Awesome name) shows an icon tile instead when there's no image.
-- **Icon or illustration + short text in a row, with no card borders or backgrounds** (a "Benefits" or "Why us" strip):
-  use a columns section, not cards. Keep the source's illustration URLs as `image`, set `align: "center"` if the
-  source centers them, and leave `heading` blank when the source has only text under each graphic.
+- **A row of icons, illustrations or logos, each with short text and/or a button, and no card borders or backgrounds**
+  (a "Benefits" strip, a partner/reseller logo row with a "Contact" button under each): use a columns section, not
+  cards. Keep the source's image URLs as `image`, put each button in `ctas` (style "filled" for solid buttons), set
+  `align: "center"` if the source centers them (with `headAlign: "left"` if its heading stays left), and leave
+  `heading`/`body` blank when the source has nothing there.
 - Great for help/support strips; pair with `layout.bg: "dark"`.
 
 ## Mapping tips
