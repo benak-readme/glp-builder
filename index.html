@@ -2643,6 +2643,27 @@ const PREVIEW_EDIT_SCRIPT = `
     if (card) parent.postMessage({ type: "glp-focus-section", index: Number(card.getAttribute("data-glp-auto")) }, "*");
   }, true);
 
+  /* a click anywhere else opens that area's settings in the builder: the hero, a
+     section (plus the card or column clicked), or Appearance for the brand bar,
+     contact banner and footer. Editable text still takes the click for typing too. */
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t || !t.closest || t.closest("[data-glp-auto]") || t.closest(".glp-edbar")) return;
+    var msg = null;
+    var sec = t.closest(".bnk-sec");
+    var m = sec && /(?:^|\\s)bnk-sec-(\\d+)(?:\\s|$)/.exec(sec.className);
+    if (m) {
+      msg = { type: "glp-focus", area: "section", index: Number(m[1]) };
+      var item = t.closest(".bnk-card, .bnk-col");
+      if (item && sec.contains(item)) msg.item = [].indexOf.call(sec.querySelectorAll(item.classList.contains("bnk-col") ? ".bnk-col" : ".bnk-card"), item);
+    } else if (t.closest(".bnk-brand, .bnk-banner, .bnk-footer, .bnk-ticker")) {
+      msg = { type: "glp-focus", area: "appearance" };
+    } else if (t.closest(".bnk-top, .bnk-hero, .bnk-herogrid, .bnk-actions, .bnk-search-hint, .bnk-quick, .bnk-panel")) {
+      msg = { type: "glp-focus", area: "hero" };
+    }
+    if (msg) parent.postMessage(msg, "*");
+  });
+
   /* links inside the preview never navigate */
   document.addEventListener("click", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
   document.addEventListener("auxclick", function (e) { if (e.target.closest && e.target.closest("a")) e.preventDefault(); }, true);
@@ -4144,9 +4165,9 @@ function FontSelect({ label, value, options, onChange, bare, firstLabel = "Match
 
 /* ---------- pinned outline row (Header, Hero, Contact banner, Footer): opens like
    a section but can't be dragged, duplicated or deleted ---------- */
-function FixedRow({ title, icon, meta, open, onToggle, children }) {
+function FixedRow({ title, icon, meta, open, onToggle, children, rowId }) {
   return (
-    <div className="glp-card glp-section glp-fixedrow">
+    <div className="glp-card glp-section glp-fixedrow" data-sec-id={rowId}>
       <div className="glp-card__head" role="button" tabIndex={0} aria-expanded={open} onClick={onToggle}
         onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onToggle(); } }}>
         <i className={"fa-solid " + icon + " glp-fixedrow__icon"} aria-hidden="true"></i>
@@ -4275,7 +4296,7 @@ function CardEditor({ card, index, count, style, hideAccents, open, onToggle, on
     set({ peekItems: items });
   };
   return (
-    <div className="glp-card">
+    <div className="glp-card" data-item-id={card.id}>
       <RowHead noun="card" max={12} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <span className="glp-card__swatch" style={{ background: acc.light }} />
@@ -4509,7 +4530,7 @@ function ColumnEditor({ column, index, count, open, onToggle, onChange, onMove, 
   const addCta = () => set({ ctas: [...ctas, makeCta()] });
   const removeCta = (i) => set({ ctas: ctas.filter((_, j) => j !== i) });
   return (
-    <div className="glp-card">
+    <div className="glp-card" data-item-id={column.id}>
       <RowHead noun="column" max={4} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <span className="glp-card__name">{column.heading || `Column ${index + 1}`}</span>
@@ -4623,7 +4644,7 @@ function SectionEditor({ section, index, count, hideAccents, globalStyle, open, 
   const cardDrag = useDragReorder(cardOps.reorderTo);
 
   return (
-    <div className="glp-card glp-section">
+    <div className="glp-card glp-section" data-sec-id={section.id}>
       <RowHead noun="section" max={6} index={index} count={count} open={open} onToggle={onToggle}
         onMove={onMove} onDuplicate={onDuplicate} onRemove={onRemove} dragHandleProps={dragHandleProps} dropRowProps={dropRowProps} dragOver={dragOver}>
         <RenameName value={section.label} fallback={section.heading || `Section ${index + 1}`} onChange={(v) => set({ label: v })} />
@@ -4887,7 +4908,7 @@ function CodeEditor({ value, onChange }) {
   );
 }
 
-function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex }) {
+function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusIndex, previewFocusAt }) {
   const editable = html.includes("data-glp=");
   /* Double-buffered preview: render the new doc into the hidden iframe and
      only reveal it once it has finished loading, so the visible frame never
@@ -4946,6 +4967,7 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
   /* when a section is selected in the builder, scroll the preview to it and flash it */
   useEffect(() => {
     if (focusIndex == null) return;
+    if (previewFocusAt && Date.now() - previewFocusAt.current < 500) return; /* picked in the preview itself */
     const t = setTimeout(() => {
       const f = frames.current[activeRef.current];
       try {
@@ -5305,6 +5327,7 @@ function App() {
   const previewHtml = useMemo(() => generateHTML(config, { editable: true }), [config]);
   const configRef = useRef(config);
   configRef.current = config;
+  const previewFocusAt = useRef(0);
 
   /* edits committed inside the preview iframe come back as { path, value } */
   useEffect(() => {
@@ -5316,6 +5339,30 @@ function App() {
       if (d.type === "glp-preview-mode" && (d.mode === "light" || d.mode === "dark")) { setMode(d.mode); return; }
       if (d.type === "glp-heading-weight" && typeof d.path === "string" && EDITABLE_PATH_RE.test(d.path) && HEADING_PATH_RE.test(d.path) && (d.value === null || HEADING_WEIGHTS.includes(d.value))) {
         setConfig((c) => setAtPath(c, (d.path + "Weight").split("."), d.value === null ? undefined : d.value));
+        return;
+      }
+      if (d.type === "glp-focus") {
+        /* the click came from the preview, so don't scroll the preview back to the section's top */
+        previewFocusAt.current = Date.now();
+        let rowId = null, itemId = null;
+        if (d.area === "hero") { setOpenNav("sections"); setOpenSection("__hero"); rowId = "__hero"; }
+        else if (d.area === "appearance") setOpenNav("theme");
+        else if (d.area === "section" && Number.isInteger(d.index)) {
+          const sec = configRef.current.sections[d.index];
+          if (sec) {
+            setOpenNav("sections");
+            setOpenSection(sec.id);
+            rowId = sec.id;
+            const items = sec.type === "columns" ? sec.columns : sec.type !== "code" && sec.source !== "liquid" ? sec.cards : null;
+            const it = items && Number.isInteger(d.item) ? items[d.item] : null;
+            if (it) { setOpenCard(it.id); itemId = it.id; }
+          }
+        }
+        /* bring the opened row into view in the sidebar */
+        setTimeout(() => {
+          const el = (itemId && document.querySelector(`[data-item-id="${itemId}"]`)) || (rowId && document.querySelector(`[data-sec-id="${rowId}"]`));
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 80);
         return;
       }
       if (d.type === "glp-focus-section" && Number.isInteger(d.index)) {
@@ -6489,7 +6536,7 @@ function App() {
               </NavSection>
 
               <NavSection id="sections" label="Sections" openNav={openNav} setOpenNav={setOpenNav}>
-                <FixedRow title="Hero" icon="fa-image" meta={config.hero.bg === "glow" ? "glow" : ""} open={openSection === "__hero"} onToggle={() => setOpenSection(openSection === "__hero" ? null : "__hero")}>
+                <FixedRow rowId="__hero" title="Hero" icon="fa-image" meta={config.hero.bg === "glow" ? "glow" : ""} open={openSection === "__hero"} onToggle={() => setOpenSection(openSection === "__hero" ? null : "__hero")}>
                 <Field label="Eyebrow (blank to hide)">
                   <input
                     className="glp-input"
@@ -6669,7 +6716,7 @@ function App() {
               </NavSection>
 
             </div>
-            <Preview html={override !== null ? generated : previewHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
+            <Preview html={override !== null ? generated : previewHtml} mode={mode} setMode={setMode} device={device} setDevice={setDevice} liquidNote={hasLiquid} previewFocusAt={previewFocusAt} focusIndex={(() => { const fi = config.sections.findIndex((s) => s.id === openSection); return fi >= 0 ? fi : null; })()} />
           </>
         ) : (
           <>
