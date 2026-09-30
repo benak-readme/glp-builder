@@ -108,6 +108,9 @@ function resolveFonts(cfg) {
   return {
     label: heading === "readme" && body === "readme" ? "Match Settings in ReadMe" : `${heading === "readme" ? "ReadMe" : heading} headings, ${body === "readme" ? "ReadMe" : body} body`,
     display: fontStack(heading),
+    /* for the h1-h3 rules: ReadMe's own `.rm-ReadMe h1…h6 { font-family: var(--font-family-heading) }`
+       outranks a single class, so a chosen heading font needs !important to reach them */
+    displayH: heading === "readme" ? fontStack(heading) : fontStack(heading) + " !important",
     body: fontStack(body),
     mono: mono ? fontStack(mono) : FONT_FALLBACK.mono,
     importUrl: families.length
@@ -879,13 +882,31 @@ const cardAccent = (card) =>
    [data-color-mode="dark"] and "follow system" ([data-color-mode="system"] inside
    prefers-color-scheme:dark) — from a single template, so a future edit to one path
    can't silently drift from the other. `body(pad)` returns the CSS declarations,
-   already using `pad` as their leading indent. */
+   already using `pad` as their leading indent.
+   The NEAREST data-color-mode wins, like ReadMe's own variables: ReadMe's editor wraps
+   the hub in its own [data-color-mode="light"|"dark"] inside <html data-color-mode="system">,
+   so a bare `[data-color-mode="system"] X` would go dark on a dark-OS Mac while ReadMe
+   itself renders light. Each selector in a list is scoped on its own (a plain comma list
+   would leave every selector after the first unscoped, i.e. dark in light mode too). */
+const MODE_ATTR = (m) => `[data-color-mode="${m}"]`;
+const scopeMode = (selector, mode) =>
+  selector
+    .split(",")
+    .map((sel) => {
+      sel = sel.trim();
+      const cut = sel.indexOf("::");
+      const base = cut < 0 ? sel : sel.slice(0, cut);
+      const pseudo = cut < 0 ? "" : sel.slice(cut);
+      const others = ["light", "dark", "system"].filter((m) => m !== mode).map(MODE_ATTR).join(", ");
+      return `${MODE_ATTR(mode)} ${base}:not(${MODE_ATTR(mode)} :is(${others}) ${base})${pseudo}`;
+    })
+    .join(",\n");
 const darkBlock = (selector, indent, body) => `
-${indent}[data-color-mode="dark"] ${selector} {
+${indent}${scopeMode(selector, "dark").replace(/\n/g, "\n" + indent)} {
 ${body(indent + "  ")}
 ${indent}}
 ${indent}@media (prefers-color-scheme: dark) {
-${indent}  [data-color-mode="system"] ${selector} {
+${indent}  ${scopeMode(selector, "system").replace(/\n/g, "\n" + indent + "  ")} {
 ${body(indent + "    ")}
 ${indent}  }
 ${indent}}`;
@@ -2053,7 +2074,7 @@ ${darkBlock(".bnk-landing .rm-SearchToggle, .bnk-landing .rm-AskAi-button", "  "
   .bnk-banner__copy { flex: 1 1 340px; }
   .bnk-banner__title {
     margin: 0 0 7px;
-    font-family: ${F.display};
+    font-family: ${F.displayH};
     font-weight: ${HW};
     font-size: 22px;
     letter-spacing: -0.01em;
@@ -2209,7 +2230,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   .bnk-section { margin: 0 0 20px; }
   .bnk-section__title {
     margin: 0 0 8px;
-    font-family: ${F.display};
+    font-family: ${F.displayH};
     font-weight: ${HW};
     font-size: 25px;
     letter-spacing: -0.01em;
@@ -2237,7 +2258,7 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
     color: var(--bnk-accent); background: color-mix(in srgb, var(--bnk-accent) 11%, transparent);
   }
   .bnk-col__title {
-    margin: 0 0 9px; font-family: ${F.display}; font-weight: ${HW};
+    margin: 0 0 9px; font-family: ${F.displayH}; font-weight: ${HW};
     font-size: 18px; letter-spacing: -0.01em; color: var(--bnk-heading) !important;
   }
   .bnk-col__text { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--bnk-ink-1) !important; }
@@ -2532,7 +2553,7 @@ ${chipCSS}
   .bnk-hero__title {
     margin: 0 0 20px;
     text-wrap: balance;
-    font-family: ${F.display};
+    font-family: ${F.displayH};
     font-weight: ${HW};
     font-size: ${heroTitleSize}px;
     letter-spacing: -0.01em;
@@ -3229,8 +3250,11 @@ function buildPreviewDoc(userHtml, mode) {
     --color-border-default: ${dark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"};
     --color-border-muted: ${dark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)"};
     --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-family-heading: var(--font-family);
   }
   html, body { margin: 0; padding: 0; }
+  /* ReadMe's own heading rule, so the preview shows it overriding a page font the way a real hub does */
+  .rm-ReadMe h1, .rm-ReadMe h2, .rm-ReadMe h3, .rm-ReadMe h4, .rm-ReadMe h5, .rm-ReadMe h6 { font-family: var(--font-family-heading); }
   body {
     background: var(--color-bg-page);
     color: var(--color-text-default);
@@ -3325,7 +3349,7 @@ function buildPreviewDoc(userHtml, mode) {
   }
 </style>
 </head>
-<body>
+<body class="rm-ReadMe">
   <div class="rm-Header">
     <!-- stand-in for ReadMe's current default header: logo left, search + Ask AI
          centered, account + theme toggle right; icon tabs centered below -->
