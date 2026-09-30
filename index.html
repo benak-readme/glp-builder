@@ -881,13 +881,17 @@ const cardAccent = (card) =>
    [data-color-mode="dark"] and "follow system" ([data-color-mode="system"] inside
    prefers-color-scheme:dark) — from a single template, so a future edit to one path
    can't silently drift from the other. `body(pad)` returns the CSS declarations,
-   already using `pad` as their leading indent. */
+   already using `pad` as their leading indent.
+   "Follow system" is skipped when the page's script finds ReadMe itself drawn light
+   (html[data-bnk-light]): a hub can report "system" and still render light, and the
+   dark palette then showed on a light page. :where() keeps the specificity unchanged. */
 const darkBlock = (selector, indent, body) => `
 ${indent}[data-color-mode="dark"] ${selector} {
 ${body(indent + "  ")}
 ${indent}}
 ${indent}@media (prefers-color-scheme: dark) {
-${indent}  [data-color-mode="system"] ${selector} {
+${indent}  :where(html:not([data-bnk-light]))[data-color-mode="system"] ${selector},
+${indent}  :where(html:not([data-bnk-light])) [data-color-mode="system"] ${selector} {
 ${body(indent + "    ")}
 ${indent}  }
 ${indent}}`;
@@ -1779,7 +1783,7 @@ ${cfg.headerImage.tint > 0 ? `  .bnk-herobg::after { content: ""; position: abso
     background: transparent !important; border: 0 !important; box-shadow: none !important;
   }
   .rm-Header .rm-Header-top > .rm-Container { width: 100% !important; max-width: none !important; padding: 0 !important; margin: 0 !important; justify-content: flex-end !important; }
-  .rm-Header .rm-Header-right { pointer-events: auto; flex: 0 0 auto !important; margin-left: auto !important; }
+  .rm-Header .rm-Header-right { pointer-events: auto; flex: 0 0 auto !important; margin-left: auto !important; padding-right: 0 !important; }
   .rm-Header .rm-JumpTo, .rm-Header #hub-search-results { pointer-events: auto; }
 ${brandFg ? `  .rm-Header .rm-Header-right :is(a, button, span, i) { color: ${brandFg} !important; }\n` : ""}  .bnk-brand {
     display: flex; align-items: center; justify-content: space-between; gap: 18px;
@@ -1795,12 +1799,23 @@ ${brandFg ? `  .rm-Header .rm-Header-right :is(a, button, span, i) { color: ${br
     text-transform: uppercase; color: var(--bnk-ink-2) !important;
   }
   .bnk-brand__name img { height: ${LOGO_SIZES.includes(Number(BB.logoSize)) ? Number(BB.logoSize) : 32}px; width: auto; display: block; align-self: center; }
-  .bnk-brand__nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; font-size: 14.5px; font-weight: 600; }
+  /* the bar's controls share a row with ReadMe's own (log in / user menu, theme toggle,
+     language picker), so they use ReadMe's header font and button sizes */
+  .bnk-brand__nav, .bnk-brand .bnk-search, .bnk-brand .bnk-askai {
+    font-family: var(--font-family, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif);
+    font-size: 14px; font-weight: 500;
+  }
+  .bnk-brand .bnk-search, .bnk-brand .bnk-askai { height: 32px; border-radius: 8px; }
+  .bnk-brand .bnk-search { min-width: 220px; padding: 0 10px; font-weight: 400; }
+  .bnk-brand .bnk-askai { padding: 0 12px; }
+  .bnk-brand .bnk-search__kbd { font-family: inherit; padding: 2px 5px; }
+  .bnk-brand__nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 22px; }
   .bnk-brand__nav a { text-decoration: none; color: var(--bnk-ink-1) !important; transition: color 150ms ease; }
   .bnk-brand__nav a:hover { color: var(--bnk-accent) !important; }
   .bnk-brand__nav a.bnk-brand__btn {
-    padding: 7px 14px; border-radius: 8px; background: var(--card-bg);
-    border: 1.5px solid var(--card-border); color: var(--bnk-heading) !important;
+    display: inline-flex; align-items: center; box-sizing: border-box; height: 32px;
+    padding: 0 12px; border-radius: 6px; background: var(--card-bg);
+    border: 1px solid var(--card-border); color: var(--bnk-heading) !important;
   }
   .bnk-brand__nav a.bnk-brand__btn:hover { border-color: var(--bnk-accent); color: var(--bnk-accent) !important; }
   .bnk-brand__search { display: flex; align-items: center; gap: 10px; }
@@ -2488,13 +2503,41 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
          got it clipped by the page's own full-width background.) */
       var top = q(".rm-Header .rm-Header-top"), right = q(".rm-Header .rm-Header-right"), pull = q(".bnk-landing"), bar = q(".bnk-landing .bnk-brand");
       if (!top || !pull) return;
-      if (bar) bar.style.paddingRight = right ? Math.ceil(right.getBoundingClientRect().width + 16) + "px" : "";
-      /* line the header row's center up with the center of the bar's first line (the logo),
-         so it still lines up when a crowded bar wraps */
+      /* ReadMe's visible controls (log in or the user menu, theme toggle, language picker) */
+      var ctls = right ? [].slice.call(right.querySelectorAll("a, button")).filter(function (e) { var r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }) : [];
+      /* a text-style last control (no fill, no border) hangs its padding past the bar's
+         edge, so its text lines up with the end of the page like the bar's own items */
+      var clear = function (c) { return c === "transparent" || c.replace(/ /g, "").slice(-3) === ",0)"; };
+      var hang = 0, last = ctls[ctls.length - 1];
+      if (last) {
+        var ls = getComputedStyle(last);
+        if (clear(ls.backgroundColor) && (clear(ls.borderRightColor) || parseFloat(ls.borderRightWidth) === 0)) hang = parseFloat(ls.paddingRight) || 0;
+      }
+      if (right) {
+        /* put the controls' right edge on the bar's right edge (ReadMe's header row and the
+           page can use different widths and padding) */
+        right.style.marginRight = "";
+        if (bar) {
+          var off = right.getBoundingClientRect().right - (bar.getBoundingClientRect().right + hang);
+          right.style.marginRight = Math.round(off) + "px";
+        }
+      }
+      /* same 22px gap as between the bar's links, measured to the first control's text when
+         it is text-style */
+      var lead = 0, first = ctls[0];
+      if (first) {
+        var fs = getComputedStyle(first);
+        if (clear(fs.backgroundColor) && (clear(fs.borderLeftColor) || parseFloat(fs.borderLeftWidth) === 0)) lead = parseFloat(fs.paddingLeft) || 0;
+      }
+      if (bar) bar.style.paddingRight = right ? Math.ceil(right.getBoundingClientRect().width - hang + Math.max(8, 22 - lead)) + "px" : "";
+      /* line ReadMe's controls up with the center of the bar's first line (the logo), so it
+         still lines up when a crowded bar wraps. The controls, not the header row: ReadMe
+         pads them lower than the middle of the row */
       pull.style.marginTop = "";
       var natural = parseFloat(getComputedStyle(pull).marginTop) || 0;
       var ref = (bar && bar.querySelector(".bnk-brand__name")) || bar || pull;
-      var rr = ref.getBoundingClientRect(), tr = top.getBoundingClientRect();
+      var anchor = ctls[0] || right || top;
+      var rr = ref.getBoundingClientRect(), tr = anchor.getBoundingClientRect();
       var delta = (rr.top + rr.height / 2) - (tr.top + tr.height / 2);
       pull.style.marginTop = (natural - delta) + "px";
     }
@@ -2511,6 +2554,28 @@ ${brandLinks.map((l) => `      <a href="${esc(normPath(l.href || "/"))}"${ed(`br
   })();
 <\/script>`
     : "";
+
+  /* marks <html> when ReadMe is drawn light even though it reports "follow system"
+     (see darkBlock). It reads ReadMe's own text color, so it follows the theme toggle */
+  const modeScript = _editable ? "" : `
+<script>
+  (function () {
+    var root = document.documentElement, probe;
+    function check() {
+      if (!document.querySelector('[data-color-mode="system"]')) { root.removeAttribute("data-bnk-light"); return; }
+      if (!probe) { probe = document.createElement("span"); probe.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;color:var(--color-text-default, transparent)"; }
+      if (!probe.isConnected) (document.body || root).appendChild(probe);
+      var m = getComputedStyle(probe).color.match(/[0-9.]+/g) || [];
+      if (m.length < 3 || (m.length > 3 && Number(m[3]) === 0)) { root.removeAttribute("data-bnk-light"); return; }
+      var lum = (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255;
+      if (lum < 0.5) root.setAttribute("data-bnk-light", ""); else root.removeAttribute("data-bnk-light");
+    }
+    check();
+    window.addEventListener("load", check);
+    if (window.MutationObserver) new MutationObserver(check).observe(root, { attributes: true, subtree: true, attributeFilter: ["data-color-mode"] });
+    try { window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", check); } catch (e) {}
+  })();
+<\/script>`;
 
   return `<!--
   Global Landing Page, generated with GLP Builder
@@ -2646,7 +2711,7 @@ ${panelOn ? panelMarkup + "  </div>\n" : "\n" + actionsMarkup}${quickMarkup}${he
 ${sectionsMarkup}
 ${bannerMarkup}${cfg.footer.trim() ? `\n  <p class="bnk-footer"${ed("footer", true)}>${inlineEm(cfg.footer)}</p>` : ""}
 </div>
-${script}
+${script}${modeScript}
 `;
 }
 
