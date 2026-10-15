@@ -561,73 +561,31 @@ const DEFAULT_CONFIG = {
    restyle cards. Each call returns a fresh config with new ids. */
 
 /* ---- building blocks shared by the Aurora / Spotlight / Editorial / Terminal templates ---- */
-const tplSections = (o) => {
-  const center = o.align === "center";
-  const L = (label, href) => ({ label, href });
-  const card = (x) => ({ ...CARD_DEFAULTS, id: uid(), ...x });
-  const listDocs = !!o.listDocs;
-  return [
-    {
-      label: "Doc sets",
-      heading: o.docsHeading || "",
-      intro: "",
-      align: center ? "center" : "left",
-      source: "static",
-      styleMode: "custom",
-      style: { ...DEFAULT_STYLE, anchor: true, icon: true, iconInline: listDocs, cta: !listDocs, ctaPlain: true, radius: 10, density: "comfortable" },
-      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 420, gap: 18, spaceAbove: o.docsSpace || 64, list: listDocs },
-      cards: [
-        card({ icon: "book-open", title: o.names ? o.names[0] : "Guides", blurb: "Start here. Concepts, tutorials and how-to guides for building with the platform.", href: "/guides", meta: "120 pages", ctaText: "Browse" }),
-        card({ icon: "code", title: o.names ? o.names[1] : "API Reference", blurb: "Every endpoint, with parameters, responses and ready-to-run code samples.", href: "/reference", meta: "48 endpoints", ctaText: "Browse" }),
-      ],
-    },
-    {
-      label: "Why",
-      eyebrow: o.whyEyebrow !== undefined ? o.whyEyebrow : "Why the docs",
-      heading: o.whyHeading !== undefined ? o.whyHeading : "Everything in one place, and all of it searchable",
-      intro: "",
-      align: center ? "center" : "left",
-      source: "static",
-      styleMode: "custom",
-      style: { ...DEFAULT_STYLE, anchor: false, num: true, radius: 10, density: "comfortable" },
-      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 280, gap: 18, spaceAbove: 88 },
-      cards: [
-        card({ title: "Start in minutes", blurb: "Quickstarts that get you from nothing to a working call, without reading the whole manual first.", href: "/guides/quickstart" }),
-        card({ title: "Written for building", blurb: "Every guide ends somewhere useful: a working example, a next step, and the reference page behind it.", href: "/guides" }),
-        card({ title: "Searchable end to end", blurb: "Titles, descriptions and page text, so the answer is one keystroke away wherever you are.", href: "/search" }),
-      ],
-    },
-    {
-      label: "Code sample",
-      type: "code",
-      eyebrow: "Code samples",
-      heading: "Built for the way you work",
-      intro: "Copy a sample, change two values, and it runs. Every reference page carries one, in the language you already use.",
-      align: "left",
-      layout: { ...DEFAULT_SECTION_LAYOUT, spaceAbove: 96 },
-      code: { ...DEFAULT_CODE },
-    },
-    {
-      label: "Contents",
-      eyebrow: o.contentsEyebrow !== undefined ? o.contentsEyebrow : "Contents",
-      heading: o.contentsHeading !== undefined ? o.contentsHeading : "Browse the documentation",
-      intro: "Every project in this hub, updated automatically.",
-      align: center ? "center" : "left",
-      source: "liquid",
-      styleMode: "custom",
-      style: { ...DEFAULT_STYLE, anchor: true, radius: 10, density: "compact" },
-      layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 300, gap: 14, spaceAbove: 96 },
-      liquid: { ...DEFAULT_LIQUID, peek: false, blurbFallback: "Guides and reference for this project." },
-    },
-  ];
-};
-const tplBanner = () => ({
-  enabled: true, align: "center", glow: true,
-  title: "Can't find it?",
-  text: "Everything here is searchable. Start from the guides, or jump straight to the reference.",
-  btnLabel: "Start building", btnHref: "/guides",
-  btn2Label: "Read the API", btn2Href: "/reference",
+const tplCard = (x) => ({ ...CARD_DEFAULTS, id: uid(), eyebrow: "", blurb: "", ...x });
+const tplLink = (label, href) => ({ label, href });
+const tplCards = (o) => ({
+  type: "cards", label: o.label || "", eyebrow: o.eyebrow || "", heading: o.heading || "", intro: o.intro || "",
+  align: o.align || "left", source: "static", styleMode: "custom",
+  style: { ...DEFAULT_STYLE, ...o.style },
+  layout: { ...DEFAULT_SECTION_LAYOUT, ...o.layout },
+  cards: o.cards,
 });
+const tplLiquid = (o) => ({
+  type: "cards", label: o.label || "Projects", eyebrow: o.eyebrow || "", heading: o.heading || "", intro: o.intro || "",
+  align: o.align || "left", source: "liquid", styleMode: "custom",
+  style: { ...DEFAULT_STYLE, ...o.style },
+  layout: { ...DEFAULT_SECTION_LAYOUT, ...o.layout },
+  liquid: { ...DEFAULT_LIQUID, ...o.liquid },
+});
+const tplCols = (o) => ({
+  type: "columns", label: o.label || "", eyebrow: o.eyebrow || "", heading: o.heading || "", intro: o.intro || "",
+  align: o.align || "left", layout: { ...DEFAULT_SECTION_LAYOUT, ...o.layout }, columns: o.columns,
+});
+const tplCode = (o) => ({
+  type: "code", label: o.label || "Code sample", eyebrow: o.eyebrow || "", heading: o.heading || "", intro: o.intro || "",
+  align: "left", layout: { ...DEFAULT_SECTION_LAYOUT, ...o.layout }, code: { ...DEFAULT_CODE, ...o.code },
+});
+const TPL_SUB = "Guides to get you started, a complete API reference, and the details you need when you are deep in it.";
 const tplBase = (over) =>
   migrateConfig({
     ...DEFAULT_CONFIG,
@@ -802,11 +760,10 @@ const PAGE_TEMPLATES = [
   {
     key: "aurora",
     label: "Aurora",
-    hint: "Glowing hero with a Jump to panel holding search, doc sets, code sample",
+    hint: "Glowing hero with a Jump to panel, a bento grid of doc sets, a code window, popular-guide lists",
     build: () => tplBase({
       hero: { ...DEFAULT_CONFIG.hero, align: "left", bg: "glow", eyebrow: "docs.acme.com", titleSize: 58, subtitleSize: 17,
-        title: "Everything you need to build with Acme",
-        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
+        title: "Everything you need to build with Acme", subtitle: TPL_SUB,
         buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" },
         panel: { enabled: true, title: "Jump to", links: [
           { label: "Get started", href: "/guides/getting-started", meta: "22" },
@@ -815,51 +772,167 @@ const PAGE_TEMPLATES = [
           { label: "SDKs", href: "/sdks", meta: "6" },
           { label: "Changelog", href: "/changelog", meta: "12" },
         ] } },
-      sections: tplSections({ align: "left" }),
-      banner: tplBanner(),
+      sections: [
+        tplCards({
+          label: "Doc sets", heading: "Pick a starting point",
+          style: { anchor: false, icon: true, bar: true, peek: true, cta: true, ctaPlain: true, radius: 16, density: "comfortable" },
+          layout: { bento: true, gap: 18, spaceAbove: 80 },
+          cards: [
+            tplCard({ icon: "rocket", title: "Quickstart", blurb: "From zero to a working request in about five minutes.", href: "/guides/quickstart", peekLabel: "Steps", peekItems: ["Create an API key", "Install an SDK", "Make your first call"], ctaText: "Start" }),
+            tplCard({ icon: "code", title: "API reference", blurb: "Every endpoint, with ready-to-run samples.", href: "/reference", peekLabel: "Popular", peekItems: ["Payments", "Customers"], ctaText: "Browse" }),
+            tplCard({ icon: "cubes", title: "SDKs", blurb: "Official libraries for six languages.", href: "/sdks", peekLabel: "Languages", peekItems: ["Node, Python, Go", "Ruby, Java, .NET"], ctaText: "Install" }),
+            tplCard({ icon: "book-open", title: "Guides", blurb: "Concepts, tutorials and how-tos for everything you will build on the platform.", href: "/guides", peekLabel: "Popular", peekItems: ["Authentication", "Webhooks", "Pagination"], ctaText: "Read" }),
+          ],
+        }),
+        tplCode({ eyebrow: "Code samples", heading: "Copy, paste, run", intro: "Every reference page carries a sample in the language you already use.", layout: { spaceAbove: 96, bg: "subtle" } }),
+        tplCards({
+          label: "Popular", heading: "Popular right now",
+          style: { anchor: false, links: true, radius: 14, density: "comfortable" },
+          layout: { colMin: 280, gap: 18, spaceAbove: 96 },
+          cards: [
+            tplCard({ title: "Get set up", links: [tplLink("Create and rotate API keys", "/guides/keys"), tplLink("Test in the *sandbox*", "/guides/sandbox"), tplLink("Go live checklist", "/guides/go-live")] }),
+            tplCard({ title: "Build", links: [tplLink("Receive *webhooks*", "/guides/webhooks"), tplLink("Paginate large lists", "/guides/pagination"), tplLink("Handle errors and retries", "/guides/errors")] }),
+            tplCard({ title: "Operate", links: [tplLink("Rate limits", "/guides/rate-limits"), tplLink("Versioning and upgrades", "/guides/versioning"), tplLink("Status and incidents", "/status")] }),
+          ],
+        }),
+      ],
+      banner: { ...DEFAULT_CONFIG.banner, enabled: true, align: "center", glow: true, title: "Can't find it?",
+        text: "Everything here is searchable. Start from the guides, or jump straight to the reference.",
+        btnLabel: "Start building", btnHref: "/guides", btn2Label: "Read the API", btn2Href: "/reference" },
     }),
   },
   {
     key: "spotlight",
     label: "Spotlight",
-    hint: "Search-first: a big centered search box with quick links",
+    hint: "Help center: a big search, topic tiles, popular-article lists, a support strip",
     build: () => tplBase({
       hero: { ...DEFAULT_CONFIG.hero, align: "center", title: "How can we help?", subtitle: "", titleSize: 56, padY: 24,
         searchSize: "large", buttons: false,
         quickLinks: [
-          { label: "Get started", href: "/guides/getting-started" }, { label: "Guides", href: "/guides" },
-          { label: "API reference", href: "/reference" }, { label: "SDKs", href: "/sdks" }, { label: "Changelog", href: "/changelog" },
+          tplLink("Get started", "/guides/getting-started"), tplLink("Billing", "/guides/billing"),
+          tplLink("API keys", "/guides/keys"), tplLink("Webhooks", "/guides/webhooks"), tplLink("Changelog", "/changelog"),
         ] },
-      sections: tplSections({ align: "center", docsSpace: 56, whyEyebrow: "", whyHeading: "Why developers stay", contentsEyebrow: "", contentsHeading: "Documentation" }),
-      banner: tplBanner(),
+      sections: [
+        tplCards({
+          label: "Topics", heading: "Browse by topic", align: "center",
+          style: { anchor: true, icon: true, radius: 14, density: "compact" },
+          layout: { colMin: 210, gap: 14, spaceAbove: 64 },
+          cards: [
+            tplCard({ icon: "rocket", title: "Getting started", blurb: "Set up your account", href: "/guides/getting-started" }),
+            tplCard({ icon: "key", title: "Authentication", blurb: "Keys, tokens and scopes", href: "/guides/auth" }),
+            tplCard({ icon: "credit-card", title: "Payments", blurb: "Charges and refunds", href: "/guides/payments" }),
+            tplCard({ icon: "users", title: "Customers", blurb: "Profiles and accounts", href: "/guides/customers" }),
+            tplCard({ icon: "plug", title: "Integrations", blurb: "Connect your tools", href: "/guides/integrations" }),
+            tplCard({ icon: "bell", title: "Webhooks", blurb: "Events in real time", href: "/guides/webhooks" }),
+            tplCard({ icon: "chart-line", title: "Reporting", blurb: "Exports and dashboards", href: "/guides/reporting" }),
+            tplCard({ icon: "shield-halved", title: "Security", blurb: "Compliance and access", href: "/guides/security" }),
+          ],
+        }),
+        tplCards({
+          label: "Popular articles", heading: "Popular articles", align: "center",
+          style: { anchor: false, links: true, radius: 14, density: "comfortable" },
+          layout: { colMin: 360, gap: 18, spaceAbove: 72 },
+          cards: [
+            tplCard({ title: "For admins", links: [tplLink("Invite your team and set roles", "/guides/team"), tplLink("Turn on single sign-on", "/guides/sso"), tplLink("Download invoices", "/guides/invoices")] }),
+            tplCard({ title: "For developers", links: [tplLink("Make your first API call", "/guides/quickstart"), tplLink("Verify *webhook* signatures", "/guides/webhooks"), tplLink("Troubleshoot common errors", "/guides/errors")] }),
+          ],
+        }),
+        tplCols({
+          label: "Support", heading: "Still stuck?", align: "center",
+          layout: { gap: 24, spaceAbove: 72, bg: "subtle" },
+          columns: [
+            { heading: "Contact support", body: "Our team answers within one business day.", ctas: [{ label: "Open a ticket", href: "/support", style: "button" }] },
+            { heading: "Community", body: "Ask other builders and share what works.", ctas: [{ label: "Join the forum", href: "/community", style: "button" }] },
+            { heading: "System status", body: "Live uptime and incident history.", ctas: [{ label: "Check status", href: "/status", style: "button" }] },
+          ],
+        }),
+      ],
+      banner: { ...DEFAULT_CONFIG.banner, enabled: false },
+      footer: "Can't find what you need? Search above or ask the AI assistant.",
     }),
   },
   {
     key: "editorial",
     label: "Editorial",
-    hint: "Serif headlines, doc sets as reading rows, chapter-style sections",
+    hint: "Serif headlines, two feature stories, a numbered table of contents, further reading",
     build: () => tplBase({
-      typeface: { custom: true, heading: "Fraunces", body: "readme" },
-      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "Acme documentation", titleSize: 56, subtitleSize: 18,
-        title: "Everything you need to build with Acme",
-        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
-        buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" } },
-      sections: tplSections({ align: "left", listDocs: true, docsSpace: 48, whyEyebrow: "Chapter one", whyHeading: "What you will find", contentsEyebrow: "Contents", contentsHeading: "Chapters" }),
-      banner: tplBanner(),
+      typeface: { custom: true, heading: "Fraunces", body: "readme", headingWeight: 500 },
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "The Acme documentation", titleSize: 64, subtitleSize: 19,
+        title: "Build *carefully*. Ship with confidence.", subtitle: TPL_SUB, buttons: false },
+      sections: [
+        tplCards({
+          label: "Features", eyebrow: "Start here",
+          style: { anchor: true, badge: true, cta: true, ctaPlain: true, radius: 4, density: "roomy" },
+          layout: { colMin: 420, gap: 28, spaceAbove: 56 },
+          cards: [
+            tplCard({ eyebrow: "Guide", badge: "dot", title: "The developer guide", blurb: "A start-to-finish walk through the platform: concepts first, then the code that puts them to work.", href: "/guides", ctaText: "Read the guide" }),
+            tplCard({ eyebrow: "Reference", badge: "dot", title: "The API reference", blurb: "Every endpoint, parameter and response, with samples you can run straight from the page.", href: "/reference", ctaText: "Open the reference" }),
+          ],
+        }),
+        tplCards({
+          label: "Contents", eyebrow: "Contents", heading: "In this documentation",
+          style: { anchor: true, num: true, radius: 0, density: "comfortable" },
+          layout: { list: true, gap: 0, spaceAbove: 88, divider: true, dividerStyle: "hairline" },
+          cards: [
+            tplCard({ title: "Getting started", blurb: "Accounts, keys and your first request", href: "/guides/getting-started", meta: "8 pages" }),
+            tplCard({ title: "Core concepts", blurb: "How objects, events and environments fit together", href: "/guides/concepts", meta: "12 pages" }),
+            tplCard({ title: "Building integrations", blurb: "Patterns for the integrations teams build most", href: "/guides/integrations", meta: "21 pages" }),
+            tplCard({ title: "Operating in production", blurb: "Limits, monitoring, versioning and upgrades", href: "/guides/production", meta: "9 pages" }),
+            tplCard({ title: "Release notes", blurb: "Everything that changed, newest first", href: "/changelog", meta: "Weekly" }),
+          ],
+        }),
+        tplCols({
+          label: "Further reading", eyebrow: "Further reading",
+          layout: { gap: 40, spaceAbove: 88, divider: true, dividerStyle: "hairline" },
+          columns: [
+            { heading: "On authentication", body: "Why keys are scoped, how to rotate them, and what to do when one leaks.", ctas: [{ label: "Read", href: "/guides/auth", style: "plain" }] },
+            { heading: "On versioning", body: "How the API changes, how long old versions live, and how to upgrade safely.", ctas: [{ label: "Read", href: "/guides/versioning", style: "plain" }] },
+            { heading: "On reliability", body: "Retries, idempotency and the guarantees you can build on.", ctas: [{ label: "Read", href: "/guides/reliability", style: "plain" }] },
+          ],
+        }),
+      ],
+      banner: { ...DEFAULT_CONFIG.banner, enabled: true, align: "left", glow: false, title: "Questions about what you read?",
+        text: "Our team reads every message and replies within a day.", btnLabel: "Write to us", btnHref: "/contact" },
+      footer: "",
     }),
   },
   {
     key: "terminal",
     label: "Terminal",
-    hint: "Monospace everything, command-line prompt hero, doc sets as a table",
+    hint: "Monospace everything: prompt hero, code first, docs as a table, a dark command strip",
     build: () => tplBase({
-      typeface: { custom: true, heading: "Geist Mono", body: "Geist Mono" },
-      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "$ open docs.acme.com", titleSize: 46, subtitleSize: 15,
-        title: "Everything you need to build with Acme",
-        subtitle: "Guides to get you started, a complete API reference, and the details you need when you are deep in it.",
-        buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" } },
-      sections: tplSections({ align: "left", listDocs: true, names: ["guides", "api-reference"], docsSpace: 48, whyEyebrow: "# why", whyHeading: "", contentsEyebrow: "# docs", contentsHeading: "" }),
-      banner: tplBanner(),
+      typeface: { custom: true, heading: "Geist Mono", body: "Geist Mono", headingWeight: 500 },
+      theme: { colorMode: "readme", pattern: "grid", patternStrength: "subtle" },
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "$ acme docs --open", titleSize: 44, subtitleSize: 15,
+        title: "acme: the API, documented", subtitle: TPL_SUB,
+        buttons: true, btnPrimary: { label: "npm install @acme/sdk", href: "/sdks" }, btnSecondary: { label: "Read the API", href: "/reference" } },
+      sections: [
+        tplCode({ eyebrow: "# quickstart", heading: "Five lines to a working call", intro: "Install the SDK, set your key, and run it.", layout: { spaceAbove: 56 } }),
+        tplCards({
+          label: "Docs", eyebrow: "# docs", heading: "ls ./docs",
+          style: { anchor: true, mono: true, radius: 4, density: "compact" },
+          layout: { list: true, gap: 0, spaceAbove: 80 },
+          cards: [
+            tplCard({ title: "guides", blurb: "Concepts, tutorials and how-tos", href: "/guides", meta: "96 pages" }),
+            tplCard({ title: "api-reference", blurb: "Every endpoint, with samples", href: "/reference", meta: "48 endpoints" }),
+            tplCard({ title: "sdks", blurb: "Node, Python, Go, Ruby, Java, .NET", href: "/sdks", meta: "6 libraries" }),
+            tplCard({ title: "cli", blurb: "Script the platform from your shell", href: "/cli", meta: "31 commands" }),
+            tplCard({ title: "changelog", blurb: "Every release, newest first", href: "/changelog", meta: "weekly" }),
+          ],
+        }),
+        tplCols({
+          label: "Commands", eyebrow: "# common tasks",
+          layout: { gap: 24, spaceAbove: 80, bg: "dark" },
+          columns: [
+            { heading: "auth", body: "Create, scope and rotate keys.", ctas: [{ label: "acme auth --help", href: "/cli/auth", style: "plain" }] },
+            { heading: "events", body: "Stream webhooks to localhost.", ctas: [{ label: "acme listen", href: "/cli/listen", style: "plain" }] },
+            { heading: "logs", body: "Tail requests as they happen.", ctas: [{ label: "acme logs tail", href: "/cli/logs", style: "plain" }] },
+            { heading: "status", body: "Check uptime and incidents.", ctas: [{ label: "acme status", href: "/status", style: "plain" }] },
+          ],
+        }),
+      ],
+      banner: { ...DEFAULT_CONFIG.banner, enabled: false },
+      footer: "exit 0",
     }),
   }
 ];
