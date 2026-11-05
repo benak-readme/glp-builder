@@ -3830,12 +3830,6 @@ const APP_CSS = `
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(5 5 5 / 0.06), 0 16px 40px rgb(0 3 63 / 0.14);
     --frame-shadow: 0 12px 32px rgb(0 3 63 / 0.1);
-    /* editor-area hues from ReadMe's accent ramps */
-    --hue-templates: rgb(200 60 120);
-    --hue-theme: rgb(125 60 220);
-    --hue-header: rgb(31 140 60);
-    --hue-hero: rgb(214 100 0);
-    --hue-sections: var(--accent);
 
     height: 100vh;
     display: flex;
@@ -3890,11 +3884,6 @@ const APP_CSS = `
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
     --frame-shadow: 0 20px 56px rgb(0 0 20 / 0.55);
-    --hue-templates: rgb(245 140 185);
-    --hue-theme: rgb(190 150 255);
-    --hue-header: rgb(110 220 125);
-    --hue-hero: rgb(255 170 90);
-    --hue-sections: var(--accent);
   }
   .glp-bar {
     display: flex; align-items: center; gap: 16px;
@@ -3974,7 +3963,7 @@ const APP_CSS = `
     font-size: 12.5px; font-weight: 500; color: var(--ink-3); padding: 5px 6px; border-radius: 6px;
   }
   .glp-jump button:hover { color: var(--ink); background: var(--panel-2); }
-  .glp-jump button.on { color: var(--ink); background: color-mix(in oklch, var(--hue-theme) 11%, var(--panel)); }
+  .glp-jump button.on { color: var(--ink); background: var(--accent-soft); }
   .glp-navtabs {
     padding: 8px 10px;
     display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
@@ -3984,16 +3973,13 @@ const APP_CSS = `
     border: 0; border-radius: 8px; background: transparent; cursor: pointer; font-family: inherit;
     padding: 7px 4px 6px; color: var(--ink-3); font-size: 11.5px; font-weight: 600; white-space: nowrap;
   }
-  /* each area has its own hue (--tc): colored icon at rest, tinted pill when active */
-  .glp-navtabs [data-tab="templates"] { --tc: var(--hue-templates); }
-  .glp-navtabs [data-tab="theme"] { --tc: var(--hue-theme); }
-  .glp-navtabs [data-tab="sections"] { --tc: var(--hue-sections); }
+  /* neutral icons at rest; the active tab takes the one accent */
   .glp-navtabs button { color: var(--ink-2); font-size: 12px; font-weight: 500; border-radius: 10px; padding-left: 2px; padding-right: 2px; }
-  .glp-navtabs button i { font-size: 15px; color: var(--tc); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
-  .glp-navtabs button:hover { color: var(--ink); background: color-mix(in oklch, var(--tc) 8%, var(--panel)); }
+  .glp-navtabs button i { font-size: 15px; color: var(--ink-3); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
+  .glp-navtabs button:hover { color: var(--ink); background: var(--panel-2); }
+  .glp-navtabs button.on i { color: var(--accent); }
   .glp-navtabs button.on {
-    color: var(--ink); background: color-mix(in oklch, var(--tc) 9%, var(--panel));
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tc) 28%, transparent);
+    color: var(--ink); background: var(--accent-soft);
   }
   .glp-side {
     width: 452px; flex: none;
@@ -4083,8 +4069,8 @@ const APP_CSS = `
 
   /* sub-block heading + granular style checkbox grid */
   .glp-sub {
-    font-family: var(--font-mono); font-size: 11px; font-weight: 500;
-    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3);
+    font-family: var(--font-mono); font-size: 12px; font-weight: 500;
+    color: var(--ink-3);
     margin: 18px 0 8px;
   }
   .glp-sec__body > .glp-sub:first-child { margin-top: 2px; }
@@ -4268,7 +4254,7 @@ const APP_CSS = `
   }
   .glp-drag-handle:active { cursor: grabbing; }
   .glp-card__head.glp-drop-over { box-shadow: inset 0 2px 0 var(--accent); }
-  .glp-card__meta { font-size: 11.5px; color: var(--ink-3); font-family: var(--font-mono); flex: 0 1 auto; min-width: 0; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .glp-card__meta { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; flex: 0 1 auto; min-width: 0; max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .glp-iconbtn {
     border: 0; background: transparent; color: var(--ink-3); cursor: pointer;
     font-size: 13px; padding: 3px 6px; border-radius: 5px; line-height: 1;
@@ -4278,7 +4264,7 @@ const APP_CSS = `
   .glp-card__head { position: relative; }
   .glp-fixedrow > .glp-card__head { --rowbg: var(--panel-2); background: var(--rowbg); }
   .glp-fixedrow__icon { width: 14px; font-size: 12px; color: var(--ink-3); flex: none; }
-  .glp-outline-label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); margin: 14px 2px 8px; }
+  .glp-outline-label { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); margin: 14px 2px 8px; }
   .glp-rowacts {
     position: absolute; right: 34px; top: 50%; transform: translateY(-50%);
     display: flex; gap: 2px; padding-left: 18px; opacity: 0; pointer-events: none; transition: opacity 120ms ease;
@@ -4292,10 +4278,13 @@ const APP_CSS = `
   .glp button:focus-visible, .glp [role=button]:focus-visible, .glp-info:focus-visible {
     outline: none; box-shadow: var(--focus);
   }
-  .glp-card__body { padding: 4px 12px 14px; border-top: 1px solid var(--line); }
+  .glp-card__body { padding: 0 12px 14px; }
+  /* a card or column row inside a section: a plain fill, not a second bordered box */
+  .glp-card .glp-card { background: var(--panel); box-shadow: none; border-radius: 8px; margin-bottom: 6px; }
+  .glp[data-ui="midnight"] .glp-card .glp-card { background: var(--field); }
 
   /* nested section container gets a subtle accent edge */
-  .glp-section > .glp-card__head { --rowbg: color-mix(in oklch, var(--accent) 4%, var(--panel-2)); background: var(--rowbg); }
+  .glp-section > .glp-card__head { --rowbg: var(--panel-2); background: var(--rowbg); }
   .glp-section > .glp-card__body { padding: 8px 12px 14px; }
 
   .glp-swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
@@ -4360,15 +4349,11 @@ const APP_CSS = `
   .glp-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
   .glp-add:disabled { opacity: .4; cursor: default; }
   .glp-add--sm { padding: 7px; font-size: 11px; border-radius: 8px; }
-  .glp-subcard {
-    border: 1px solid var(--line-2); border-radius: 10px;
-    padding: 12px 12px 4px; margin-bottom: 10px;
-    background: color-mix(in srgb, var(--ink-2) 3%, transparent);
-  }
+  .glp-subcard { padding: 0; margin-bottom: 16px; }
   .glp-hint { font-size: 12px; color: var(--ink-2); }
   .glp-modal {
     position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center;
-    background: color-mix(in srgb, var(--bg) 70%, transparent); backdrop-filter: blur(3px);
+    background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(3px);
   }
   .glp-modal__box {
     width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto;
@@ -4406,9 +4391,8 @@ const APP_CSS = `
   }
 
   .glp-note {
-    font-size: 12px; color: var(--ink-2); line-height: 1.5;
-    border-radius: 8px; padding: 9px 11px; margin-bottom: 12px;
-    background: var(--accent-soft);
+    font-size: 12px; color: var(--ink-3); line-height: 1.5;
+    margin: 2px 0 14px;
   }
   .glp-note code { font-family: var(--font-mono); font-size: 11px; color: var(--ink); }
 
@@ -4419,7 +4403,7 @@ const APP_CSS = `
     border-bottom: 1px solid var(--line);
     background: var(--panel);
   }
-  .glp-view__label { font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+  .glp-view__label { font-family: var(--font-mono); font-size: 12px; font-weight: 500; color: var(--ink-3); white-space: nowrap; }
   .glp-view__bar .glp-seg { flex-wrap: nowrap; }
   .glp-view__side { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .glp-view__side--end { justify-content: flex-end; }
@@ -4562,7 +4546,7 @@ const APP_CSS = `
   }
   .glp-pages__list { max-height: min(260px, 40vh); overflow-y: auto; }
   .glp-menu { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
-  .glp-menu__head { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); padding: 4px 8px 4px; }
+  .glp-menu__head { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); padding: 4px 8px 4px; }
   .glp-menu__row {
     display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 7px 8px; border: 0; border-radius: 7px;
     background: transparent; color: var(--ink); font-family: inherit; font-size: 13.5px; line-height: 18px; text-align: left; cursor: pointer;
@@ -6412,7 +6396,8 @@ function Preview({ html, mode, setMode, device, setDevice, liquidNote, focusInde
           <span className="glp-view__label">Preview</span>
           {(() => {
             const note = (editable ? "Click text to edit it. Hover any part of the page for its settings, or a section or card to move, copy or delete it. " : hasOverride ? "Manual code edits are on, so the preview is read-only. " : "") + (liquidNote ? "Showing 3 sample projects (ReadMe fills in your real ones)" : "Header, search & Ask AI are stand-ins for ReadMe's hub chrome");
-            return <span className="glp-view__note" title={note}>{note}</span>;
+            const short = editable ? "Click text to edit, hover for settings" : hasOverride ? "Read-only while code edits are on" : liquidNote ? "Sample projects shown" : "";
+            return short ? <span className="glp-view__note" title={note}>{short}</span> : null;
           })()}
         </div>
         {setCanvasMode ? (
@@ -6600,7 +6585,7 @@ function ImportDialog({ onClose, onCreate }) {
     <div className="glp-modal" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="glp-modal__box" role="dialog" aria-modal="true" aria-label="Import with Claude">
         <div className="glp-modal__head">
-          <b><i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Import with Claude</b>
+          <b><i className="fa-solid fa-file-import" aria-hidden="true"></i> Import with Claude</b>
           <button className="glp-iconbtn" type="button" aria-label="Close" onClick={onClose}><i className="fa-solid fa-xmark" aria-hidden="true"></i></button>
         </div>
         <p className="glp-modal__lede">Give Claude any docs landing page and it rebuilds it here as a design you can edit. Uses your normal Claude login.</p>
@@ -7660,7 +7645,7 @@ function App() {
         </div>
         <button className="glp-smallbtn glp-claudebtn" type="button" onClick={() => setImportOpen(true)}
           title="Bring any docs landing page into the builder as an editable design, using Claude">
-          <i className="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+          <i className="fa-solid fa-file-import" aria-hidden="true"></i>
           <span>Import with Claude</span>
         </button>
         <div className="glp-bar__right">
