@@ -3830,6 +3830,12 @@ const APP_CSS = `
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(5 5 5 / 0.06), 0 16px 40px rgb(0 3 63 / 0.14);
     --frame-shadow: 0 12px 32px rgb(0 3 63 / 0.1);
+    /* editor-area hues from ReadMe's accent ramps */
+    --hue-templates: rgb(200 60 120);
+    --hue-theme: rgb(125 60 220);
+    --hue-header: rgb(31 140 60);
+    --hue-hero: rgb(214 100 0);
+    --hue-sections: var(--accent);
 
     height: 100vh;
     display: flex;
@@ -3884,6 +3890,11 @@ const APP_CSS = `
     --shadow-sm: var(--hairline);
     --shadow-lg: inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 20px 56px rgb(0 0 20 / 0.6);
     --frame-shadow: 0 20px 56px rgb(0 0 20 / 0.55);
+    --hue-templates: rgb(245 140 185);
+    --hue-theme: rgb(190 150 255);
+    --hue-header: rgb(110 220 125);
+    --hue-hero: rgb(255 170 90);
+    --hue-sections: var(--accent);
   }
   .glp-bar {
     display: flex; align-items: center; gap: 16px;
@@ -3963,7 +3974,7 @@ const APP_CSS = `
     font-size: 12.5px; font-weight: 500; color: var(--ink-3); padding: 5px 6px; border-radius: 6px;
   }
   .glp-jump button:hover { color: var(--ink); background: var(--panel-2); }
-  .glp-jump button.on { color: var(--ink); background: var(--accent-soft); }
+  .glp-jump button.on { color: var(--ink); background: color-mix(in oklch, var(--hue-theme) 11%, var(--panel)); }
   .glp-navtabs {
     padding: 8px 10px;
     display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
@@ -3973,13 +3984,16 @@ const APP_CSS = `
     border: 0; border-radius: 8px; background: transparent; cursor: pointer; font-family: inherit;
     padding: 7px 4px 6px; color: var(--ink-3); font-size: 11.5px; font-weight: 600; white-space: nowrap;
   }
-  /* neutral icons at rest; the active tab takes the one accent */
+  /* each area has its own hue (--tc): colored icon at rest, tinted pill when active */
+  .glp-navtabs [data-tab="templates"] { --tc: var(--hue-templates); }
+  .glp-navtabs [data-tab="theme"] { --tc: var(--hue-theme); }
+  .glp-navtabs [data-tab="sections"] { --tc: var(--hue-sections); }
   .glp-navtabs button { color: var(--ink-2); font-size: 12px; font-weight: 500; border-radius: 10px; padding-left: 2px; padding-right: 2px; }
-  .glp-navtabs button i { font-size: 15px; color: var(--ink-3); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
-  .glp-navtabs button:hover { color: var(--ink); background: var(--panel-2); }
-  .glp-navtabs button.on i { color: var(--accent); }
+  .glp-navtabs button i { font-size: 15px; color: var(--tc); transition: transform 180ms cubic-bezier(.25,1,.5,1); }
+  .glp-navtabs button:hover { color: var(--ink); background: color-mix(in oklch, var(--tc) 8%, var(--panel)); }
   .glp-navtabs button.on {
-    color: var(--ink); background: var(--accent-soft);
+    color: var(--ink); background: color-mix(in oklch, var(--tc) 9%, var(--panel));
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--tc) 28%, transparent);
   }
   .glp-side {
     width: 452px; flex: none;
