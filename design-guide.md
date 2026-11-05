@@ -50,7 +50,7 @@ Name the page after the source, e.g. "Unbranded developer.acme.com".
   whatever fonts the hub uses; when recreating a page, prefer the closest supported fonts instead). Headings: "Fraunces" | "Syne" | "Space Mono" | "DM Mono" | "DM Sans" | "Geist" |
   "Geist Mono" | "IBM Plex Mono" | "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans".
   Body: "Literata" | "Lora" | "Merriweather" | "DM Mono" | "DM Sans" | "Geist" | "Geist Mono" | "IBM Plex Mono" |
-  "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans". Optional `mono` (labels, small buttons):
+  "IBM Plex Sans" | "IBM Plex Serif" | "Inter" | "Space Grotesk" | "Work Sans". Optional `mono` (code samples and the mono card style):
   "DM Mono" | "Geist Mono" | "IBM Plex Mono" | "Space Mono". Pick the closest match to the source page.
   `headingWeight`: 400 | 500 | 600 (default) | 700 applies to every heading. One heading can differ with its own
   weight field beside it: `hero.titleWeight`, `banner.titleWeight`, a section's `headingWeight`, a card's
@@ -142,17 +142,17 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
 {
  "typeface": { "custom": true, "heading": "Inter", "body": "Inter", "headingWeight": 700 },
  "hero": {
-  "eyebrow": "Platform docs",
+  "eyebrow": "",
   "chip": "",
   "chipHref": "",
-  "title": "Welcome to Acme technical documentation",
-  "subtitle": "Everything you need to build on the Acme platform: guides, the API reference, platform documentation, and release notes, all in one place.",
+  "title": "Acme technical documentation",
+  "subtitle": "Guides, the API reference, platform docs and release notes for building on Acme.",
   "align": "left",
   "titleSize": 40,
   "subtitleSize": 18,
   "padY": 0,
   "buttons": true,
-  "searchHint": "Search runs across every documentation set below. Ask AI answers in plain language, with links to the pages it used.",
+  "searchHint": "Search covers every doc set below. Ask AI answers with links to its sources.",
   "btnPrimary": {
    "label": "Start building",
    "href": "/guides"
@@ -242,7 +242,7 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
    "type": "cards",
    "label": "Audiences",
    "heading": "How are you working with Acme?",
-   "intro": "Pick the path that matches how you work with us.",
+   "intro": "",
    "align": "left",
    "source": "static",
    "styleMode": "custom",
@@ -280,15 +280,15 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
      "ctaText": "View docs",
      "links": [
       {
-       "label": "Are you building an integration using *standard API access*?",
+       "label": "Building with standard API access",
        "href": "/guides/standard-access"
       },
       {
-       "label": "Are you building an integration using the *analytics API*?",
+       "label": "Building with the analytics API",
        "href": "/guides/analytics-api"
       },
       {
-       "label": "Not building an integration? Looking for detailed product information?",
+       "label": "Looking for product details, not building an integration",
        "href": "/platform"
       }
      ],
@@ -304,7 +304,7 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
      "ctaText": "View docs",
      "links": [
       {
-       "label": "Do you have a partner agreement? Are you integrating your product with our platform?",
+       "label": "Integrating your product under a partner agreement",
        "href": "/guides/partner-access"
       }
      ],
@@ -318,7 +318,7 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
    "type": "cards",
    "label": "Doc tiles",
    "heading": "Explore the documentation",
-   "intro": "Learn more about our products and how to integrate them with your business.",
+   "intro": "",
    "align": "left",
    "source": "static",
    "styleMode": "custom",
@@ -351,7 +351,7 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
     {
      "icon": "list-check",
      "title": "Integration how-to",
-     "blurb": "Step-by-step guides to reach specific business goals.",
+     "blurb": "Step-by-step guides for common business goals.",
      "href": "/guides",
      "ctaText": "Open",
      "links": [],
@@ -362,7 +362,7 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
     {
      "icon": "code",
      "title": "Developer guide",
-     "blurb": "Build and customize your integrations using our APIs.",
+     "blurb": "Build and customize integrations on our APIs.",
      "href": "/guides/getting-started",
      "ctaText": "Open",
      "links": [],
@@ -395,7 +395,7 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
     {
      "icon": "clock-rotate-left",
      "title": "Release notes",
-     "blurb": "Stay up to date with platform and API changes.",
+     "blurb": "Platform and API changes, newest first.",
      "href": "/changelog",
      "ctaText": "Open",
      "links": [],
@@ -433,7 +433,7 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
      "body": "Authenticate and make your first call.",
      "ctas": [
       {
-       "label": "Open",
+       "label": "Make your first call",
        "href": "/guides/getting-started",
        "style": "plain"
       }
@@ -444,7 +444,7 @@ A recreation of a (fictional) Acme developer hub: its own fonts, colors, and dot
      "body": "Latest platform and API changes.",
      "ctas": [
       {
-       "label": "Open",
+       "label": "Read release notes",
        "href": "/changelog",
        "style": "plain"
       }

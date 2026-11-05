@@ -447,7 +447,7 @@ const DEFAULT_CONFIG = {
     chip: "",
     chipHref: "",
     title: "Welcome to our documentation",
-    subtitle: "Documentation for every audience. Pick your entry point or search everything.",
+    subtitle: "Pick a doc set below, or search across all of them.",
     align: "center",
     /* null = use the alignment-based default size (38/42 title, HERO_SUB_DEFAULT subtitle) */
     titleSize: null,
@@ -501,7 +501,7 @@ const DEFAULT_CONFIG = {
   banner: {
     enabled: false,
     title: "Need help building your integration?",
-    text: "Our team can walk you through setup, auth, and best practices.",
+    text: "Our team can help you set up authentication and make your first call.",
     btnLabel: "Contact us",
     btnHref: "/contact",
     /* left (copy + button side by side) | center (stacked, two buttons) */
@@ -585,7 +585,7 @@ const tplCode = (o) => ({
   type: "code", label: o.label || "Code sample", eyebrow: o.eyebrow || "", heading: o.heading || "", intro: o.intro || "",
   align: "left", layout: { ...DEFAULT_SECTION_LAYOUT, ...o.layout }, code: { ...DEFAULT_CODE, ...o.code },
 });
-const TPL_SUB = "Guides to get you started, a complete API reference, and the details you need when you are deep in it.";
+const TPL_SUB = "Start with a guide, or go straight to the API reference.";
 const tplBase = (over) =>
   migrateConfig({
     ...DEFAULT_CONFIG,
@@ -684,12 +684,11 @@ const PAGE_TEMPLATES = [
         hero: {
           ...DEFAULT_CONFIG.hero,
           align: "left",
-          eyebrow: "Platform docs",
-          title: "Welcome to Acme technical documentation",
-          subtitle: "Everything you need to build on the Acme platform: guides, the API reference, platform documentation, and release notes, all in one place.",
+          title: "Acme technical documentation",
+          subtitle: "Guides, the API reference, platform docs and release notes for building on Acme.",
           titleSize: 40,
           subtitleSize: 18,
-          searchHint: "Search runs across every documentation set below. Ask AI answers in plain language, with links to the pages it used.",
+          searchHint: "Search covers every doc set below. Ask AI answers with links to its sources.",
           buttons: true,
           btnPrimary: { label: "Start building", href: "/guides" },
           btnSecondary: { label: "Browse the API reference", href: "/reference" },
@@ -700,7 +699,7 @@ const PAGE_TEMPLATES = [
           {
             label: "Audiences",
             heading: "How are you working with Acme?",
-            intro: "Pick the path that matches how you work with us.",
+            intro: "",
             align: "left",
             source: "static",
             styleMode: "custom",
@@ -710,14 +709,14 @@ const PAGE_TEMPLATES = [
               {
                 ...CARD_DEFAULTS, id: uid(), title: "Customers", blurb: "", href: "/guides",
                 links: [
-                  L("Are you building an integration using *standard API access*?", "/guides/standard-access"),
-                  L("Are you building an integration using the *analytics API*?", "/guides/analytics-api"),
-                  L("Not building an integration? Looking for detailed product information?", "/platform"),
+                  L("Building with standard API access", "/guides/standard-access"),
+                  L("Building with the analytics API", "/guides/analytics-api"),
+                  L("Looking for product details, not building an integration", "/platform"),
                 ],
               },
               {
                 ...CARD_DEFAULTS, id: uid(), title: "Partners", blurb: "", href: "/partners",
-                links: [L("Do you have a partner agreement? Are you integrating your product with our platform?", "/guides/partner-access")],
+                links: [L("Integrating your product under a partner agreement", "/guides/partner-access")],
                 note: "Don't have a partner agreement yet?", noteLinkLabel: "Apply for partnership", noteHref: "/partners",
               },
             ],
@@ -725,18 +724,18 @@ const PAGE_TEMPLATES = [
           {
             label: "Doc tiles",
             heading: "Explore the documentation",
-            intro: "Learn more about our products and how to integrate them with your business.",
+            intro: "",
             align: "left",
             source: "static",
             styleMode: "custom",
             style: tileStyle,
             layout: { ...DEFAULT_SECTION_LAYOUT, colMin: 300, gap: 24, spaceAbove: 72, divider: true, dividerStyle: "accent" },
             cards: [
-              tile("list-check", "Integration how-to", "Step-by-step guides to reach specific business goals.", "/guides"),
-              tile("code", "Developer guide", "Build and customize your integrations using our APIs.", "/guides/getting-started"),
+              tile("list-check", "Integration how-to", "Step-by-step guides for common business goals.", "/guides"),
+              tile("code", "Developer guide", "Build and customize integrations on our APIs.", "/guides/getting-started"),
               tile("book", "API reference", "Browse endpoints, parameters, and data definitions.", "/reference"),
               tile("table-cells-large", "Platform guide", "Detailed information about our platform products.", "/platform"),
-              tile("clock-rotate-left", "Release notes", "Stay up to date with platform and API changes.", "/changelog"),
+              tile("clock-rotate-left", "Release notes", "Platform and API changes, newest first.", "/changelog"),
             ],
           },
           {
@@ -748,8 +747,8 @@ const PAGE_TEMPLATES = [
             layout: { ...DEFAULT_SECTION_LAYOUT, gap: 28, spaceAbove: 56, bg: "dark" },
             columns: [
               { heading: "Need a hand?", body: "Search or ask AI at the top of this page, or start from one of these.", ctas: [] },
-              { heading: "Getting started", body: "Authenticate and make your first call.", ctas: [{ label: "Open", href: "/guides/getting-started", style: "plain" }] },
-              { heading: "What's new", body: "Latest platform and API changes.", ctas: [{ label: "Open", href: "/changelog", style: "plain" }] },
+              { heading: "Getting started", body: "Authenticate and make your first call.", ctas: [{ label: "Make your first call", href: "/guides/getting-started", style: "plain" }] },
+              { heading: "What's new", body: "Latest platform and API changes.", ctas: [{ label: "Read release notes", href: "/changelog", style: "plain" }] },
               { heading: "Support", body: "Product help for your team.", ctas: [{ label: "Contact support", href: "/support", style: "plain" }] },
             ],
           },
@@ -760,10 +759,10 @@ const PAGE_TEMPLATES = [
   {
     key: "aurora",
     label: "Aurora",
-    hint: "Glowing hero with a Jump to panel, a bento grid of doc sets, a code window, popular-guide lists",
+    hint: "Glow hero with a Jump to panel, a bento grid of doc sets, a code sample, popular guides",
     build: () => tplBase({
-      hero: { ...DEFAULT_CONFIG.hero, align: "left", bg: "glow", eyebrow: "docs.acme.com", titleSize: 58, subtitleSize: 17,
-        title: "Everything you need to build with Acme", subtitle: TPL_SUB,
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", bg: "glow", titleSize: 58, subtitleSize: 17,
+        title: "Build with Acme", subtitle: TPL_SUB,
         buttons: true, btnPrimary: { label: "Start building", href: "/guides" }, btnSecondary: { label: "Read the API", href: "/reference" },
         panel: { enabled: true, title: "Jump to", links: [
           { label: "Get started", href: "/guides/getting-started", meta: "22" },
@@ -775,30 +774,30 @@ const PAGE_TEMPLATES = [
       sections: [
         tplCards({
           label: "Doc sets", heading: "Pick a starting point",
-          style: { anchor: false, icon: true, bar: true, peek: true, cta: true, ctaPlain: true, radius: 16, density: "comfortable" },
+          style: { anchor: false, icon: true, bar: false, peek: true, cta: true, ctaPlain: true, radius: 12, density: "comfortable" },
           layout: { bento: true, gap: 18, spaceAbove: 80 },
           cards: [
             tplCard({ icon: "rocket", title: "Quickstart", blurb: "From zero to a working request in about five minutes.", href: "/guides/quickstart", peekLabel: "Steps", peekItems: ["Create an API key", "Install an SDK", "Make your first call"], ctaText: "Start" }),
             tplCard({ icon: "code", title: "API reference", blurb: "Every endpoint, with ready-to-run samples.", href: "/reference", peekLabel: "Popular", peekItems: ["Payments", "Customers"], ctaText: "Browse" }),
             tplCard({ icon: "cubes", title: "SDKs", blurb: "Official libraries for six languages.", href: "/sdks", peekLabel: "Languages", peekItems: ["Node, Python, Go", "Ruby, Java, .NET"], ctaText: "Install" }),
-            tplCard({ icon: "book-open", title: "Guides", blurb: "Concepts, tutorials and how-tos for everything you will build on the platform.", href: "/guides", peekLabel: "Popular", peekItems: ["Authentication", "Webhooks", "Pagination"], ctaText: "Read" }),
+            tplCard({ icon: "book-open", title: "Guides", blurb: "Concepts, tutorials and how-tos.", href: "/guides", peekLabel: "Popular", peekItems: ["Authentication", "Webhooks", "Pagination"], ctaText: "Read" }),
           ],
         }),
-        tplCode({ eyebrow: "Code samples", heading: "Copy, paste, run", intro: "Every reference page carries a sample in the language you already use.", layout: { spaceAbove: 96, bg: "subtle" } }),
+        tplCode({ heading: "Samples in your language", intro: "Every reference page has a sample you can run as-is.", layout: { spaceAbove: 96, bg: "subtle" } }),
         tplCards({
-          label: "Popular", heading: "Popular right now",
+          label: "Popular", heading: "Popular guides",
           style: { anchor: false, links: true, radius: 14, density: "comfortable" },
           layout: { colMin: 280, gap: 18, spaceAbove: 96 },
           cards: [
-            tplCard({ title: "Get set up", links: [tplLink("Create and rotate API keys", "/guides/keys"), tplLink("Test in the *sandbox*", "/guides/sandbox"), tplLink("Go live checklist", "/guides/go-live")] }),
-            tplCard({ title: "Build", links: [tplLink("Receive *webhooks*", "/guides/webhooks"), tplLink("Paginate large lists", "/guides/pagination"), tplLink("Handle errors and retries", "/guides/errors")] }),
+            tplCard({ title: "Get set up", links: [tplLink("Create and rotate API keys", "/guides/keys"), tplLink("Test in the sandbox", "/guides/sandbox"), tplLink("Go live checklist", "/guides/go-live")] }),
+            tplCard({ title: "Build", links: [tplLink("Receive webhooks", "/guides/webhooks"), tplLink("Paginate large lists", "/guides/pagination"), tplLink("Handle errors and retries", "/guides/errors")] }),
             tplCard({ title: "Operate", links: [tplLink("Rate limits", "/guides/rate-limits"), tplLink("Versioning and upgrades", "/guides/versioning"), tplLink("Status and incidents", "/status")] }),
           ],
         }),
       ],
-      banner: { ...DEFAULT_CONFIG.banner, enabled: true, align: "center", glow: true, title: "Can't find it?",
-        text: "Everything here is searchable. Start from the guides, or jump straight to the reference.",
-        btnLabel: "Start building", btnHref: "/guides", btn2Label: "Read the API", btn2Href: "/reference" },
+      banner: { ...DEFAULT_CONFIG.banner, enabled: true, align: "center", glow: false, title: "Still stuck?",
+        text: "Our support team replies within one business day.",
+        btnLabel: "Contact support", btnHref: "/support", btn2Label: "Ask the community", btn2Href: "/community" },
     }),
   },
   {
@@ -834,7 +833,7 @@ const PAGE_TEMPLATES = [
           layout: { colMin: 360, gap: 18, spaceAbove: 72 },
           cards: [
             tplCard({ title: "For admins", links: [tplLink("Invite your team and set roles", "/guides/team"), tplLink("Turn on single sign-on", "/guides/sso"), tplLink("Download invoices", "/guides/invoices")] }),
-            tplCard({ title: "For developers", links: [tplLink("Make your first API call", "/guides/quickstart"), tplLink("Verify *webhook* signatures", "/guides/webhooks"), tplLink("Troubleshoot common errors", "/guides/errors")] }),
+            tplCard({ title: "For developers", links: [tplLink("Make your first API call", "/guides/quickstart"), tplLink("Verify webhook signatures", "/guides/webhooks"), tplLink("Troubleshoot common errors", "/guides/errors")] }),
           ],
         }),
         tplCols({
@@ -848,31 +847,31 @@ const PAGE_TEMPLATES = [
         }),
       ],
       banner: { ...DEFAULT_CONFIG.banner, enabled: false },
-      footer: "Can't find what you need? Search above or ask the AI assistant.",
+      footer: "",
     }),
   },
   {
     key: "editorial",
     label: "Editorial",
-    hint: "Serif headlines, two feature stories, a numbered table of contents, further reading",
+    hint: "Serif headlines, two feature stories, a table of contents, further reading",
     build: () => tplBase({
-      typeface: { custom: true, heading: "Fraunces", body: "readme", headingWeight: 500 },
-      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "The Acme documentation", titleSize: 64, subtitleSize: 19,
-        title: "Build *carefully*. Ship with confidence.", subtitle: TPL_SUB, buttons: false },
+      typeface: { custom: true, heading: "IBM Plex Serif", body: "readme", headingWeight: 500 },
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", titleSize: 60, subtitleSize: 19,
+        title: "How to build on Acme", subtitle: "Read the guide start to finish, or look up any endpoint in the reference.", buttons: false },
       sections: [
         tplCards({
-          label: "Features", eyebrow: "Start here",
-          style: { anchor: true, badge: true, cta: true, ctaPlain: true, radius: 4, density: "roomy" },
+          label: "Features", heading: "Start here",
+          style: { anchor: true, cta: true, ctaPlain: true, radius: 4, density: "roomy" },
           layout: { colMin: 420, gap: 28, spaceAbove: 56 },
           cards: [
-            tplCard({ eyebrow: "Guide", badge: "dot", title: "The developer guide", blurb: "A start-to-finish walk through the platform: concepts first, then the code that puts them to work.", href: "/guides", ctaText: "Read the guide" }),
-            tplCard({ eyebrow: "Reference", badge: "dot", title: "The API reference", blurb: "Every endpoint, parameter and response, with samples you can run straight from the page.", href: "/reference", ctaText: "Open the reference" }),
+            tplCard({ title: "The developer guide", blurb: "A start-to-finish walk through the platform: concepts first, then the code that puts them to work.", href: "/guides", ctaText: "Read the guide" }),
+            tplCard({ title: "The API reference", blurb: "Every endpoint, parameter and response, with samples you can run straight from the page.", href: "/reference", ctaText: "Open the reference" }),
           ],
         }),
         tplCards({
-          label: "Contents", eyebrow: "Contents", heading: "In this documentation",
+          label: "Contents", heading: "Contents",
           style: { anchor: true, num: true, radius: 0, density: "comfortable" },
-          layout: { list: true, gap: 0, spaceAbove: 88, divider: true, dividerStyle: "hairline" },
+          layout: { list: true, gap: 0, spaceAbove: 88 },
           cards: [
             tplCard({ title: "Getting started", blurb: "Accounts, keys and your first request", href: "/guides/getting-started", meta: "8 pages" }),
             tplCard({ title: "Core concepts", blurb: "How objects, events and environments fit together", href: "/guides/concepts", meta: "12 pages" }),
@@ -882,7 +881,7 @@ const PAGE_TEMPLATES = [
           ],
         }),
         tplCols({
-          label: "Further reading", eyebrow: "Further reading",
+          label: "Further reading", heading: "Further reading",
           layout: { gap: 40, spaceAbove: 88, divider: true, dividerStyle: "hairline" },
           columns: [
             { heading: "On authentication", body: "Why keys are scoped, how to rotate them, and what to do when one leaks.", ctas: [{ label: "Read", href: "/guides/auth", style: "plain" }] },
@@ -899,29 +898,29 @@ const PAGE_TEMPLATES = [
   {
     key: "terminal",
     label: "Terminal",
-    hint: "Monospace everything: prompt hero, code first, docs as a table, a dark command strip",
+    hint: "Monospace type, code first, docs as a table, a dark strip of CLI commands",
     build: () => tplBase({
       typeface: { custom: true, heading: "Geist Mono", body: "Geist Mono", headingWeight: 500 },
       theme: { colorMode: "readme", pattern: "grid", patternStrength: "subtle" },
-      hero: { ...DEFAULT_CONFIG.hero, align: "left", eyebrow: "$ acme docs --open", titleSize: 44, subtitleSize: 15,
-        title: "acme: the API, documented", subtitle: TPL_SUB,
-        buttons: true, btnPrimary: { label: "npm install @acme/sdk", href: "/sdks" }, btnSecondary: { label: "Read the API", href: "/reference" } },
+      hero: { ...DEFAULT_CONFIG.hero, align: "left", titleSize: 44, subtitleSize: 15,
+        title: "Acme API docs", subtitle: "Reference, guides, SDKs and a CLI for the Acme API.",
+        buttons: true, btnPrimary: { label: "Install the SDK", href: "/sdks" }, btnSecondary: { label: "API reference", href: "/reference" } },
       sections: [
-        tplCode({ eyebrow: "# quickstart", heading: "Five lines to a working call", intro: "Install the SDK, set your key, and run it.", layout: { spaceAbove: 56 } }),
+        tplCode({ heading: "Your first call", intro: "Install the SDK, set your key, and run it.", layout: { spaceAbove: 56 } }),
         tplCards({
-          label: "Docs", eyebrow: "# docs", heading: "ls ./docs",
-          style: { anchor: true, mono: true, radius: 4, density: "compact" },
+          label: "Docs", heading: "Documentation",
+          style: { anchor: true, radius: 4, density: "compact" },
           layout: { list: true, gap: 0, spaceAbove: 80 },
           cards: [
-            tplCard({ title: "guides", blurb: "Concepts, tutorials and how-tos", href: "/guides", meta: "96 pages" }),
-            tplCard({ title: "api-reference", blurb: "Every endpoint, with samples", href: "/reference", meta: "48 endpoints" }),
-            tplCard({ title: "sdks", blurb: "Node, Python, Go, Ruby, Java, .NET", href: "/sdks", meta: "6 libraries" }),
-            tplCard({ title: "cli", blurb: "Script the platform from your shell", href: "/cli", meta: "31 commands" }),
-            tplCard({ title: "changelog", blurb: "Every release, newest first", href: "/changelog", meta: "weekly" }),
+            tplCard({ title: "Guides", blurb: "Concepts, tutorials and how-tos", href: "/guides", meta: "96 pages" }),
+            tplCard({ title: "API reference", blurb: "Every endpoint, with samples", href: "/reference", meta: "48 endpoints" }),
+            tplCard({ title: "SDKs", blurb: "Node, Python, Go, Ruby, Java, .NET", href: "/sdks", meta: "6 libraries" }),
+            tplCard({ title: "CLI", blurb: "Script the platform from your shell", href: "/cli", meta: "31 commands" }),
+            tplCard({ title: "Changelog", blurb: "Every release, newest first", href: "/changelog", meta: "weekly" }),
           ],
         }),
         tplCols({
-          label: "Commands", eyebrow: "# common tasks",
+          label: "Commands", heading: "Common CLI tasks",
           layout: { gap: 24, spaceAbove: 80, bg: "dark" },
           columns: [
             { heading: "auth", body: "Create, scope and rotate keys.", ctas: [{ label: "acme auth --help", href: "/cli/auth", style: "plain" }] },
@@ -932,7 +931,7 @@ const PAGE_TEMPLATES = [
         }),
       ],
       banner: { ...DEFAULT_CONFIG.banner, enabled: false },
-      footer: "exit 0",
+      footer: "",
     }),
   }
 ];
@@ -1920,12 +1919,12 @@ ${brandFg ? `  .rm-Header .rm-Header-right :is(a, button, span, i) { color: ${br
   }
   .bnk-brand__name {
     display: inline-flex; align-items: baseline; gap: 8px; text-decoration: none;
-    font-family: ${F.display}; font-size: 24px; font-weight: 700; letter-spacing: -0.02em;
+    font-family: ${F.display}; font-size: 24px; font-weight: 700;
     color: var(--bnk-accent) !important;
   }
   .bnk-brand__name small {
-    font-family: ${F.body}; font-size: 13px; font-weight: 600; letter-spacing: 0.05em;
-    text-transform: uppercase; color: var(--bnk-ink-2) !important;
+    font-family: ${F.body}; font-size: 14px; font-weight: 500;
+    color: var(--bnk-ink-2) !important;
   }
   .bnk-brand__name img { height: ${LOGO_SIZES.includes(Number(BB.logoSize)) ? Number(BB.logoSize) : 32}px; width: auto; display: block; align-self: center; }
   /* the bar's controls share a row with ReadMe's own (log in / user menu, theme toggle,
@@ -2071,13 +2070,13 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   }
   .bnk-panel .bnk-actions--panel { margin: 0 0 18px; justify-content: stretch; }
   .bnk-panel .bnk-actions--panel .rm-Header-search { flex: 1 1 auto !important; }
-  .bnk-panel__title { margin: 0 0 8px; font-family: ${F.mono}; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--bnk-ink-2) !important; }
+  .bnk-panel__title { margin: 0 0 6px; font-family: ${F.body}; font-size: 13px; font-weight: 600; color: var(--bnk-ink-2) !important; }
   .bnk-panel__link {
     display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 9px 10px; margin: 0 -10px;
     border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14.5px; color: var(--bnk-heading) !important;
   }
   .bnk-panel__link:hover { background: color-mix(in srgb, var(--bnk-accent) 9%, transparent); }
-  .bnk-panel__meta { font-family: ${F.mono}; font-size: 12px; font-weight: 400; color: var(--bnk-ink-2) !important; }
+  .bnk-panel__meta { font-family: ${F.body}; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 400; color: var(--bnk-ink-2) !important; }
   .bnk-quick { display: flex; flex-wrap: wrap; gap: 8px; justify-content: ${heroLeft ? "flex-start" : "center"}; margin: 14px auto 0; max-width: 760px; }
   .bnk-quick__link {
     padding: 6px 14px; border-radius: 999px; font-size: 13.5px; text-decoration: none;
@@ -2089,11 +2088,10 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-actions--lg .rm-Header-search .rm-SearchToggle { height: 58px !important; font-size: 16px !important; border-radius: 14px !important; padding: 0 20px !important; }
   .bnk-actions--lg :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) { height: 58px !important; border-radius: 14px !important; }
   .bnk-section__eyebrow {
-    display: flex; align-items: center; gap: 10px; margin: 0 0 10px;
-    font-family: ${F.mono}; font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+    display: flex; align-items: center; margin: 0 0 6px;
+    font-family: ${F.body}; font-size: 14px; font-weight: 600;
     color: var(--bnk-accent) !important;
   }
-  .bnk-section__eyebrow::before { content: ""; width: 18px; height: 1.5px; background: currentColor; }
   .bnk-sec--center .bnk-section__eyebrow { justify-content: center; }
   .bnk-card__num { display: block; margin: 0 0 16px; padding-bottom: 12px; font-family: ${F.mono}; font-size: 14px; font-weight: 700; color: var(--accent) !important; position: relative; }
   .bnk-card__num::after { content: ""; position: absolute; left: 0; bottom: 0; width: 24px; height: 2px; background: var(--accent); opacity: .7; }
@@ -2110,20 +2108,17 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
   .bnk-sec--list .bnk-card__head .bnk-card__title { flex: none; }
   .bnk-sec--list .bnk-card__icon { margin: 0; }
   .bnk-sec--list .bnk-card__blurb { flex: 1 1 auto; min-width: 0; }
-  .bnk-sec--list .bnk-card__meta { position: static; flex: none; background: none; padding: 0; margin-left: auto; font-family: ${F.mono}; order: 3; }
+  .bnk-sec--list .bnk-card__meta { position: static; flex: none; background: none; padding: 0; margin-left: auto; font-variant-numeric: tabular-nums; order: 3; }
   .bnk-sec--list .bnk-card__title, .bnk-sec--list .bnk-card__head { order: 1; }
   .bnk-sec--list .bnk-card__blurb { order: 2; }
   .bnk-sec--list .bnk-card__num { display: none; }
   .bnk-sec--list .bnk-card__arrow, .bnk-sec--list .bnk-card__go { margin: 0; align-self: center; }
   .bnk-codesec { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 48px; align-items: center; }
   .bnk-codesec .bnk-section { margin: 0; }
-  .bnk-codesec__langs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-  .bnk-codesec__lang { padding: 5px 12px; border-radius: 999px; font-family: ${F.mono}; font-size: 12px; color: var(--bnk-ink-2) !important; border: 1px solid var(--card-border); }
-  .bnk-codesec__lang.on { color: var(--bnk-accent) !important; border-color: color-mix(in srgb, var(--bnk-accent) 55%, transparent); background: color-mix(in srgb, var(--bnk-accent) 12%, transparent); }
+  .bnk-codesec__langs { margin: 14px 0 0; font-size: 14px; line-height: 1.55; color: var(--bnk-ink-2) !important; }
   .bnk-codewin { border-radius: 12px; overflow: hidden; background: #0B0E16; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 24px 60px rgba(0,0,0,.25); }
-  .bnk-codewin__bar { display: flex; align-items: center; gap: 7px; padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.07); }
-  .bnk-codewin__bar i { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.18); }
-  .bnk-codewin__bar span { margin-left: 8px; font-family: ${F.mono}; font-size: 12px; color: rgba(255,255,255,.55); }
+  .bnk-codewin__bar { display: flex; align-items: center; padding: 12px 18px; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .bnk-codewin__bar span { font-family: ${F.mono}; font-size: 12px; color: rgba(255,255,255,.55); }
   .bnk-codewin__pre { margin: 0; padding: 20px 22px 24px; overflow: auto; font-family: ${F.mono}; font-size: 13px; line-height: 1.7; color: #E6EAF5; white-space: pre; }
   .bnk-banner.bnk-banner--center { flex-direction: column; text-align: center; gap: 0; padding: 52px 36px; }
   .bnk-banner--center .bnk-banner__title { font-size: 30px; margin-bottom: 12px; }
@@ -2136,16 +2131,15 @@ ${darkBlock(".bnk-landing::before", "  ", (pad) => `${pad}background-image: ${pa
       var(--card-bg); }
   /* translucent surfaces blur what sits behind them (a pattern or glow shows
      through otherwise); --card-blur is only set in dark mode */
-  .bnk-panel, .bnk-quick__link, .bnk-codesec__lang, .bnk-banner, .bnk-btn--secondary, .bnk-banner__btn--ghost,
+  .bnk-panel, .bnk-quick__link, .bnk-banner, .bnk-btn--secondary, .bnk-banner__btn--ghost,
   .bnk-sec--bg-subtle, .bnk-sec--bg-accent, .bnk-sec--bg-dark,
   .bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [class*="Header-ask-ai-button"]) {
     -webkit-backdrop-filter: var(--card-blur); backdrop-filter: var(--card-blur);
   }
   /* outline buttons and pills sit on a solid fill (their tint, if any, layered over the page color) */
-  .bnk-btn--secondary, .bnk-col__cta--btn, .bnk-codesec__lang:not(.on) { background-color: var(--bnk-solid); }
+  .bnk-btn--secondary, .bnk-col__cta--btn { background-color: var(--bnk-solid); }
   .bnk-banner .bnk-banner__btn.bnk-banner__btn--ghost { background: var(--bnk-solid) !important; }
   .bnk-quick__link { background: linear-gradient(var(--card-bg), var(--card-bg)), var(--bnk-solid); }
-  .bnk-codesec__lang.on { background: linear-gradient(color-mix(in srgb, var(--bnk-accent) 12%, transparent), color-mix(in srgb, var(--bnk-accent) 12%, transparent)), var(--bnk-solid); }
   .bnk-sec--bg-dark .bnk-col__cta--btn, .bnk-sec--bg-accent .bnk-col__cta--btn { background-color: transparent; }
 ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [class*="Header-ask-ai-button"])', "  ", (pad) => `${pad}background-color: rgba(var(--color-bg-page-rgb, 11, 12, 13), 0.92) !important;`)}
   @media (max-width: 860px) {
@@ -2187,9 +2181,9 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
     margin-bottom: 18px;
     padding: 5px 12px;
     border-radius: 999px;
-    font-family: ${F.mono};
-    font-size: 11px;
-    letter-spacing: 0.08em;
+    font-family: ${F.body};
+    font-size: 13px;
+    font-weight: 500;
     text-decoration: none;
     color: var(--bnk-accent) !important;
     background: color-mix(in srgb, var(--bnk-accent) 10%, transparent);
@@ -2211,9 +2205,9 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-family: ${F.mono};
-    font-size: 13.5px;
-    letter-spacing: 0.05em;
+    font-family: ${F.body};
+    font-size: 15px;
+    font-weight: 600;
     padding: 12px 22px;
     border-radius: 10px;
     text-decoration: none;
@@ -2248,7 +2242,6 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
     font-family: ${F.displayH};
     font-weight: ${HW};
     font-size: 22px;
-    letter-spacing: -0.01em;
     color: var(--bnk-heading) !important;
   }
   .bnk-banner__text { margin: 0; font-size: 14px; line-height: 1.55; color: var(--bnk-ink-1) !important; }
@@ -2256,9 +2249,9 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-family: ${F.mono};
-    font-size: 13.5px;
-    letter-spacing: 0.05em;
+    font-family: ${F.body};
+    font-size: 15px;
+    font-weight: 600;
     padding: 12px 22px;
     border-radius: 10px;
     text-decoration: none;
@@ -2296,10 +2289,10 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
   .bnk-card__eyebrow {
     display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
     margin-bottom: 14px; padding: 5px 10px; border-radius: 6px; line-height: 1.4;
-    font-family: ${F.mono}; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    font-family: ${F.body}; font-size: 12.5px; font-weight: 600;
     color: var(--accent) !important; background: color-mix(in srgb, var(--accent) 11%, transparent);
   }
-  .bnk-sec--mono .bnk-card__eyebrow { background: transparent; padding: 0; letter-spacing: 0.1em; text-transform: none; }
+  .bnk-sec--mono .bnk-card__eyebrow { background: transparent; padding: 0; font-family: ${F.mono}; }
   .bnk-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--accent); transition: box-shadow 200ms ease; }
   .bnk-lock { width: 11px; height: 11px; flex: none; display: inline-block; }
   .bnk-card:hover .bnk-dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -2311,7 +2304,7 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
   }
   .bnk-card__title {
     margin: 0 0 8px; font-family: var(--title-font, ${F.display}); font-weight: ${HW};
-    font-size: var(--title-size, 21px); line-height: 1.15; letter-spacing: -0.01em;
+    font-size: var(--title-size, 21px); line-height: 1.2;
     text-transform: var(--title-tt, none); color: var(--card-title) !important;
   }
   .bnk-sec--mono .bnk-card__title { font-weight: 700; }
@@ -2319,8 +2312,8 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
 
   .bnk-card__peek { margin-top: 16px; margin-bottom: 0; padding-top: 13px; border-top: 1px solid var(--card-divider); }
   .bnk-card__peek-label {
-    display: block; margin: 0 0 8px; font-family: ${F.mono}; font-size: 10.5px;
-    letter-spacing: 0.12em; text-transform: uppercase; color: var(--bnk-ink-2) !important;
+    display: block; margin: 0 0 6px; font-family: ${F.body}; font-size: 12.5px; font-weight: 600;
+    color: var(--bnk-ink-2) !important;
   }
   .bnk-card__peek-item {
     display: flex; align-items: baseline; gap: 7px; margin: 0 0 6px;
@@ -2333,7 +2326,7 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
      last word instead of the text box stretching and parking the arrow at the far edge */
   .bnk-card__go {
     display: inline-block; max-width: 100%; text-wrap: balance; align-self: flex-start; margin-top: 18px;
-    font-family: ${F.mono}; font-size: 13.5px; letter-spacing: 0.05em;
+    font-family: ${F.body}; font-size: 14px; font-weight: 600;
     padding: 10px 18px; border-radius: 9px; text-decoration: none;
     transition: border-color 200ms ease;
   }
@@ -2341,7 +2334,7 @@ ${darkBlock('.bnk-landing .rm-SearchToggle, .bnk-landing :is(.rm-AskAi-button, [
   .bnk-card__go--filled { background: var(--accent); color: var(--bnk-cta-on) !important; }
   .bnk-card__go--ghost { border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); color: var(--accent) !important; }
   .bnk-card__go--ghost:hover, .bnk-card:hover .bnk-card__go--ghost { border-color: color-mix(in srgb, var(--accent) 65%, transparent); }
-  .bnk-card__go--plain { padding: 0; border: 0; background: transparent; color: var(--accent) !important; font-size: 12.5px; }
+  .bnk-card__go--plain { padding: 0; border: 0; background: transparent; color: var(--accent) !important; font-size: 14px; }
   .bnk-card__go:hover .rm-arrow { transform: translateX(4px); }
 
   .bnk-card__head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
@@ -2414,7 +2407,6 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
     font-family: ${F.displayH};
     font-weight: ${HW};
     font-size: 25px;
-    letter-spacing: -0.01em;
     color: var(--bnk-heading) !important;
   }
   .bnk-section__text { margin: 0; max-width: 680px; font-size: 14px; line-height: 1.55; color: var(--bnk-ink-2) !important; }
@@ -2440,14 +2432,14 @@ ${pad}box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);`)}
   }
   .bnk-col__title {
     margin: 0 0 9px; font-family: ${F.displayH}; font-weight: ${HW};
-    font-size: 18px; letter-spacing: -0.01em; color: var(--bnk-heading) !important;
+    font-size: 18px; color: var(--bnk-heading) !important;
   }
   .bnk-col__text { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--bnk-ink-1) !important; }
   .bnk-col__ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; }
   .bnk-sec--center .bnk-col__ctas { justify-content: center; }
   .bnk-col__cta {
     display: inline-block; max-width: 100%; text-wrap: balance;
-    font-family: ${F.mono}; font-size: 13px; letter-spacing: 0.04em; text-decoration: none;
+    font-family: ${F.body}; font-size: 14px; font-weight: 600; text-decoration: none;
     color: var(--bnk-accent) !important;
   }
   .bnk-col__cta .rm-arrow { margin-left: 7px; transition: transform 200ms ease; }
@@ -2502,9 +2494,9 @@ ${(sec.eyebrow || "").trim() ? `      <p class="bnk-section__eyebrow"${ed(`secti
         return `  <div class="${cls}" style="${styleVars}"${_editable ? ` data-glp-sid="${esc(sec.id)}" data-glp-kind="${isCode ? "code" : isCols ? "columns" : sec.source === "liquid" ? "liquid" : "cards"}"` : ""}>
     <div class="bnk-codesec">
       <div class="bnk-codesec__copy">
-${heading.replace(/^/gm, "  ")}${langs.length ? `        <div class="bnk-codesec__langs">${langs.map((l, k) => `<span class="bnk-codesec__lang${k === 0 ? " on" : ""}">${esc(l)}</span>`).join("")}</div>\n` : ""}      </div>
+${heading.replace(/^/gm, "  ")}${langs.length ? `        <p class="bnk-codesec__langs">${langs.map(esc).join(" &middot; ")}</p>\n` : ""}      </div>
       <div class="bnk-codewin">
-        <div class="bnk-codewin__bar"><i></i><i></i><i></i><span>${esc(code.file)}</span></div>
+        <div class="bnk-codewin__bar"><span>${esc(code.file)}</span></div>
         <pre class="bnk-codewin__pre"><code>${esc(code.text)}</code></pre>
       </div>
     </div>
@@ -2828,11 +2820,10 @@ ${tickerCSS}
     padding: ${heroPadY}px 0;
   }
   .bnk-hero__eyebrow {
-    margin: 0 0 14px;
-    font-family: ${F.mono};
-    font-size: 11.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    margin: 0 0 10px;
+    font-family: ${F.body};
+    font-size: 15px;
+    font-weight: 600;
     color: var(--bnk-ink-2) !important;
   }
 ${chipCSS}
@@ -3918,7 +3909,7 @@ const APP_CSS = `
     display: flex; align-items: center; justify-content: center;
     color: var(--accent-ink);
   }
-  .glp-logo__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; line-height: 18px; }
+  .glp-logo__name { font-weight: 700; font-size: 15px; line-height: 18px; }
   .glp-logo__tag { font-size: 12px; line-height: 16px; color: var(--ink-3); }
 
   .glp-tabs { display: flex; gap: 2px; margin-left: 10px; background: var(--bg); padding: 3px; border-radius: 999px; box-shadow: var(--hairline); }
@@ -4190,7 +4181,6 @@ const APP_CSS = `
   .glp-ps__rows i { height: 10px; box-shadow: inset 0 -1px 0 var(--line-2); }
   .glp-ps__rows i:last-child { box-shadow: none; }
   .glp-ps__rows--mono i { background: repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--accent) 35%, transparent) 6px 16px, transparent 16px 100%) no-repeat 6px 4px / 50% 2px; }
-  .glp-ps__prompt { font-family: var(--font-mono); font-size: 9px; line-height: 1; color: var(--accent); }
   .glp-toast {
     position: fixed; left: 20px; bottom: 20px; z-index: 70; display: flex; align-items: center; gap: 10px;
     padding: 9px 10px 9px 14px; border-radius: 12px; background: var(--panel); box-shadow: var(--shadow-lg); font-size: 13.5px;
@@ -5071,8 +5061,8 @@ function PageSketch({ kind }) {
     portal: <><span className="glp-ps__bar">{L("18%", 3)}{L("30%", 2, 0.55)}</span>{L("50%", 5)}{L("34%", 3, 0.55, { marginBottom: 6 })}{cards(2, 12)}<span className="glp-ps__dark"></span></>,
     aurora: <><i className="glp-ps__glow"></i><span className="glp-ps__split"><span style={{ flex: 1.3 }}>{L("90%", 5)}{L("70%", 5)}{L("60%", 3, 0.55)}<span className="glp-ps__btns"><i></i><i></i></span></span><i className="glp-ps__panel"></i></span></>,
     spotlight: <>{L("46%", 5, 1, { margin: "6px auto 5px" })}<i className="glp-ps__search"></i><span className="glp-ps__chips"><i></i><i></i><i></i><i></i></span>{cards(2, 10)}</>,
-    editorial: <>{L("30%", 2, 0.5)}<i className="glp-ps__l glp-ps__serif" style={{ width: "80%" }}></i>{L("50%", 3, 0.55, { marginBottom: 6 })}<span className="glp-ps__rows"><i></i><i></i></span></>,
-    terminal: <><span className="glp-ps__prompt">$ _</span>{L("70%", 4)}{L("46%", 3, 0.55, { marginBottom: 6 })}<span className="glp-ps__rows glp-ps__rows--mono"><i></i><i></i></span></>,
+    editorial: <><i className="glp-ps__l glp-ps__serif" style={{ width: "80%" }}></i>{L("50%", 3, 0.55, { marginBottom: 6 })}<span className="glp-ps__rows"><i></i><i></i></span></>,
+    terminal: <>{L("70%", 4, 1, { marginTop: 4 })}{L("46%", 3, 0.55, { marginBottom: 6 })}<span className="glp-ps__rows glp-ps__rows--mono"><i></i><i></i></span></>,
   }[kind] || cards(3);
   return <span className="glp-ps">{body}</span>;
 }
